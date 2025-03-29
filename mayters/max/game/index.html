@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>City Jump Game</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+canvas { display: block; margin: 0 auto; background: #e2e8f0; }
+</style>
+</head>
+<body class="bg-gray-800 text-white text-center">
+<h1 class="text-3xl font-bold my-4">City Jumper</h1>
+<div class="flex justify-center space-x-4 mb-6">
+<button class="character-btn bg-red-600 px-4 py-2 rounded" data-char="stickman">Red Stickman</button>
+<button class="character-btn bg-blue-600 px-4 py-2 rounded" data-char="gigachad">Gigachad Legs</button>
+<button class="character-btn bg-green-600 px-4 py-2 rounded" data-char="merc">Mercedes Legs</button>
+</div>
+<canvas id="gameCanvas" width="800" height="500"></canvas>
+<script src="main.js"></script>
+</body>
+</html>
