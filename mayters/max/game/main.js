@@ -13,7 +13,6 @@ let keys = {};
 let position = { x: 100, y: 400 };
 
 //Backround 
-con
 
 document.querySelectorAll(".character-btn").forEach(btn => {
 btn.addEventListener("click", () => {
