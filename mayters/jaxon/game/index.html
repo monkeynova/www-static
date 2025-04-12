@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Maze Escape</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+    }
+
+    #game {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      grid-template-rows: repeat(10, 40px);
+      margin: 20px auto;
+      gap: 2px;
+      width: max-content;
+    }
+
+    .cell {
+      width: 40px;
+      height: 40px;
+      background-color: white;
+      border: 1px solid #ccc;
+    }
+
+    .wall {
+      background-color: black;
+    }
+
+    .player {
+      background-color: brown;
+    }
+
+    .exit {
+      background-color: rgba(200, 200, 200, 0.3);
+      border: 2px dashed gray;
+    }
+  </style>
+</head>
+<body>
+  <h1>Escape the Maze</h1>
+  <div id="game">
+    <!-- Grid cells will be inserted by JS -->
+  </div>
+  <script>
+    const game = document.getElementById('game');
+    const gridSize = 10;
+    const grid = [];
+    const player = { x: 1, y: 1 };
+
+    const mazeLayout = [
+      "##########",
+      "#........#",
+      "#.######.#",
+      "#.#....#.#",
+      "#.#.##.#.#",
+      "#...##...#",
+      "###.####.#",
+      "#........#",
+      "#.######.#",
+      "#.......E#"
+    ];
+
+    // Build the maze
+    function createMaze() {
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+
+          if (mazeLayout[y][x] === '#') {
+            cell.classList.add('wall');
+          } else if (mazeLayout[y][x] === 'E') {
+            cell.classList.add('exit');
+          }
+
+          grid.push(cell);
+          game.appendChild(cell);
+        }
+      }
+
+      updatePlayer();
+    }
+
+    function updatePlayer() {
+      grid.forEach(cell => cell.classList.remove('player'));
+      const index = player.y * gridSize + player.x;
+      grid[index].classList.add('player');
+    }
+
+    // Movement
+    document.addEventListener('keydown', e => {
+      let newX = player.x;
+      let newY = player.y;
+
+      if (e.key === 'ArrowUp' || e.key === 'w') newY--;
+      else if (e.key === 'ArrowDown' || e.key === 's') newY++;
+      else if (e.key === 'ArrowLeft' || e.key === 'a') newX--;
+      else if (e.key === 'ArrowRight' || e.key === 'd') newX++;
+
+      if (isWalkable(newX, newY)) {
+        player.x = newX;
+        player.y = newY;
+        updatePlayer();
+        checkExit();
+      }
+    });
+
+    function isWalkable(x, y) {
+      if (x < 0 || y < 0 || x >= gridSize || y >= gridSize) return false;
+      const tile = mazeLayout[y][x];
+      return tile !== '#';
+    }
+
+    function checkExit() {
+      if (mazeLayout[player.y][player.x] === 'E') {
+        alert("You found the weird hole-door! Now escape the lava parkour!");
+        // next phase hook
+      }
+    }
+
+    createMaze();
+  </script>
+</body>
+</html>
