@@ -3,20 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Maze Escape</title>
+  <title>Maze to Lava Parkour</title>
   <style>
     body {
+      margin: 0;
       font-family: sans-serif;
+      background: #f4f4f4;
+      color: black;
       text-align: center;
-      background-color: #f4f4f4;
     }
 
-    #game {
+    h1 {
+      margin: 20px 0 10px;
+    }
+
+    .phase {
+      display : none;
+    }
+
+    .visible {
+      display: block !important;
+    }
+
+    /* Maze Styles */
+    #maze-game {
       display: grid;
       grid-template-columns: repeat(10, 40px);
       grid-template-rows: repeat(10, 40px);
-      margin: 20px auto;
       gap: 2px;
+      margin: 20px auto;
       width: max-content;
     }
 
@@ -39,18 +54,83 @@
       background-color: rgba(200, 200, 200, 0.3);
       border: 2px dashed gray;
     }
+
+    /* Lava Styles */
+    #lava-game {
+      position: relative;
+      width: 800px;
+      height: 400px;
+      margin: 20px auto;
+      background: #444;
+      overflow: hidden;
+      border: 4px solid #000;
+    }
+
+    .lava-player {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: brown;
+    }
+
+    .platform, .lavawall {
+      position: absolute;
+      background: #888;
+    }
+
+    .platform {
+      height: 20px;
+    }
+
+    .lavawall {
+      width: 20px;
+    }
+
+    .lava {
+      position: absolute;
+      background: red;
+      height: 20px;
+    }
+
+    .goal {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: gold;
+      border: 2px solid white;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
+
   <h1>Escape the Maze</h1>
-  <div id="game">
-    <!-- Grid cells will be inserted by JS -->
+
+  <div id="maze" class="phase visible">
+    <div id="maze-game"></div>
   </div>
+
+  <div id="lava" class="phase">
+    <div id="lava-game"></div>
+  </div>
+
+  <div id="win-screen" class="phase">
+    <h2>You beat the game!</h2>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+
   <script>
-    const game = document.getElementById('game');
-    const gridSize = 10;
-    const grid = [];
-    const player = { x: 1, y: 1 };
+    // --- MAZE GAME ---
+    const mazeGame = document.getElementById('maze-game');
+    const mazeGridSize = 10;
+    const mazeGrid = [];
+    const mazePlayer = { x: 1, y: 1 };
 
     const mazeLayout = [
       "##########",
@@ -65,62 +145,173 @@
       "#.......E#"
     ];
 
-    // Build the maze
     function createMaze() {
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
+      mazeGame.innerHTML = '';
+      mazeGrid.length = 0;
+      for (let y = 0; y < mazeGridSize; y++) {
+        for (let x = 0; x < mazeGridSize; x++) {
           const cell = document.createElement('div');
           cell.classList.add('cell');
-
-          if (mazeLayout[y][x] === '#') {
-            cell.classList.add('wall');
-          } else if (mazeLayout[y][x] === 'E') {
-            cell.classList.add('exit');
-          }
-
-          grid.push(cell);
-          game.appendChild(cell);
+          if (mazeLayout[y][x] === '#') cell.classList.add('wall');
+          else if (mazeLayout[y][x] === 'E') cell.classList.add('exit');
+          mazeGrid.push(cell);
+          mazeGame.appendChild(cell);
         }
       }
-
-      updatePlayer();
+      updateMazePlayer();
     }
 
-    function updatePlayer() {
-      grid.forEach(cell => cell.classList.remove('player'));
-      const index = player.y * gridSize + player.x;
-      grid[index].classList.add('player');
+    function updateMazePlayer() {
+      mazeGrid.forEach(cell => cell.classList.remove('player'));
+      const index = mazePlayer.y * mazeGridSize + mazePlayer.x;
+      mazeGrid[index].classList.add('player');
     }
 
-    // Movement
+    function isMazeWalkable(x, y) {
+      if (x < 0 || y < 0 || x >= mazeGridSize || y >= mazeGridSize) return false;
+      return mazeLayout[y][x] !== '#';
+    }
+
+    function checkMazeExit() {
+      if (mazeLayout[mazePlayer.y][mazePlayer.x] === 'E') {
+        document.getElementById('maze').classList.remove('visible');
+        document.getElementById('lava').classList.add('visible');
+        initLava();
+      }
+    }
+
     document.addEventListener('keydown', e => {
-      let newX = player.x;
-      let newY = player.y;
-
-      if (e.key === 'ArrowUp' || e.key === 'w') newY--;
-      else if (e.key === 'ArrowDown' || e.key === 's') newY++;
-      else if (e.key === 'ArrowLeft' || e.key === 'a') newX--;
-      else if (e.key === 'ArrowRight' || e.key === 'd') newX++;
-
-      if (isWalkable(newX, newY)) {
-        player.x = newX;
-        player.y = newY;
-        updatePlayer();
-        checkExit();
+      if (!document.getElementById('maze').classList.contains('visible')) return;
+      let { x, y } = mazePlayer;
+      if (e.key === 'ArrowUp' || e.key === 'w') y--;
+      if (e.key === 'ArrowDown' || e.key === 's') y++;
+      if (e.key === 'ArrowLeft' || e.key === 'a') x--;
+      if (e.key === 'ArrowRight' || e.key === 'd') x++;
+      if (isMazeWalkable(x, y)) {
+        mazePlayer.x = x;
+        mazePlayer.y = y;
+        updateMazePlayer();
+        checkMazeExit();
       }
     });
 
-    function isWalkable(x, y) {
-      if (x < 0 || y < 0 || x >= gridSize || y >= gridSize) return false;
-      const tile = mazeLayout[y][x];
-      return tile !== '#';
+    // --- LAVA PARKOUR ---
+    let lavaGame, lavaPlayer;
+    let lavaX, lavaY, lavaVX, lavaVY;
+    let lavaPlatforms = [];
+    let lavaRunning = false;
+
+    function initLava() {
+      lavaGame = document.getElementById('lava-game');
+      lavaGame.innerHTML = '';
+      lavaPlayer = document.createElement('div');
+      lavaPlayer.className = 'lava-player';
+      lavaGame.appendChild(lavaPlayer);
+
+      lavaPlatforms = [
+        { type: 'platform', x: 0, y: 370, width: 800 },
+        { type: 'platform', x: 100, y: 300, width: 100 },
+        { type: 'platform', x: 250, y: 250, width: 100 },
+        { type: 'platform', x: 400, y: 200, width: 100 },
+        { type: 'platform', x: 550, y: 150, width: 100 },
+        { type: 'goal', x: 650, y: 100 },
+        { type: 'lava', x: 0, y: 390, width: 800 },
+        { type: 'lavawall', x: 0, y: 0, height: 400 },
+        { type: 'lavawall', x: 780, y: 0, height: 400 }
+      ];
+
+      lavaPlatforms.forEach(obj => {
+        const el = document.createElement('div');
+        el.className = obj.type;
+        el.style.left = obj.x + 'px';
+        el.style.top = obj.y + 'px';
+        if (obj.width) el.style.width = obj.width + 'px';
+        if (obj.height) el.style.height = obj.height + 'px';
+        lavaGame.appendChild(el);
+        obj.el = el;
+      });
+
+      lavaX = 50; lavaY = 340;
+      lavaVX = 0; lavaVY = 0;
+      lavaRunning = true;
+      lavaLoop();
     }
 
-    function checkExit() {
-      if (mazeLayout[player.y][player.x] === 'E') {
-        alert("You found the weird hole-door! Now escape the lava parkour!");
-        // next phase hook
+    const keys = {};
+    document.addEventListener('keydown', e => keys[e.key] = true);
+    document.addEventListener('keyup', e => keys[e.key] = false);
+
+    function lavaLoop() {
+      if (!lavaRunning) return;
+      // Movement
+      lavaVX = (keys['ArrowLeft'] || keys['a']) ? -3 :
+               (keys['ArrowRight'] || keys['d']) ? 3 : 0;
+      if ((keys['ArrowUp'] || keys['w'] || keys[' ']) && isOnGround()) {
+        lavaVY = -10;
       }
+
+      lavaVY += 0.5;
+      lavaX += lavaVX;
+      lavaY += lavaVY;
+
+      if (lavaX < 0) lavaX = 0;
+      if (lavaX > 770) lavaX = 770;
+
+      // Collision with platforms
+      let grounded = false;
+      lavaPlatforms.filter(p => p.type === 'platform').forEach(p => {
+        const r = p.el.getBoundingClientRect();
+        const px = lavaX + 15 + lavaGame.offsetLeft;
+        const py = lavaY + 30 + lavaGame.offsetTop;
+        if (px >= r.left && px <= r.right &&
+            py >= r.top && py <= r.top + 10 &&
+            lavaVY >= 0) {
+          lavaY = r.top - lavaGame.offsetTop - 30;
+          lavaVY = 0;
+          grounded = true;
+        }
+      });
+
+      // Lava collision
+      lavaPlatforms.filter(p => p.type === 'lava').forEach(p => {
+        const r = p.el.getBoundingClientRect();
+        const px = lavaX + 15 + lavaGame.offsetLeft;
+        const py = lavaY + 15 + lavaGame.offsetTop;
+        if (px >= r.left && px <= r.right &&
+            py >= r.top && py <= r.bottom) {
+          lavaX = 50; lavaY = 340; lavaVX = 0; lavaVY = 0;
+        }
+      });
+
+      // Goal check
+      const goal = lavaPlatforms.find(p => p.type === 'goal');
+      const r = goal.el.getBoundingClientRect();
+      const px = lavaX + 15 + lavaGame.offsetLeft;
+      const py = lavaY + 15 + lavaGame.offsetTop;
+      if (px >= r.left && px <= r.right &&
+          py >= r.top && py <= r.bottom) {
+        lavaRunning = false;
+        document.getElementById('lava').classList.remove('visible');
+        document.getElementById('win-screen').classList.add('visible');
+      }
+
+      lavaPlayer.style.left = lavaX + 'px';
+      lavaPlayer.style.top = lavaY + 'px';
+
+      requestAnimationFrame(lavaLoop);
+    }
+
+    function isOnGround() {
+      return lavaVY === 0;
+    }
+
+    // Restart
+    function restartGame() {
+      document.getElementById('win-screen').classList.remove('visible');
+      document.getElementById('maze').classList.add('visible');
+      mazePlayer.x = 1;
+      mazePlayer.y = 1;
+      createMaze();
     }
 
     createMaze();
