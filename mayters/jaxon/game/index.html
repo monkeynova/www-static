@@ -243,6 +243,7 @@
 
     function lavaLoop() {
       if (!lavaRunning) return;
+
       // Movement
       lavaVX = (keys['ArrowLeft'] || keys['a']) ? -3 :
                (keys['ArrowRight'] || keys['d']) ? 3 : 0;
@@ -250,7 +251,7 @@
         lavaVY = -10;
       }
 
-      lavaVY += 0.5;
+      lavaVY += 0.5; // Gravity
       lavaX += lavaVX;
       lavaY += lavaVY;
 
@@ -262,13 +263,24 @@
       lavaPlatforms.filter(p => p.type === 'platform').forEach(p => {
         const r = p.el.getBoundingClientRect();
         const px = lavaX + 15 + lavaGame.offsetLeft;
-        const py = lavaY + 30 + lavaGame.offsetTop;
+        const pyBottom = lavaY + 30 + lavaGame.offsetTop; // Bottom of the player
+        const pyTop = lavaY + lavaGame.offsetTop; // Top of the player
+
+        // Check for collision when falling onto a platform
         if (px >= r.left && px <= r.right &&
-            py >= r.top && py <= r.top + 10 &&
+            pyBottom >= r.top && pyBottom <= r.top + 10 &&
             lavaVY >= 0) {
-          lavaY = r.top - lavaGame.offsetTop - 30;
+          lavaY = r.top - lavaGame.offsetTop - 30; // Align player above the platform
           lavaVY = 0;
           grounded = true;
+        }
+
+        // Check for collision when jumping into a platform
+        if (px >= r.left && px <= r.right &&
+            pyTop <= r.bottom && pyTop >= r.bottom - 10 &&
+            lavaVY < 0) {
+          lavaY = r.bottom - lavaGame.offsetTop; // Align player below the platform
+          lavaVY = 0;
         }
       });
 
@@ -279,7 +291,7 @@
         const py = lavaY + 15 + lavaGame.offsetTop;
         if (px >= r.left && px <= r.right &&
             py >= r.top && py <= r.bottom) {
-          lavaX = 50; lavaY = 340; lavaVX = 0; lavaVY = 0;
+          lavaX = 50; lavaY = 340; lavaVX = 0; lavaVY = 0; // Reset position
         }
       });
 
