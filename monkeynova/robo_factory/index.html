@@ -86,6 +86,75 @@
         }
         .robot::after { content: ''; } /* Override conveyor arrows if robot is present */
 
+        /* --- Controls Area --- */
+        #controls {
+            display: flex;
+            justify-content: space-around; /* Space out hand and program areas */
+            width: 80%; /* Use more width */
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #aaa;
+            background-color: #f0f0f0;
+        }
+
+        #card-hand-area, #program-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #card-hand, #program-slots {
+            display: flex;
+            gap: 5px; /* Space between cards/slots */
+            margin-top: 10px;
+            min-height: 60px; /* Ensure area has some height */
+            padding: 5px;
+            border: 1px dashed #ccc;
+            background-color: #fff;
+        }
+
+        .card {
+            border: 1px solid #888;
+            padding: 5px;
+            min-width: 50px;
+            height: 50px; /* Match height of slots */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 12px;
+            background-color: #f9f9f9;
+            cursor: grab; /* Indicate draggable */
+            user-select: none; /* Prevent text selection during drag */
+        }
+        /* Optional: Color-code cards */
+        .card.move1, .card.move2, .card.back1 { background-color: #e0ffe0; } /* Light green for move */
+        .card.turnL, .card.turnR { background-color: #e0e0ff; } /* Light blue for turn */
+
+
+        .program-slot {
+            border: 1px solid #aaa;
+            width: 60px; /* Slightly wider than cards */
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e8e8e8;
+            color: #888;
+            font-size: 18px;
+        }
+
+        #run-program {
+            margin-top: 15px;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #run-program:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
 
     </style>
 </head>
@@ -155,6 +224,36 @@
         <div class="tile repair-station"></div> <!-- Goal repair station -->
     </div>
 
+    <!-- Card Hand and Program Area -->
+    <div id="controls">
+        <div id="card-hand-area">
+            <h2>Your Hand (Choose 5)</h2>
+            <div id="card-hand">
+                <!-- Example Hand of 7 Cards -->
+                <div class="card move1">Move 1</div>
+                <div class="card move2">Move 2</div>
+                <div class="card back1">Back 1</div>
+                <div class="card turnL">Turn L</div>
+                <div class="card turnR">Turn R</div>
+                <div class="card move1">Move 1</div>
+                <div class="card turnL">Turn L</div>
+            </div>
+        </div>
+
+        <div id="program-area">
+            <h2>Your Program</h2>
+            <div id="program-slots">
+                <!-- 5 Program Slots -->
+                <div class="program-slot">1</div>
+                <div class="program-slot">2</div>
+                <div class="program-slot">3</div>
+                <div class="program-slot">4</div>
+                <div class="program-slot">5</div>
+            </div>
+            <button id="run-program" disabled>Run Program</button> <!-- Disabled until slots are full -->
+        </div>
+    </div>
+    <!-- We'll add controls and game logic later -->
     <!-- We'll add controls and game logic later -->
 
 </body>
