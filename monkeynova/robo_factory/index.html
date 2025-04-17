@@ -130,6 +130,36 @@
         /* Optional: Color-code cards */
         .card.move1, .card.move2, .card.back1 { background-color: #e0ffe0; } /* Light green for move */
         .card.turnL, .card.turnR { background-color: #e0e0ff; } /* Light blue for turn */
+        /* --- Drag and Drop Styles --- */
+        .card.dragging {
+            opacity: 0.5; /* Make dragged card semi-transparent */
+            border: 2px dashed #000;
+        }
+
+        .program-slot.drag-over {
+            background-color: #ddd; /* Highlight drop target slot */
+            border-style: dashed;
+        }
+
+        #card-hand.drag-over {
+             background-color: #f0f0f0; /* Highlight hand drop zone */
+             border-color: #888;
+        }
+
+        /* Style slots containing cards differently */
+        .program-slot:has(.card) {
+             padding: 0; /* Remove padding if card is inside */
+             background-color: transparent; /* Remove default background */
+             border: 1px solid #aaa; /* Reset border */
+             color: transparent; /* Hide the number */
+        }
+        .program-slot:has(.card) .card {
+            width: 100%; /* Make card fill the slot */
+            height: 100%;
+            cursor: grab; /* Indicate card can be moved again */
+            /* ADD THIS LINE BELOW */
+            color: initial; /* Reset color to default/inherited from card itself */
+        }
 
 
         .program-slot {
@@ -228,33 +258,191 @@
     <div id="controls">
         <div id="card-hand-area">
             <h2>Your Hand (Choose 5)</h2>
-            <div id="card-hand">
-                <!-- Example Hand of 7 Cards -->
-                <div class="card move1">Move 1</div>
-                <div class="card move2">Move 2</div>
-                <div class="card back1">Back 1</div>
-                <div class="card turnL">Turn L</div>
-                <div class="card turnR">Turn R</div>
-                <div class="card move1">Move 1</div>
-                <div class="card turnL">Turn L</div>
+            <!-- Added ID here -->
+            <div id="card-hand" class="drop-zone">
+                <!-- Example Hand of 7 Cards - Added draggable and unique IDs -->
+                <div id="card-1" class="card move1" draggable="true">Move 1</div>
+                <div id="card-2" class="card move2" draggable="true">Move 2</div>
+                <div id="card-3" class="card back1" draggable="true">Back 1</div>
+                <div id="card-4" class="card turnL" draggable="true">Turn L</div>
+                <div id="card-5" class="card turnR" draggable="true">Turn R</div>
+                <div id="card-6" class="card move1" draggable="true">Move 1</div>
+                <div id="card-7" class="card turnL" draggable="true">Turn L</div>
             </div>
         </div>
 
         <div id="program-area">
             <h2>Your Program</h2>
-            <div id="program-slots">
-                <!-- 5 Program Slots -->
+            <!-- Added ID here -->
+            <div id="program-slots" class="drop-zone">
+                <!-- 5 Program Slots - Added drop-zone class for styling/targeting -->
                 <div class="program-slot">1</div>
                 <div class="program-slot">2</div>
                 <div class="program-slot">3</div>
                 <div class="program-slot">4</div>
                 <div class="program-slot">5</div>
             </div>
-            <button id="run-program" disabled>Run Program</button> <!-- Disabled until slots are full -->
+            <button id="run-program" disabled>Run Program</button>
         </div>
     </div>
-    <!-- We'll add controls and game logic later -->
-    <!-- We'll add controls and game logic later -->
+
+    <!-- Add JavaScript block at the end -->
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const cards = document.querySelectorAll('#card-hand .card, #program-slots .card'); // Select cards initially in hand
+    const programSlots = document.querySelectorAll('#program-slots .program-slot');
+    const cardHand = document.getElementById('card-hand');
+    const programSlotsContainer = document.getElementById('program-slots'); // Needed if dragging cards between slots
+    const runProgramButton = document.getElementById('run-program');
+
+    let draggedCard = null;
+
+    // --- Drag Handlers for Cards ---
+    function addCardDragHandlers(card) {
+        card.addEventListener('dragstart', (e) => {
+            draggedCard = card;
+            e.dataTransfer.setData('text/plain', card.id);
+            // Use setTimeout to allow the browser to render the drag image before applying class
+            setTimeout(() => card.classList.add('dragging'), 0);
+            console.log(`Drag Start: ${card.id}`);
+        });
+
+        card.addEventListener('dragend', () => {
+            console.log(`Drag End: ${draggedCard.id}`);
+            if (draggedCard) { // Check if draggedCard is still set
+                draggedCard.classList.remove('dragging');
+            }
+            draggedCard = null; // Clear reference
+        });
+    }
+
+    // Initial setup for cards in hand
+    document.querySelectorAll('#card-hand .card').forEach(addCardDragHandlers);
+
+
+    // --- Drop Zone Handlers ---
+
+    // Generic drag over handler
+    function handleDragOver(e) {
+        e.preventDefault(); // Necessary to allow dropping
+        // console.log('Drag Over:', e.target.closest('.drop-zone, .program-slot'));
+    }
+
+    // Generic drag enter handler (add visual cue)
+    function handleDragEnter(e) {
+        e.preventDefault();
+        const target = e.target.closest('.program-slot, #card-hand');
+        if (target) {
+            target.classList.add('drag-over');
+            // console.log('Drag Enter:', target);
+        }
+    }
+
+    // Generic drag leave handler (remove visual cue)
+    function handleDragLeave(e) {
+         const target = e.target.closest('.program-slot, #card-hand');
+         if (target) {
+            target.classList.remove('drag-over');
+            // console.log('Drag Leave:', target);
+         }
+    }
+
+    // Generic drop handler
+    function handleDrop(e) {
+        e.preventDefault();
+        const dropTarget = e.target.closest('.program-slot, #card-hand');
+        console.log('Drop on:', dropTarget);
+
+        if (!dropTarget || !draggedCard) {
+            console.log('Drop cancelled - no valid target or dragged card');
+            if (draggedCard) draggedCard.classList.remove('dragging'); // Clean up style if drop fails
+            draggedCard = null;
+            return;
+        }
+
+        dropTarget.classList.remove('drag-over'); // Remove highlight
+
+        const cardId = e.dataTransfer.getData('text/plain');
+        const cardElement = document.getElementById(cardId);
+
+        if (!cardElement) {
+            console.error('Could not find dragged card element with ID:', cardId);
+            if (draggedCard) draggedCard.classList.remove('dragging');
+            draggedCard = null;
+            return;
+        }
+
+        // --- Logic for dropping ---
+
+        // Case 1: Dropping onto a program slot
+        if (dropTarget.classList.contains('program-slot')) {
+            const existingCard = dropTarget.querySelector('.card'); // Check specifically for a card
+
+            // Allow drop if the slot doesn't already contain a card,
+            // OR if it contains the exact same card we are dragging (a no-op move)
+            if (!existingCard || existingCard === cardElement) {
+
+                 // If the card isn't already in this specific slot, move it.
+                 if (existingCard !== cardElement) {
+                     // Clear the slot first (removes number text or any existing card if implementing swap later)
+                     dropTarget.innerHTML = '';
+                     // Append the dragged card
+                     dropTarget.appendChild(cardElement);
+                     // Ensure the moved card remains draggable
+                     addCardDragHandlers(cardElement);
+                 }
+                 // If existingCard === cardElement, we dropped the card back onto itself, so do nothing.
+
+            } else {
+                // Slot is occupied by a DIFFERENT card. Prevent the drop for now.
+                console.log('Slot occupied by a different card, drop prevented.');
+                // In a future step, you might implement swapping logic here.
+            }
+        }
+        // Case 2: Dropping onto the hand area
+        else if (dropTarget.id === 'card-hand') {
+            // Check if the card isn't already in the hand
+            if (cardElement.parentElement.id !== 'card-hand') {
+                 cardHand.appendChild(cardElement);
+                 addCardDragHandlers(cardElement); // Ensure handlers are present
+            }
+        }
+
+        // Clean up dragging state (redundant with dragend, but safe)
+        cardElement.classList.remove('dragging');
+        draggedCard = null; // Clear reference after successful drop
+
+        updateRunButtonState(); // Check if program is ready
+    }
+
+    // --- Attach Drop Zone Listeners ---
+    const dropZones = [cardHand, ...programSlots]; // Combine hand and slots
+    dropZones.forEach(zone => {
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('dragenter', handleDragEnter);
+        zone.addEventListener('dragleave', handleDragLeave);
+        zone.addEventListener('drop', handleDrop);
+    });
+
+
+    // --- Update Button State ---
+    function updateRunButtonState() {
+        let filledSlots = 0;
+        programSlots.forEach(slot => {
+            // Check if the slot has an element child which is a card
+            if (slot.querySelector('.card')) {
+                filledSlots++;
+            }
+        });
+        runProgramButton.disabled = filledSlots !== 5;
+        console.log(`Filled slots: ${filledSlots}, Button disabled: ${runProgramButton.disabled}`);
+    }
+
+    // Initial check in case the page loads with cards already in slots (e.g., during development)
+    updateRunButtonState();
+
+}); // End DOMContentLoaded
+    </script>
 
 </body>
 </html>
