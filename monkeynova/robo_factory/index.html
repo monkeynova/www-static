@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Factory</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;        /* --- Tile Types --- */
+            
+                    .plain {
+                        background-color: #eee; /* Light grey for plain floor */
+                        border: 1px solid #ddd;
+                    }
+            
+                    .conveyor {
+                        background-color: #aaddff; /* Light blue for conveyors */
+                        border: 1px solid #88ccf1;
+                    }
+            
+                    /* NEW: Repair Station Tile */
+                    .repair-station {
+                        background-color: #90ee90; /* Light green for repair stations */
+                        border: 1px solid #66cd66;
+                    }
+                    /* Optional: Add a symbol */
+                    .repair-station::after {
+                        content: '🔧'; /* Wrench symbol */
+                        color: #333;
+                    }
+            
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        #factory-floor {
+            /* Define the grid */
+            display: grid;
+            /* Example: 8 columns, each 50px wide */
+            grid-template-columns: repeat(8, 50px);
+            /* Example: 6 rows, each 50px high */
+            grid-template-rows: repeat(6, 50px);
+            gap: 1px; /* Small gap between tiles */
+            border: 2px solid #333; /* Border around the factory floor */
+            background-color: #ccc; /* Background for the gaps */
+            width: fit-content; /* Make container fit the grid */
+        }
+
+        .tile {
+            width: 50px;
+            height: 50px;
+            box-sizing: border-box; /* Include padding/border in element's total width/height */
+            display: flex; /* For centering content later (like arrows or robots) */
+            align-items: center;
+            justify-content: center;
+            font-size: 24px; /* For potential symbols */
+        }
+
+        /* --- Tile Types --- */
+
+        .plain {
+            background-color: #eee; /* Light grey for plain floor */
+            border: 1px solid #ddd;
+        }
+
+        .conveyor {
+            background-color: #aaddff; /* Light blue for conveyors */
+            border: 1px solid #88ccf1;
+        }
+
+        /* Add direction indicators (simple text for now) */
+        .conveyor.right::after { content: '→'; }
+        .conveyor.left::after  { content: '←'; }
+        .conveyor.up::after    { content: '↑'; }
+        .conveyor.down::after  { content: '↓'; }
+
+        /* Example: Add a robot visually (can be improved later) */
+        .robot {
+            background-color: #f9a; /* Pinkish color for robot */
+            border-radius: 50%; /* Make it round */
+            width: 70%;
+            height: 70%;
+            z-index: 10; /* Ensure robot is above tile content */
+        }
+        .robot::after { content: ''; } /* Override conveyor arrows if robot is present */
+
+
+    </style>
+</head>
+<body>
+
+    <h1>Robot Factory Floor</h1>
+
+    <div id="factory-floor">
+        <!-- Row 1 -->
+        <div class="tile repair-station"><div class="robot"></div></div> <!-- Robot starts here -->
+        <div class="tile plain"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div> <!-- Robot removed from here -->
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+
+        <!-- Row 2 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+
+        <!-- Row 3 -->
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+
+        <!-- Row 4 -->
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+
+        <!-- Row 5 -->
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+
+        <!-- Row 6 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile repair-station"></div> <!-- Goal repair station -->
+    </div>
+
+    <!-- We'll add controls and game logic later -->
+
+</body>
+</html>
