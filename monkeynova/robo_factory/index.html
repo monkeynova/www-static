@@ -281,40 +281,28 @@
     <!-- Add JavaScript block at the end -->
     <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Board Definition ---
+    // --- Board Definition (Character-based) ---
     const boardLayout = [
-        // Row 0 (Top Row)
-        ['repair-station', 'plain', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor down', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain'],
-        // Row 1
-        ['plain', 'plain', 'plain', 'plain', 'hole', 'plain', 'plain', 'conveyor down', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain'],
-        // Row 2
-        ['plain', 'conveyor up', 'conveyor left', 'conveyor left', 'conveyor left', 'conveyor left', 'conveyor left', 'conveyor down', 'plain', 'plain', 'plain', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor down'],
-        // Row 3
-        ['plain', 'conveyor up', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor down', 'plain', 'plain', 'hole', 'plain', 'plain', 'plain', 'plain', 'conveyor down'],
-        // Row 4
-        ['plain', 'conveyor up', 'plain', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor up', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor down'],
-        // Row 5
-        ['plain', 'plain', 'plain', 'plain', 'plain', 'hole', 'conveyor up', 'plain', 'plain', 'conveyor left', 'conveyor left', 'conveyor left', 'conveyor down', 'plain', 'plain', 'conveyor down'],
-        // Row 6
-        ['plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor up', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor down', 'plain', 'plain', 'conveyor down'],
-        // Row 7
-        ['plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor up', 'plain', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor up', 'conveyor down', 'plain', 'plain', 'conveyor down'],
-        // Row 8
-        ['plain', 'plain', 'hole', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor up', 'plain', 'plain', 'plain', 'plain'],
-        // Row 9
-        ['plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor up', 'plain', 'plain', 'plain', 'plain'],
-        // Row 10
-        ['plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'conveyor up', 'conveyor right', 'conveyor right', 'conveyor right', 'conveyor right'],
-        // Row 11 (Bottom Row)
-        ['plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'plain', 'repair-station']
+    //   0123456789ABCDEF
+        "R >>>>>v         ", // 0
+        "    O  v         ", // 1
+        " ^<<<<<v   >>>>v ", // 2
+        " ^     v  O    v ", // 3
+        " ^ >>>>^       v ", // 4
+        "      O^  <<<v v ", // 5
+        "       ^     v v ", // 6
+        "       ^ >>>^v v ", // 7
+        "  O        ^     ", // 8
+        "           ^     ", // 9
+        "           ^>>>> ", // A (10)
+        "                R"  // B (11)
     ];
 
     // --- Game Constants from Layout ---
     const GRID_ROWS = boardLayout.length;
     const GRID_COLS = boardLayout[0].length; // Assumes all rows have the same length
 
-    // --- Robot Starting Position (Find the first repair station or define explicitly) ---
-    // Let's define explicitly for clarity, matching the layout above
+    // --- Robot Starting Position ---
     const startRobotRow = 0;
     const startRobotCol = 0;
     const startRobotOrientation = 'east';
@@ -562,10 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- NEW: Function to Create Board from Layout ---
+    // --- Function to Create Board from Layout ---
     function createBoard() {
         factoryFloor.innerHTML = ''; // Clear any existing static HTML tiles
-        factoryFloor.style.gridTemplateColumns = `repeat(${GRID_COLS}, 50px)`; // Set grid CSS dynamically
+        factoryFloor.style.gridTemplateColumns = `repeat(${GRID_COLS}, 50px)`;
         factoryFloor.style.gridTemplateRows = `repeat(${GRID_ROWS}, 50px)`;
 
         allRepairStations.length = 0; // Clear previous station data
@@ -574,46 +562,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let r = 0; r < GRID_ROWS; r++) {
             for (let c = 0; c < GRID_COLS; c++) {
-                const tileTypeString = boardLayout[r][c];
-                const tileClasses = tileTypeString.split(' '); // e.g., "conveyor right" -> ["conveyor", "right"]
-
+                const tileChar = boardLayout[r][c]; // Get the character for this tile
                 const tileElement = document.createElement('div');
-                tileElement.classList.add('tile');
+                const tileClasses = ['tile']; // Start with the base 'tile' class
+
+                // Map character to CSS classes
+                switch (tileChar) {
+                    case 'R':
+                        tileClasses.push('repair-station');
+                        break;
+                    case ' ':
+                        tileClasses.push('plain');
+                        break;
+                    case '>':
+                        tileClasses.push('conveyor', 'right');
+                        break;
+                    case '<':
+                        tileClasses.push('conveyor', 'left');
+                        break;
+                    case '^':
+                        tileClasses.push('conveyor', 'up');
+                        break;
+                    case 'v':
+                        tileClasses.push('conveyor', 'down');
+                        break;
+                    case 'O':
+                        tileClasses.push('hole');
+                        break;
+                    default:
+                        console.warn(`Unknown tile character '${tileChar}' at (${r}, ${c}). Treating as plain.`);
+                        tileClasses.push('plain');
+                        break;
+                }
+
+                // Add all determined classes to the element
                 tileClasses.forEach(cls => tileElement.classList.add(cls));
 
                 factoryFloor.appendChild(tileElement);
 
-                // Track repair stations
-                if (tileClasses.includes('repair-station')) {
+                // Track repair stations based on the character
+                if (tileChar === 'R') {
                     allRepairStations.push({ row: r, col: c });
-                    console.log(`Found repair station at (${r}, ${c})`);
+                    // Log moved inside the loop for clarity during creation
+                    // console.log(`Found repair station at (${r}, ${c})`);
                 }
             }
         }
-         console.log(`Total repair stations found: ${allRepairStations.length}`);
+        // Log total count after loop finishes
+        console.log(`Total repair stations found: ${allRepairStations.length}`);
 
-        // Create the robot element dynamically
+        // --- Create and Place Robot ---
         robotElement = document.createElement('div');
         robotElement.classList.add('robot');
-        // Note: Initial facing class will be set by updateRobotVisuals
 
-        // Place the robot on its starting tile
         const startTile = getTileElement(startRobotRow, startRobotCol);
         if (startTile) {
-             // Set initial state variables BEFORE calling updateRobotVisuals
-             robotRow = startRobotRow;
-             robotCol = startRobotCol;
-             robotOrientation = startRobotOrientation;
-             // Now update visuals, which also places the element
-             updateRobotVisuals(robotRow, robotCol, robotOrientation);
+            robotRow = startRobotRow;
+            robotCol = startRobotCol;
+            robotOrientation = startRobotOrientation;
+            updateRobotVisuals(robotRow, robotCol, robotOrientation); // Place robot & set orientation
 
-             // Check if starting on a repair station AFTER placing it
-             if (startTile.classList.contains('repair-station')) {
-                 const stationKey = `${robotRow}-${robotCol}`;
-                 console.log(`Robot starts on repair station (${robotRow}, ${robotCol}). Marking as visited.`);
-                 visitedRepairStations.add(stationKey);
-                 lastVisitedStationKey = stationKey;
-             }
+            // Check if starting on a repair station (using character from layout)
+            if (boardLayout[startRobotRow][startRobotCol] === 'R') {
+                const stationKey = `${robotRow}-${robotCol}`;
+                console.log(`Robot starts on repair station (${robotRow}, ${robotCol}). Marking as visited.`);
+                visitedRepairStations.add(stationKey);
+                lastVisitedStationKey = stationKey;
+            }
         } else {
             console.error("Could not place robot initially! Starting tile not found.");
         }
@@ -809,18 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialize the Game ---
     createBoard(); // Generate the board HTML
-    document.querySelectorAll('#card-hand .card').forEach(addCardDragHandlers); // Make initial cards draggable
     updateRunButtonState(); // Set initial button state
-
-    // Initial placement of robot visuals based on state variables
-    // This ensures JS state matches the initial HTML placement
-    const initialTile = getTileElement(robotRow, robotCol);
-    if (initialTile && robotElement) {
-        initialTile.appendChild(robotElement);
-        updateRobotVisuals(robotRow, robotCol, robotOrientation); // Set initial class correctly
-    } else {
-         console.error("Could not place robot initially!");
-    }
 
 }); // End DOMContentLoaded
     </script>
