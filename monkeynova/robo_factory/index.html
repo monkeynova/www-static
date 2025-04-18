@@ -83,8 +83,48 @@
             width: 70%;
             height: 70%;
             z-index: 10; /* Ensure robot is above tile content */
+            position: relative; /* Needed for absolute positioning of pseudo-element */
+            box-shadow: 0 0 3px rgba(0,0,0,0.5); /* Optional: slight shadow */
         }
         .robot::after { content: ''; } /* Override conveyor arrows if robot is present */
+
+        /* NEW: Robot Orientation Indicator (Triangle) */
+        .robot::before {
+            content: '';
+            position: absolute;
+            top: 50%; /* Center vertically */
+            left: 90%; /* Position near the right edge */
+            transform: translate(-50%, -50%); /* Adjust centering */
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;    /* Triangle height */
+            border-bottom: 5px solid transparent; /* Triangle height */
+            border-left: 8px solid #333;       /* Triangle base and color (points right by default) */
+            transition: transform 0.3s ease; /* Smooth rotation */
+        }
+
+        /* NEW: Rotate indicator based on facing class */
+        .robot.facing-north::before {
+            transform: translate(-50%, -50%) rotate(-90deg);
+            left: 50%; /* Adjust position for north */
+            top: 10%;
+        }
+        .robot.facing-east::before {
+            /* Default state - points right */
+            transform: translate(-50%, -50%) rotate(0deg);
+            left: 90%;
+            top: 50%;
+        }
+        .robot.facing-south::before {
+            transform: translate(-50%, -50%) rotate(90deg);
+            left: 50%;
+            top: 90%;
+        }
+        .robot.facing-west::before {
+            transform: translate(-50%, -50%) rotate(180deg);
+            left: 10%;
+            top: 50%;
+        }
 
         /* --- Controls Area --- */
         #controls {
@@ -194,7 +234,8 @@
 
     <div id="factory-floor">
         <!-- Row 1 -->
-        <div class="tile repair-station"><div class="robot"></div></div> <!-- Robot starts here -->
+        <!-- Add 'facing-east' class to the robot div -->
+        <div class="tile repair-station"><div class="robot facing-east"></div></div> <!-- Robot starts here -->
         <div class="tile plain"></div>
         <div class="tile conveyor right"></div>
         <div class="tile conveyor right"></div> <!-- Robot removed from here -->
@@ -294,8 +335,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardHand = document.getElementById('card-hand');
     const programSlotsContainer = document.getElementById('program-slots'); // Needed if dragging cards between slots
     const runProgramButton = document.getElementById('run-program');
+    // --- Game State ---
+    const GRID_COLS = 8;
+    const GRID_ROWS = 6;
+    let robotElement = document.querySelector('.robot'); // Get the robot element
+    let robotRow = 0; // Initial row (0-indexed)
+    let robotCol = 0; // Initial column (0-indexed)
+    let robotOrientation = 'east'; // Initial orientation ('north', 'east', 'south', 'west')
+    const orientations = ['north', 'east', 'south', 'west'];
 
-    let draggedCard = null;
+    let draggedCard = null; // Keep this
 
     // --- Drag Handlers for Cards ---
     function addCardDragHandlers(card) {
@@ -440,6 +489,170 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial check in case the page loads with cards already in slots (e.g., during development)
     updateRunButtonState();
+
+    // --- Helper Functions ---
+
+    // Function to get the tile element at a specific row/col
+    function getTileElement(row, col) {
+        if (row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS) {
+            return null; // Out of bounds
+        }
+        // Calculate index in the grid's children list
+        const index = row * GRID_COLS + col;
+        const factoryFloor = document.getElementById('factory-floor');
+        return factoryFloor.children[index];
+    }
+
+    // Function to update the robot's visual position and orientation class
+    function updateRobotVisuals(newRow, newCol, newOrientation) {
+        const newTile = getTileElement(newRow, newCol);
+        if (newTile && robotElement) {
+            // Remove old orientation class
+            robotElement.classList.remove('facing-north', 'facing-east', 'facing-south', 'facing-west');
+            // Add new orientation class
+            robotElement.classList.add(`facing-${newOrientation}`);
+            // Move the robot element to the new tile
+            newTile.appendChild(robotElement); // Appending automatically moves it
+            // Update state variables
+            robotRow = newRow;
+            robotCol = newCol;
+            robotOrientation = newOrientation;
+        } else {
+            console.error("Failed to update robot visuals. Invalid tile or robot element.");
+        }
+    }
+
+    // Function to introduce delay (for visual pacing)
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+
+    // --- Drag Handlers for Cards ---
+    // ... (keep existing addCardDragHandlers function) ...
+
+    // Initial setup for cards in hand
+    document.querySelectorAll('#card-hand .card').forEach(addCardDragHandlers);
+
+    // --- Drop Zone Handlers ---
+    // ... (keep existing handleDragOver, handleDragEnter, handleDragLeave, handleDrop functions) ...
+
+    // --- Attach Drop Zone Listeners ---
+    // ... (keep existing drop zone listener attachment) ...
+
+    // --- Update Button State ---
+    // ... (keep existing updateRunButtonState function) ...
+
+    // --- Run Program Logic ---
+    runProgramButton.addEventListener('click', async () => {
+        console.log("Run Program Clicked!");
+        runProgramButton.disabled = true; // Disable button during execution
+
+        const programmedCards = programSlotsContainer.querySelectorAll('.program-slot .card');
+
+        if (programmedCards.length !== 5) {
+            console.error("Program is not full!");
+            runProgramButton.disabled = false; // Re-enable if error
+            return;
+        }
+
+        for (const card of programmedCards) {
+            const actionClasses = card.classList;
+            console.log(`Executing action: ${card.textContent} (Classes: ${Array.from(actionClasses).join(', ')})`);
+
+            let currentOrientationIndex = orientations.indexOf(robotOrientation);
+
+            if (actionClasses.contains('turnL')) {
+                const newOrientationIndex = (currentOrientationIndex - 1 + orientations.length) % orientations.length;
+                robotOrientation = orientations[newOrientationIndex]; // Update state variable first
+                updateRobotVisuals(robotRow, robotCol, robotOrientation); // Update visuals
+                console.log(`Turned Left. New orientation: ${robotOrientation}`);
+            } else if (actionClasses.contains('turnR')) {
+                const newOrientationIndex = (currentOrientationIndex + 1) % orientations.length;
+                robotOrientation = orientations[newOrientationIndex]; // Update state variable first
+                updateRobotVisuals(robotRow, robotCol, robotOrientation); // Update visuals
+                console.log(`Turned Right. New orientation: ${robotOrientation}`);
+            } else {
+                // Handle movement (Move 1, Move 2, Back 1)
+                let steps = 0;
+                if (actionClasses.contains('move1')) steps = 1;
+                else if (actionClasses.contains('move2')) steps = 2; // We'll handle this as two single steps
+                else if (actionClasses.contains('back1')) steps = -1;
+
+                const moveCount = actionClasses.contains('move2') ? 2 : 1; // How many times to move one step
+
+                for (let i = 0; i < moveCount; i++) {
+                    if (steps === 0 && moveCount === 1) continue; // Skip if no movement defined for this loop iteration
+
+                    let dr = 0, dc = 0; // Delta row, delta column
+                    const actualSteps = (steps === -1) ? -1 : 1; // Move 1 or Back 1
+
+                    switch (robotOrientation) {
+                        case 'north': dr = -actualSteps; break;
+                        case 'east':  dc = actualSteps;  break;
+                        case 'south': dr = actualSteps;  break;
+                        case 'west':  dc = -actualSteps; break;
+                    }
+
+                    const targetRow = robotRow + dr;
+                    const targetCol = robotCol + dc;
+
+                    console.log(`Attempting move from (${robotRow}, ${robotCol}) to (${targetRow}, ${targetCol})`);
+
+                    // --- Basic Collision/Boundary Check ---
+                    const targetTile = getTileElement(targetRow, targetCol);
+                    if (targetTile) { // Check if target is within bounds
+                        // TODO: Add checks for walls or other obstacles later
+                        updateRobotVisuals(targetRow, targetCol, robotOrientation);
+                        console.log(`Moved to (${targetRow}, ${targetCol})`);
+                    } else {
+                        console.log("Move failed: Hit boundary or invalid tile.");
+                        // If move2 fails on the first step, stop the second step
+                        if (actionClasses.contains('move2')) break;
+                    }
+                     // Add delay between individual steps of move2 as well
+                     if (moveCount > 1 || steps !== 0) await sleep(500); // Delay after each step/turn
+                }
+            }
+
+            // Add a delay between executing cards
+            if (!actionClasses.contains('move2') && !actionClasses.contains('move1') && !actionClasses.contains('back1')) {
+                 await sleep(500); // Delay after turns if no movement happened in this card
+            } else if (actionClasses.contains('move2') || actionClasses.contains('move1') || actionClasses.contains('back1')) {
+                // Delay already happened inside the move loop
+            } else {
+                 await sleep(500); // Default delay if somehow missed
+            }
+
+
+        } // End loop through cards
+
+        console.log("Program finished.");
+        // Re-enable button - or potentially trigger next phase (conveyors, lasers etc.)
+        // For now, just re-enable
+        // We might want to keep it disabled until cards are dealt again
+        // updateRunButtonState(); // Check if slots are still full (they should be)
+
+        // Consider what happens next - maybe clear the program slots?
+        // For now, leave cards in place and re-enable button.
+         runProgramButton.disabled = false;
+
+
+    }); // End runProgramButton click listener
+
+
+    // Initial check for button state
+    updateRunButtonState();
+
+    // Initial placement of robot visuals based on state variables
+    // This ensures JS state matches the initial HTML placement
+    const initialTile = getTileElement(robotRow, robotCol);
+    if (initialTile && robotElement) {
+        initialTile.appendChild(robotElement);
+        updateRobotVisuals(robotRow, robotCol, robotOrientation); // Set initial class correctly
+    } else {
+         console.error("Could not place robot initially!");
+    }
 
 }); // End DOMContentLoaded
     </script>
