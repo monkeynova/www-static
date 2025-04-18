@@ -38,10 +38,10 @@
         #factory-floor {
             /* Define the grid */
             display: grid;
-            /* Example: 8 columns, each 50px wide */
-            grid-template-columns: repeat(8, 50px);
-            /* Example: 6 rows, each 50px high */
-            grid-template-rows: repeat(6, 50px);
+            /* NEW: 16 columns, each 50px wide */
+            grid-template-columns: repeat(16, 50px);
+            /* NEW: 12 rows, each 50px high */
+            grid-template-rows: repeat(12, 50px);
             gap: 1px; /* Small gap between tiles */
             border: 2px solid #333; /* Border around the factory floor */
             background-color: #ccc; /* Background for the gaps */
@@ -75,6 +75,16 @@
         .conveyor.left::after  { content: '←'; }
         .conveyor.up::after    { content: '↑'; }
         .conveyor.down::after  { content: '↓'; }
+
+        /* NEW: Hole Tile */
+        .hole {
+            background-color: #222; /* Dark grey / black for holes */
+            border: 1px solid #000;
+        }
+        /* Ensure hole doesn't show conveyor/repair symbols */
+        .hole::after {
+            content: '';
+        }
 
         /* Example: Add a robot visually (can be improved later) */
         .robot {
@@ -233,57 +243,108 @@
     <h1>Robot Factory Floor</h1>
 
     <div id="factory-floor">
+        <!-- Row 0 -->
+        <div class="tile repair-station"><div class="robot facing-east"></div></div> <!-- Start -->
+        <div class="tile plain"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
         <!-- Row 1 -->
-        <!-- Add 'facing-east' class to the robot div -->
-        <div class="tile repair-station"><div class="robot facing-east"></div></div> <!-- Robot starts here -->
         <div class="tile plain"></div>
-        <div class="tile conveyor right"></div>
-        <div class="tile conveyor right"></div> <!-- Robot removed from here -->
-        <div class="tile conveyor right"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile hole"></div> <!-- Changed from plain -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
         <div class="tile conveyor down"></div>
         <div class="tile plain"></div>
         <div class="tile plain"></div>
-
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
         <!-- Row 2 -->
-        <div class="tile plain"></div>
-        <div class="tile plain"></div>
-        <div class="tile plain"></div>
-        <div class="tile plain"></div>
-        <div class="tile plain"></div>
-        <div class="tile conveyor down"></div>
-        <div class="tile plain"></div>
-        <div class="tile plain"></div>
-
-        <!-- Row 3 -->
         <div class="tile plain"></div>
         <div class="tile conveyor up"></div>
         <div class="tile conveyor left"></div>
         <div class="tile conveyor left"></div>
         <div class="tile conveyor left"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor left"></div>
         <div class="tile conveyor down"></div>
         <div class="tile plain"></div>
         <div class="tile plain"></div>
-
+        <div class="tile plain"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor down"></div>
+        <!-- Row 3 -->
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
         <!-- Row 4 -->
         <div class="tile plain"></div>
         <div class="tile conveyor up"></div>
         <div class="tile plain"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
         <div class="tile plain"></div>
         <div class="tile plain"></div>
         <div class="tile conveyor down"></div>
-        <div class="tile plain"></div>
-        <div class="tile plain"></div>
-
         <!-- Row 5 -->
         <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
         <div class="tile conveyor up"></div>
         <div class="tile plain"></div>
-        <div class="tile conveyor right"></div>
-        <div class="tile conveyor right"></div>
-        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor left"></div>
+        <div class="tile conveyor down"></div>
         <div class="tile plain"></div>
         <div class="tile plain"></div>
-
+        <div class="tile conveyor down"></div>
         <!-- Row 6 -->
         <div class="tile plain"></div>
         <div class="tile plain"></div>
@@ -291,8 +352,101 @@
         <div class="tile plain"></div>
         <div class="tile plain"></div>
         <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
         <div class="tile plain"></div>
-        <div class="tile repair-station"></div> <!-- Goal repair station -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
+        <!-- Row 7 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile conveyor down"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor down"></div>
+        <!-- Row 8 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <!-- Row 9 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <!-- Row 10 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile conveyor up"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <div class="tile conveyor right"></div>
+        <!-- Row 11 -->
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile plain"></div>
+        <div class="tile repair-station"></div> <!-- Goal -->
     </div>
 
     <!-- Card Hand and Program Area -->
@@ -336,19 +490,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const programSlotsContainer = document.getElementById('program-slots'); // Needed if dragging cards between slots
     const runProgramButton = document.getElementById('run-program');
     // --- Game State ---
-    const GRID_COLS = 8;
-    const GRID_ROWS = 6;
+    const GRID_COLS = 16; // Updated from 8
+    const GRID_ROWS = 12; // Updated from 6
     let robotElement = document.querySelector('.robot'); // Get the robot element
-    let robotRow = 0; // Initial row (0-indexed)
-    let robotCol = 0; // Initial column (0-indexed)
-    let robotOrientation = 'east'; // Initial orientation ('north', 'east', 'south', 'west')
+    // Keep initial position at 0,0 unless you change the HTML start point
+    let robotRow = 0;
+    let robotCol = 0;
+    let robotOrientation = 'east';
     const orientations = ['north', 'east', 'south', 'west'];
+    // ... rest of the script ...
 
     // --- Repair Station Tracking ---
-    const allRepairStations = []; // Array to store {row, col} of all stations
-    const visitedRepairStations = new Set(); // Set to store "row-col" keys of visited stations
+    const allRepairStations = [];
+    const visitedRepairStations = new Set();
+    let lastVisitedStationKey = null; // NEW: Track the key ("row-col") of the last visited station
 
-    let draggedCard = null; // Keep this
+    let draggedCard = null;
 
     // --- Drag Handlers for Cards ---
     function addCardDragHandlers(card) {
@@ -392,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const stationKey = `${robotRow}-${robotCol}`;
             console.log(`Robot starts on repair station (${robotRow}, ${robotCol}). Marking as visited.`);
             visitedRepairStations.add(stationKey);
-            // Optional: Add visual cue to starting station if needed
+            lastVisitedStationKey = stationKey; // NEW: Set initial last visited station
         }
     }
     initializeBoard(); // Call initialization function
@@ -694,6 +851,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                      console.log(`   Already visited repair station at (${robotRow}, ${robotCol}).`);
+                }
+            }
+
+            // --- NEW: Hole Check (Check AFTER conveyor and repair station) ---
+            if (currentTile && currentTile.classList.contains('hole')) {
+                console.log(`   Robot landed on a hole at (${robotRow}, ${robotCol})!`);
+                fellInHole = true; // Mark that the robot fell
+
+                if (lastVisitedStationKey) {
+                    console.log(`   Returning to last visited station: ${lastVisitedStationKey}`);
+                    const [lastR, lastC] = lastVisitedStationKey.split('-').map(Number); // Parse row/col
+
+                    // Check if the last station coordinates are valid before moving
+                    if (getTileElement(lastR, lastC)) {
+                         updateRobotVisuals(lastR, lastC, robotOrientation); // Move robot back
+                         await sleep(600); // Pause to show the reset
+                         currentTile = getTileElement(robotRow, robotCol); // Update current tile after reset
+                    } else {
+                         console.error(`   Last visited station key ${lastVisitedStationKey} points to an invalid tile! Cannot return.`);
+                         // Handle this error case? Maybe reset to 0,0? For now, just log.
+                    }
+
+                } else {
+                    console.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
+                    // Handle this edge case? Reset to 0,0? Destroy robot? For now, just log.
+                    // Maybe reset to absolute start:
+                    // updateRobotVisuals(0, 0, 'east'); // Reset to initial state
+                    // await sleep(600);
+                    // currentTile = getTileElement(robotRow, robotCol);
                 }
             }
 
