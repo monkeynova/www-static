@@ -435,31 +435,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial setup for cards in hand
     document.querySelectorAll('#card-hand .card').forEach(addCardDragHandlers);
 
-    // --- Initialize Repair Stations ---
-    function initializeBoard() {
-        const factoryFloor = document.getElementById('factory-floor');
-        for (let r = 0; r < GRID_ROWS; r++) {
-            for (let c = 0; c < GRID_COLS; c++) {
-                const tile = getTileElement(r, c);
-                if (tile && tile.classList.contains('repair-station')) {
-                    allRepairStations.push({ row: r, col: c });
-                    console.log(`Found repair station at (${r}, ${c})`);
-                }
-            }
-        }
-        console.log(`Total repair stations found: ${allRepairStations.length}`);
-
-        // Check if robot starts on a repair station
-        const startTile = getTileElement(robotRow, robotCol);
-        if (startTile && startTile.classList.contains('repair-station')) {
-            const stationKey = `${robotRow}-${robotCol}`;
-            console.log(`Robot starts on repair station (${robotRow}, ${robotCol}). Marking as visited.`);
-            visitedRepairStations.add(stationKey);
-            lastVisitedStationKey = stationKey; // NEW: Set initial last visited station
-        }
-    }
-    initializeBoard(); // Call initialization function
-
     // --- Drop Zone Handlers ---
 
     // Generic drag over handler
@@ -727,6 +702,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log(`Robot starts on repair station (${robotRow}, ${robotCol}). Marking as visited.`);
                 visitedRepairStations.add(stationKey);
                 lastVisitedStationKey = stationKey;
+
+                // --- Update Status Indicator for Starting Station ---
+                const flagStatusContainer = document.getElementById('flag-status');
+                const startIndicator = flagStatusContainer.querySelector(`.flag-indicator[data-station-key="${stationKey}"]`);
+                if (startIndicator) {
+                    startIndicator.classList.add('visited');
+                    console.log(`Updated status indicator for starting station ${stationKey}`);
+                } else {
+                    // ADD THIS ELSE BLOCK FOR DIAGNOSTICS
+                    console.error(`Could not find START indicator element for key ${stationKey}`);
+                }
             }
         } else {
             console.error("Could not place robot initially! Starting tile not found.");
