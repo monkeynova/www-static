@@ -434,6 +434,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const visitedRepairStations = new Set();
     let lastVisitedStationKey = null;
 
+    // --- Game Constants ---
+    const HAND_SIZE = 7;
+    const PROGRAM_SIZE = 5;
+
+    // --- Card Deck Definition ---
+    const fullDeck = [
+        // Define the cards and their quantities (Aiming for ~52)
+        // Using objects with type and text for clarity
+        // Move 1 (e.g., 18 cards)
+        { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' },
+        { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' },
+        { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' },
+        { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' },
+        { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' },
+        { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' }, { type: 'move1', text: 'Move 1' },
+        // Move 2 (e.g., 10 cards)
+        { type: 'move2', text: 'Move 2' }, { type: 'move2', text: 'Move 2' }, { type: 'move2', text: 'Move 2' },
+        { type: 'move2', text: 'Move 2' }, { type: 'move2', text: 'Move 2' }, { type: 'move2', text: 'Move 2' },
+        { type: 'move2', text: 'Move 2' }, { type: 'move2', text: 'Move 2' }, { type: 'move2', text: 'Move 2' },
+        { type: 'move2', text: 'Move 2' },
+        // Back 1 (e.g., 6 cards)
+        { type: 'back1', text: 'Back 1' }, { type: 'back1', text: 'Back 1' }, { type: 'back1', text: 'Back 1' },
+        { type: 'back1', text: 'Back 1' }, { type: 'back1', text: 'Back 1' }, { type: 'back1', text: 'Back 1' },
+        // Turn L (e.g., 9 cards)
+        { type: 'turnL', text: 'Turn L' }, { type: 'turnL', text: 'Turn L' }, { type: 'turnL', text: 'Turn L' },
+        { type: 'turnL', text: 'Turn L' }, { type: 'turnL', text: 'Turn L' }, { type: 'turnL', text: 'Turn L' },
+        { type: 'turnL', text: 'Turn L' }, { type: 'turnL', text: 'Turn L' }, { type: 'turnL', text: 'Turn L' },
+        // Turn R (e.g., 9 cards)
+        { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' },
+        { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' },
+        { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' },
+        // Total: 18 + 10 + 6 + 9 + 9 = 52 cards
+    ];
+
+    // --- Game State Variables ---
+    let currentDeck = []; // The active, shuffled deck
+    let handCards = []; // Array of card objects currently in hand
+    let discardPile = []; // NEW: Array to hold discarded card objects
+    let allCardInstances = {}; // NEW: Map instanceId -> card data object
+    let cardInstanceCounter = 0; // To generate unique IDs for card instances
+
     let draggedCard = null; // Keep this for drag/drop state
 
     // --- Get DOM Elements ---
@@ -496,68 +537,101 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDrop(e) {
         e.preventDefault();
         const dropTarget = e.target.closest('.program-slot, #card-hand');
-        console.log('Drop on:', dropTarget);
+        // console.log('Drop on:', dropTarget); // Less verbose logging
 
         if (!dropTarget || !draggedCard) {
-            console.log('Drop cancelled - no valid target or dragged card');
-            if (draggedCard) draggedCard.classList.remove('dragging'); // Clean up style if drop fails
-            draggedCard = null;
-            return;
-        }
-
-        dropTarget.classList.remove('drag-over'); // Remove highlight
-
-        const cardId = e.dataTransfer.getData('text/plain');
-        const cardElement = document.getElementById(cardId);
-
-        if (!cardElement) {
-            console.error('Could not find dragged card element with ID:', cardId);
+            // console.log('Drop cancelled - no valid target or dragged card');
             if (draggedCard) draggedCard.classList.remove('dragging');
             draggedCard = null;
             return;
         }
 
+        dropTarget.classList.remove('drag-over');
+
+        const cardInstanceId = e.dataTransfer.getData('text/plain'); // This is the unique instance ID
+        const cardElement = document.getElementById(cardInstanceId);
+
+        if (!cardElement) {
+            console.error('Could not find dragged card element with ID:', cardInstanceId);
+            if (draggedCard) draggedCard.classList.remove('dragging');
+            draggedCard = null;
+            return;
+        }
+
+        // Find the corresponding card object in the handCards array or potentially from a slot
+        let cardDataObject = handCards.find(card => card.instanceId === cardInstanceId);
+        let originWasHand = !!cardDataObject; // Was the card originally in the hand data?
+
+        // If not found in hand, it might be coming back from a slot (need to reconstruct or find)
+        // For simplicity now, assume we only need to manage adding/removing from handCards
+        if (!cardDataObject && cardElement.parentElement.classList.contains('program-slot')) {
+             // Re-create a minimal object if needed, or find it if stored elsewhere
+             // Let's assume for now we find it based on element properties if needed
+             console.log(`Card ${cardInstanceId} returning from slot.`);
+             // We need the card's type and text to potentially add it back to handCards
+             // This info is implicitly on the cardElement's classes and textContent
+             // Let's find the type from classList
+             const typeClass = Array.from(cardElement.classList).find(cls => cls !== 'card' && cls !== 'dragging');
+             cardDataObject = {
+                 instanceId: cardInstanceId,
+                 type: typeClass,
+                 text: cardElement.textContent
+             };
+        } else if (!cardDataObject) {
+             console.error(`Cannot find card data for ${cardInstanceId} during drop!`);
+             // Abort drop if data is missing
+             if (draggedCard) draggedCard.classList.remove('dragging');
+             draggedCard = null;
+             return;
+        }
+
+
         // --- Logic for dropping ---
 
         // Case 1: Dropping onto a program slot
         if (dropTarget.classList.contains('program-slot')) {
-            const existingCard = dropTarget.querySelector('.card'); // Check specifically for a card
-
-            // Allow drop if the slot doesn't already contain a card,
-            // OR if it contains the exact same card we are dragging (a no-op move)
+            const existingCard = dropTarget.querySelector('.card');
             if (!existingCard || existingCard === cardElement) {
-
-                 // If the card isn't already in this specific slot, move it.
                  if (existingCard !== cardElement) {
-                     // Clear the slot first (removes number text or any existing card if implementing swap later)
                      dropTarget.innerHTML = '';
-                     // Append the dragged card
                      dropTarget.appendChild(cardElement);
-                     // Ensure the moved card remains draggable
-                     addCardDragHandlers(cardElement);
-                 }
-                 // If existingCard === cardElement, we dropped the card back onto itself, so do nothing.
+                     addCardDragHandlers(cardElement); // Ensure draggable
 
+                     // --- Remove card from handCards data ---
+                     if (originWasHand) {
+                         const indexToRemove = handCards.findIndex(card => card.instanceId === cardInstanceId);
+                         if (indexToRemove > -1) {
+                             handCards.splice(indexToRemove, 1);
+                             console.log(`Removed ${cardInstanceId} from hand data. Hand size: ${handCards.length}`);
+                         } else {
+                              console.warn(`Card ${cardInstanceId} was not found in hand data to remove.`);
+                         }
+                     }
+                 }
             } else {
-                // Slot is occupied by a DIFFERENT card. Prevent the drop for now.
                 console.log('Slot occupied by a different card, drop prevented.');
-                // In a future step, you might implement swapping logic here.
             }
         }
         // Case 2: Dropping onto the hand area
         else if (dropTarget.id === 'card-hand') {
-            // Check if the card isn't already in the hand
-            if (cardElement.parentElement.id !== 'card-hand') {
-                 cardHand.appendChild(cardElement);
-                 addCardDragHandlers(cardElement); // Ensure handlers are present
+            // Only add back if it's not already there (e.g., returning from a slot)
+            if (!originWasHand && !handCards.some(card => card.instanceId === cardInstanceId)) {
+                 cardHand.appendChild(cardElement); // Move element
+                 addCardDragHandlers(cardElement); // Ensure draggable
+                 // --- Add card back to handCards data ---
+                 handCards.push(cardDataObject);
+                 console.log(`Added ${cardInstanceId} back to hand data. Hand size: ${handCards.length}`);
+            } else if (originWasHand) {
+                 // Card was dragged from hand and dropped back onto hand - do nothing to data
+                 cardHand.appendChild(cardElement); // Ensure it's visually back
+                 addCardDragHandlers(cardElement);
             }
         }
 
-        // Clean up dragging state (redundant with dragend, but safe)
         cardElement.classList.remove('dragging');
-        draggedCard = null; // Clear reference after successful drop
+        draggedCard = null;
 
-        updateRunButtonState(); // Check if program is ready
+        updateRunButtonState();
     }
 
     // --- Attach Drop Zone Listeners ---
@@ -568,7 +642,6 @@ document.addEventListener('DOMContentLoaded', () => {
         zone.addEventListener('dragleave', handleDragLeave);
         zone.addEventListener('drop', handleDrop);
     });
-
 
     // --- Update Button State ---
     function updateRunButtonState() {
@@ -637,6 +710,84 @@ document.addEventListener('DOMContentLoaded', () => {
      // Function to introduce delay (for visual pacing)
      function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Fisher-Yates Shuffle Algorithm
+    function shuffleDeck(deck) {
+        console.log("Shuffling deck...");
+        for (let i = deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [deck[i], deck[j]] = [deck[j], deck[i]]; // Swap elements
+        }
+    }
+
+    // Draw cards from the current deck
+    function drawCards(count) {
+        console.log(`Attempting to draw ${count} cards.`);
+        const drawn = [];
+        for (let i = 0; i < count; i++) {
+            // --- Check if Deck is Empty ---
+            if (currentDeck.length === 0) {
+                console.log("Deck is empty. Checking discard pile...");
+                if (discardPile.length > 0) {
+                    console.log(`Reshuffling ${discardPile.length} cards from discard pile into deck.`);
+                    currentDeck = [...discardPile]; // Copy discard pile to deck
+                    discardPile = []; // Clear the discard pile
+                    shuffleDeck(currentDeck); // Shuffle the new deck
+                } else {
+                    // Both deck and discard are empty
+                    console.warn("Deck and discard pile are empty! Cannot draw more cards.");
+                    break; // Stop trying to draw
+                }
+            }
+
+            // --- Draw Card ---
+            // Check again in case reshuffle failed or wasn't enough
+            if (currentDeck.length > 0) {
+                const cardData = currentDeck.pop(); // Take card from the end
+                // Assign a unique instance ID
+                const cardInstance = { ...cardData, instanceId: `card-instance-${cardInstanceCounter++}` };
+
+                // --- Store in lookup map ---
+                allCardInstances[cardInstance.instanceId] = cardInstance; // Add to map
+
+                handCards.push(cardInstance); // Add to hand data array
+                drawn.push(cardInstance);
+            } else {
+                 // Should only happen if discard was also empty
+                 console.warn("Failed to draw card after attempting reshuffle.");
+                 break;
+            }
+        }
+        console.log(`Drew ${drawn.length} cards. Hand size: ${handCards.length}. Deck size: ${currentDeck.length}. Discard size: ${discardPile.length}.`);
+        return drawn; // Return the newly drawn cards
+    }
+
+    // Update the Hand UI based on handCards array
+    function updateHandUI() {
+        cardHand.innerHTML = ''; // Clear existing cards in UI
+        console.log("Updating hand UI with cards:", handCards);
+        handCards.forEach(card => {
+            const cardElement = document.createElement('div');
+            cardElement.id = card.instanceId; // Use unique instance ID for the element ID
+            cardElement.classList.add('card', card.type);
+            cardElement.draggable = true;
+            cardElement.textContent = card.text;
+            cardElement.dataset.instanceId = card.instanceId; // Store ID in dataset too if needed
+
+            addCardDragHandlers(cardElement); // Make it draggable
+            cardHand.appendChild(cardElement);
+        });
+    }
+
+    // Reset Program Slots UI to show numbers
+    function resetProgramSlotsUI() {
+        programSlots.forEach((slot, index) => {
+            slot.innerHTML = `${index + 1}`; // Restore number
+            // Ensure base classes are present if they were removed
+            slot.className = 'program-slot drop-zone'; // Reset classes
+        });
+        console.log("Program slots UI reset.");
     }
 
     function updateHealthUI() {
@@ -764,7 +915,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Initialize Health Display ---
         updateHealthUI(); // NEW: Set initial health display
-    }
+
+        currentDeck = [...fullDeck]; // Create a mutable copy
+        shuffleDeck(currentDeck);
+        handCards = []; // Ensure hand is empty before drawing
+        drawCards(HAND_SIZE); // Draw initial hand
+        updateHandUI(); // Display the initial hand
+
+    } // End createBoard
 
     // Initial setup for cards in hand
     document.querySelectorAll('#card-hand .card').forEach(addCardDragHandlers);
@@ -972,6 +1130,61 @@ document.addEventListener('DOMContentLoaded', () => {
              updateRunButtonState();
         } else {
              console.log("Game ended (Win or Destruction). Button remains disabled.");
+        }
+
+        // --- Post-Execution Cleanup and Draw ---
+        console.log("\n--- Program Finished ---");
+
+        // Check if game ended during execution (win/loss)
+        const gameEnded = robotHealth <= 0 || (visitedRepairStations.size === allRepairStations.length && allRepairStations.length > 0);
+
+        // --- Get Cards Used in Program ---
+        const usedCardElements = programSlotsContainer.querySelectorAll('.program-slot .card');
+
+        if (!gameEnded) {
+            console.log("Moving used cards to discard pile, resetting slots, and drawing new cards.");
+
+            // 1. Move Used Card Data to Discard Pile
+            usedCardElements.forEach(cardElement => {
+                const instanceId = cardElement.id;
+                const cardData = allCardInstances[instanceId];
+                if (cardData) {
+                    discardPile.push(cardData);
+                    // Optional: Remove from allCardInstances map? Or keep for history? Let's keep for now.
+                    // delete allCardInstances[instanceId];
+                } else {
+                    console.warn(`Could not find card data for used card ${instanceId} in allCardInstances.`);
+                }
+            });
+            console.log(`Moved ${usedCardElements.length} cards to discard. Discard size: ${discardPile.length}`);
+
+            // 2. Visually Reset Program Slots
+            resetProgramSlotsUI(); // Clears slots and shows numbers
+
+            // 3. Calculate Cards Needed and Draw
+            const cardsToDraw = PROGRAM_SIZE; // We used 5 cards
+            drawCards(cardsToDraw);
+
+            // 4. Update Hand UI
+            updateHandUI();
+
+            // 5. Update Button State (should be disabled)
+            updateRunButtonState();
+
+        } else {
+             console.log("Game ended (Win or Destruction). Moving used cards to discard. Not drawing new cards.");
+             // Even if game ended, move cards to discard for consistency
+             usedCardElements.forEach(cardElement => {
+                const instanceId = cardElement.id;
+                const cardData = allCardInstances[instanceId];
+                if (cardData) {
+                    discardPile.push(cardData);
+                }
+             });
+             console.log(`Moved ${usedCardElements.length} cards to discard. Discard size: ${discardPile.length}`);
+             // Optionally clear program slots visually
+             resetProgramSlotsUI();
+             // Button remains disabled
         }
 
     }); // End runProgramButton click listener
