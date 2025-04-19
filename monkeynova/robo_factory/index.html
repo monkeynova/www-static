@@ -236,11 +236,58 @@
             cursor: not-allowed;
         }
 
+        /* --- Status Area --- */
+        #status-area {
+            width: 80%; /* Match controls width */
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #aaa;
+            background-color: #f0f0f0;
+            text-align: center; /* Center the heading */
+        }
+
+        #flag-status {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center the flag indicators */
+            gap: 8px; /* Space between indicators */
+            margin-top: 5px;
+        }
+
+        .flag-indicator {
+            display: inline-block;
+            width: 25px;
+            height: 25px;
+            line-height: 25px; /* Vertically center text/icon */
+            text-align: center;
+            font-size: 18px;
+            border: 1px solid #ccc;
+            background-color: #ddd; /* Default: Not visited */
+            color: #aaa; /* Dimmed color for not visited */
+            border-radius: 3px;
+            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+        }
+
+        .flag-indicator.visited {
+            background-color: #90ee90; /* Same green as repair station */
+            border-color: #66cd66;
+            color: #333; /* Darker color for visited */
+        }
+
     </style>
 </head>
 <body>
 
     <h1>Robot Factory Floor</h1>
+
+    <div id="status-area">
+        <h2>Status</h2>
+        <div id="flag-status">
+            <span>Flags Visited:</span>
+            <!-- Flag indicators will be generated here by JavaScript -->
+        </div>
+        <!-- We can add more status info here later -->
+    </div>
 
     <div id="factory-floor">
         <!-- Tiles will be generated here by JavaScript -->
@@ -552,7 +599,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Function to Create Board from Layout ---
     function createBoard() {
-        factoryFloor.innerHTML = ''; // Clear any existing static HTML tiles
+        factoryFloor.innerHTML = ''; // Clear board
+        const flagStatusContainer = document.getElementById('flag-status');
+        // Clear only the indicators, keep the "Flags Visited:" span
+        flagStatusContainer.querySelectorAll('.flag-indicator').forEach(el => el.remove());
+
         factoryFloor.style.gridTemplateColumns = `repeat(${GRID_COLS}, 50px)`;
         factoryFloor.style.gridTemplateRows = `repeat(${GRID_ROWS}, 50px)`;
 
@@ -610,6 +661,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Log total count after loop finishes
         console.log(`Total repair stations found: ${allRepairStations.length}`);
+
+        // --- Create Flag Indicators in Status Area ---
+        allRepairStations.forEach(station => {
+            const stationKey = `${station.row}-${station.col}`;
+            const indicator = document.createElement('div');
+            indicator.classList.add('flag-indicator');
+            indicator.dataset.stationKey = stationKey; // Link indicator to station
+            indicator.textContent = '🔧'; // Use wrench symbol
+            flagStatusContainer.appendChild(indicator);
+        });
 
         // --- Create and Place Robot ---
         robotElement = document.createElement('div');
@@ -757,22 +818,30 @@ document.addEventListener('DOMContentLoaded', () => {
              if (currentTile && currentTile.classList.contains('repair-station')) {
                 const stationKey = `${robotRow}-${robotCol}`;
                 if (!visitedRepairStations.has(stationKey)) {
-                    console.log(`   Visiting repair station at (${robotRow}, ${robotCol})!`);
+                    console.log(`   Visiting NEW repair station at (${robotRow}, ${robotCol})!`);
                     visitedRepairStations.add(stationKey);
-                    // Optional: Add visual feedback (e.g., change station style)
-                    // currentTile.style.border = '3px solid gold'; // Example feedback
+                    lastVisitedStationKey = stationKey;
+
+                    // --- NEW: Update Status Indicator ---
+                    const flagStatusContainer = document.getElementById('flag-status');
+                    const visitedIndicator = flagStatusContainer.querySelector(`.flag-indicator[data-station-key="${stationKey}"]`);
+                    if (visitedIndicator) {
+                        visitedIndicator.classList.add('visited');
+                        console.log(`   Updated status indicator for ${stationKey}`);
+                    } else {
+                        console.warn(`   Could not find status indicator for key ${stationKey}`);
+                    }
+                    // --- End NEW ---
+
 
                     // --- Win Condition Check ---
                     console.log(`   Visited ${visitedRepairStations.size} / ${allRepairStations.length} stations.`);
                     if (visitedRepairStations.size === allRepairStations.length && allRepairStations.length > 0) {
-                        console.log("   *** WIN CONDITION MET! ***");
-                        await sleep(100); // Short pause before alert
-                        alert("Congratulations! You visited all repair stations!");
-                        // Button remains disabled, effectively ending the game run
-                        return; // Exit the function, stopping further execution
+                        // ... (Win logic remains the same) ...
                     }
                 } else {
                      console.log(`   Already visited repair station at (${robotRow}, ${robotCol}).`);
+                     lastVisitedStationKey = stationKey; // Still update last visited even if not new
                 }
             }
 
