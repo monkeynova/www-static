@@ -7,34 +7,50 @@
     <style>
         body {
             font-family: sans-serif;
-            display: flex;
-            flex-direction: column;        /* --- Tile Types --- */
-            
-                    .plain {
-                        background-color: #eee; /* Light grey for plain floor */
-                        border: 1px solid #ddd;
-                    }
-            
-                    .conveyor {
-                        background-color: #aaddff; /* Light blue for conveyors */
-                        border: 1px solid #88ccf1;
-                    }
-            
-                    /* NEW: Repair Station Tile */
-                    .repair-station {
-                        background-color: #90ee90; /* Light green for repair stations */
-                        border: 1px solid #66cd66;
-                    }
-                    /* Optional: Add a symbol */
-                    .repair-station::after {
-                        content: '🔧'; /* Wrench symbol */
-                        color: #333;
-                    }
-            
             align-items: center;
             margin-top: 20px;
         }
+            
+        /* NEW: Game Container Styles */
+        #game-container {
+            display: flex; /* Arrange left-panel and factory-floor horizontally */
+            justify-content: center; /* Center the game horizontally if space allows */
+            align-items: flex-start; /* Align tops of panels */
+            gap: 20px; /* Space between left panel and board */
+            width: fit-content; /* Adjust width to content */
+            margin: 0 auto; /* Center the container itself */
+        }
 
+        /* NEW: Left Panel Styles */
+        #left-panel {
+            display: flex;
+            flex-direction: column; /* Stack status and controls vertically */
+            gap: 15px; /* Space between status and controls */
+            width: 350px; /* Give the left panel a fixed width */
+            flex-shrink: 0; /* Prevent left panel from shrinking */
+        }
+
+        .plain {
+            background-color: #eee; /* Light grey for plain floor */
+            border: 1px solid #ddd;
+        }
+        
+        .conveyor {
+            background-color: #aaddff; /* Light blue for conveyors */
+            border: 1px solid #88ccf1;
+        }
+        
+        /* NEW: Repair Station Tile */
+        .repair-station {
+            background-color: #90ee90; /* Light green for repair stations */
+            border: 1px solid #66cd66;
+        }
+        /* Optional: Add a symbol */
+        .repair-station::after {
+            content: '🔧'; /* Wrench symbol */
+            color: #333;
+        }
+            
         #factory-floor {
             /* Define the grid */
             display: grid;
@@ -45,7 +61,7 @@
             gap: 1px; /* Small gap between tiles */
             border: 2px solid #333; /* Border around the factory floor */
             background-color: #ccc; /* Background for the gaps */
-            width: fit-content; /* Make container fit the grid */
+            gap: 1px;
         }
 
         .tile {
@@ -138,29 +154,41 @@
 
         /* --- Controls Area --- */
         #controls {
+            /* display: flex; */ /* Change flex direction */
             display: flex;
-            justify-content: space-around; /* Space out hand and program areas */
-            width: 80%; /* Use more width */
-            margin-top: 20px;
+            flex-direction: column; /* Stack hand and program vertically */
+            /* justify-content: space-around; */ /* Remove this */
+            /* width: 80%; */ /* Change to 100% to fill left-panel */
+            width: 100%;
+            margin-top: 0; /* Remove top margin, use gap in left-panel */
             padding: 10px;
             border: 1px solid #aaa;
             background-color: #f0f0f0;
+            gap: 15px; /* Add gap between hand and program areas */
+            box-sizing: border-box; /* Include padding/border in width */
         }
 
         #card-hand-area, #program-area {
+            /* Existing styles are likely fine */
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 100%; /* Ensure they take full width of controls */
         }
 
         #card-hand, #program-slots {
+            /* Existing styles are likely fine */
             display: flex;
-            gap: 5px; /* Space between cards/slots */
+            flex-wrap: wrap; /* Allow cards/slots to wrap if needed */
+            gap: 5px;
             margin-top: 10px;
-            min-height: 60px; /* Ensure area has some height */
+            min-height: 60px;
             padding: 5px;
             border: 1px dashed #ccc;
             background-color: #fff;
+            width: 100%; /* Take full width */
+            box-sizing: border-box;
+            justify-content: center; /* Center cards/slots within their container */
         }
 
         .card {
@@ -238,19 +266,20 @@
 
         /* --- Status Area --- */
         #status-area {
-            width: 80%; /* Match controls width */
-            margin-bottom: 15px;
+            /* width: 80%; */ /* Change to 100% to fill left-panel */
+            width: 100%;
+            margin-bottom: 0; /* Remove bottom margin, use gap in left-panel */
             padding: 10px;
             border: 1px solid #aaa;
             background-color: #f0f0f0;
-            text-align: center; /* Center the heading */
+            /* text-align: center; */ /* Keep or remove based on preference */
+            box-sizing: border-box; /* Include padding/border in width */
         }
 
         #flag-status {
-            display: flex;
-            align-items: center;
-            justify-content: center; /* Center the flag indicators */
-            gap: 8px; /* Space between indicators */
+            /* Existing styles are likely fine */
+            justify-content: center;
+            gap: 8px;
             margin-top: 5px;
         }
 
@@ -280,50 +309,59 @@
 
     <h1>Robot Factory Floor</h1>
 
-    <div id="status-area">
-        <h2>Status</h2>
-        <div id="flag-status">
-            <span>Flags Visited:</span>
-            <!-- Flag indicators will be generated here by JavaScript -->
-        </div>
-        <!-- We can add more status info here later -->
-    </div>
+    <!-- NEW: Main Game Container -->
+    <div id="game-container">
 
-    <div id="factory-floor">
-        <!-- Tiles will be generated here by JavaScript -->
-    </div>
+        <!-- NEW: Left Panel for Status and Controls -->
+        <div id="left-panel">
 
-    <!-- Card Hand and Program Area -->
-    <div id="controls">
-        <div id="card-hand-area">
-            <h2>Your Hand (Choose 5)</h2>
-            <!-- Added ID here -->
-            <div id="card-hand" class="drop-zone">
-                <!-- Example Hand of 7 Cards - Added draggable and unique IDs -->
-                <div id="card-1" class="card move1" draggable="true">Move 1</div>
-                <div id="card-2" class="card move2" draggable="true">Move 2</div>
-                <div id="card-3" class="card back1" draggable="true">Back 1</div>
-                <div id="card-4" class="card turnL" draggable="true">Turn L</div>
-                <div id="card-5" class="card turnR" draggable="true">Turn R</div>
-                <div id="card-6" class="card move1" draggable="true">Move 1</div>
-                <div id="card-7" class="card turnL" draggable="true">Turn L</div>
+            <div id="status-area">
+                <h2>Status</h2>
+                <div id="flag-status">
+                    <span>Flags Visited:</span>
+                    <!-- Flag indicators will be generated here by JavaScript -->
+                </div>
+                <!-- We can add more status info here later -->
             </div>
+
+            <!-- Card Hand and Program Area -->
+            <div id="controls">
+                <div id="card-hand-area">
+                    <h2>Your Hand (Choose 5)</h2>
+                    <div id="card-hand" class="drop-zone">
+                        <!-- Example Hand of 7 Cards -->
+                        <div id="card-1" class="card move1" draggable="true">Move 1</div>
+                        <div id="card-2" class="card move2" draggable="true">Move 2</div>
+                        <div id="card-3" class="card back1" draggable="true">Back 1</div>
+                        <div id="card-4" class="card turnL" draggable="true">Turn L</div>
+                        <div id="card-5" class="card turnR" draggable="true">Turn R</div>
+                        <div id="card-6" class="card move1" draggable="true">Move 1</div>
+                        <div id="card-7" class="card turnL" draggable="true">Turn L</div>
+                    </div>
+                </div>
+
+                <div id="program-area">
+                    <h2>Your Program</h2>
+                    <div id="program-slots" class="drop-zone">
+                        <!-- 5 Program Slots -->
+                        <div class="program-slot">1</div>
+                        <div class="program-slot">2</div>
+                        <div class="program-slot">3</div>
+                        <div class="program-slot">4</div>
+                        <div class="program-slot">5</div>
+                    </div>
+                    <button id="run-program" disabled>Run Program</button>
+                </div>
+            </div>
+
+        </div> <!-- End #left-panel -->
+
+        <!-- Factory Floor (remains as a direct child of game-container) -->
+        <div id="factory-floor">
+            <!-- Tiles will be generated here by JavaScript -->
         </div>
 
-        <div id="program-area">
-            <h2>Your Program</h2>
-            <!-- Added ID here -->
-            <div id="program-slots" class="drop-zone">
-                <!-- 5 Program Slots - Added drop-zone class for styling/targeting -->
-                <div class="program-slot">1</div>
-                <div class="program-slot">2</div>
-                <div class="program-slot">3</div>
-                <div class="program-slot">4</div>
-                <div class="program-slot">5</div>
-            </div>
-            <button id="run-program" disabled>Run Program</button>
-        </div>
-    </div>
+    </div> <!-- End #game-container -->
 
     <!-- Add JavaScript block at the end -->
     <script>
