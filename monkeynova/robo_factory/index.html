@@ -326,6 +326,54 @@
             color: #333; /* Darker color for visited */
         }
 
+        /* --- End Game Modal Styles --- */
+        .modal-overlay {
+            position: fixed; /* Stay in place even if page scrolls */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+            display: flex; /* Use flexbox for centering */
+            align-items: center;
+            justify-content: center;
+            z-index: 1000; /* Ensure it's above everything else */
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            min-width: 300px;
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .modal-content p {
+            color: #555;
+            font-size: 1.1em;
+        }
+
+        /* Style for win/loss messages */
+        #modal-title.win {
+            color: #28a745; /* Green for win */
+        }
+        #modal-title.loss {
+            color: #dc3545; /* Red for loss */
+        }
+
+        #modal-close-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 <body>
@@ -390,6 +438,15 @@
         </div>
 
     </div> <!-- End #game-container -->
+
+    <!-- End Game Modal -->
+    <div id="end-game-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title">Game Over</h2>
+            <p id="modal-message">Something happened!</p>
+            <button id="modal-close-button">Close</button>
+        </div>
+    </div>
 
     <!-- Add JavaScript block at the end -->
     <script>
@@ -790,6 +847,28 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Program slots UI reset.");
     }
 
+    function showEndGameModal(isWin) {
+        const modal = document.getElementById('end-game-modal');
+        const titleEl = document.getElementById('modal-title');
+        const messageEl = document.getElementById('modal-message');
+
+        if (modal && titleEl && messageEl) {
+            if (isWin) {
+                titleEl.textContent = "You Win!";
+                titleEl.className = 'win'; // Apply win styling
+                messageEl.textContent = "Congratulations! You visited all repair stations!";
+            } else {
+                titleEl.textContent = "Robot Destroyed!";
+                titleEl.className = 'loss'; // Apply loss styling
+                messageEl.textContent = "Your robot ran out of health.";
+            }
+            modal.style.display = 'flex'; // Show the modal
+        } else {
+            // Fallback alert if modal elements aren't found
+            alert(isWin ? "You Win!" : "Robot Destroyed!");
+        }
+    }
+
     function updateHealthUI() {
         const healthValueEl = document.getElementById('health-value');
         const maxHealthValueEl = document.getElementById('max-health-value');
@@ -1066,7 +1145,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     // --- Win Condition Check ---
                     console.log(`   Visited ${visitedRepairStations.size} / ${allRepairStations.length} stations.`);
                     if (visitedRepairStations.size === allRepairStations.length && allRepairStations.length > 0) {
-                        // ... (Win logic remains the same) ...
+                        console.log("   *** WIN CONDITION MET! ***");
+                        await sleep(100);
+                        // alert("Congratulations! You visited all repair stations!"); // REMOVE ALERT
+                        showEndGameModal(true); // <<< CALL MODAL FOR WIN
+                        return; // Exit the function
                     }
                 } else {
                      console.log(`   Already visited repair station at (${robotRow}, ${robotCol}).`);
@@ -1088,10 +1171,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // --- Check for Game Over (Health <= 0) ---
                 if (robotHealth <= 0) {
                     console.error("   *** ROBOT DESTROYED! Health reached 0. ***");
-                    await sleep(100); // Short pause
-                    alert("Your robot has been destroyed!");
-                    // Keep button disabled, effectively ending the game
-                    return; // Exit the function, stopping further execution
+                    await sleep(100);
+                    // alert("Your robot has been destroyed!"); // REMOVE ALERT
+                    showEndGameModal(false); // <<< CALL MODAL FOR LOSS
+                    return; // Exit the function
                 }
                 // --- End Game Over Check ---
 
