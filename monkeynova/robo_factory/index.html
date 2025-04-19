@@ -283,6 +283,29 @@
             margin-top: 5px;
         }
 
+        /* --- Status Area --- */
+        #flag-status {
+            display: flex; /* Make sure this is flex if not already */
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 5px;
+            margin-bottom: 10px; /* Add some space below flags */
+        }
+
+        /* NEW: Health Status Styles */
+        #health-status {
+            font-size: 16px;
+            font-weight: bold;
+            color: #444;
+        }
+        #health-value {
+            color: #d9534f; /* Reddish color for current health */
+        }
+        #health-value.full {
+             color: #5cb85c; /* Green when full */
+        }
+
         .flag-indicator {
             display: inline-block;
             width: 25px;
@@ -319,13 +342,31 @@
                 <h2>Status</h2>
                 <div id="flag-status">
                     <span>Flags Visited:</span>
-                    <!-- Flag indicators will be generated here by JavaScript -->
+                    <!-- Flag indicators will be generated here -->
                 </div>
-                <!-- We can add more status info here later -->
+                <!-- NEW: Health Display -->
+                <div id="health-status">
+                    <span>Health:</span>
+                    <span id="health-value">--</span> / <span id="max-health-value">--</span>
+                    <!-- Optional: Add a health bar later -->
+                </div>
             </div>
 
             <!-- Card Hand and Program Area -->
             <div id="controls">
+                <div id="program-area">
+                    <h2>Your Program</h2>
+                    <div id="program-slots" class="drop-zone">
+                        <!-- 5 Program Slots -->
+                        <div class="program-slot">1</div>
+                        <div class="program-slot">2</div>
+                        <div class="program-slot">3</div>
+                        <div class="program-slot">4</div>
+                        <div class="program-slot">5</div>
+                    </div>
+                    <button id="run-program" disabled>Run Program</button>
+                </div>
+
                 <div id="card-hand-area">
                     <h2>Your Hand (Choose 5)</h2>
                     <div id="card-hand" class="drop-zone">
@@ -338,19 +379,6 @@
                         <div id="card-6" class="card move1" draggable="true">Move 1</div>
                         <div id="card-7" class="card turnL" draggable="true">Turn L</div>
                     </div>
-                </div>
-
-                <div id="program-area">
-                    <h2>Your Program</h2>
-                    <div id="program-slots" class="drop-zone">
-                        <!-- 5 Program Slots -->
-                        <div class="program-slot">1</div>
-                        <div class="program-slot">2</div>
-                        <div class="program-slot">3</div>
-                        <div class="program-slot">4</div>
-                        <div class="program-slot">5</div>
-                    </div>
-                    <button id="run-program" disabled>Run Program</button>
                 </div>
             </div>
 
@@ -393,11 +421,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const startRobotOrientation = 'east';
 
     // --- Game State Variables ---
-    let robotElement = null; // Will be created dynamically
+    let robotElement = null;
     let robotRow = startRobotRow;
     let robotCol = startRobotCol;
     let robotOrientation = startRobotOrientation;
     const orientations = ['north', 'east', 'south', 'west'];
+    let robotHealth = 10; // NEW: Robot starts with 10 health
+    const MAX_HEALTH = 10; // NEW: Define max health
 
     // --- Repair Station Tracking ---
     const allRepairStations = [];
@@ -609,6 +639,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    function updateHealthUI() {
+        const healthValueEl = document.getElementById('health-value');
+        const maxHealthValueEl = document.getElementById('max-health-value');
+        if (healthValueEl && maxHealthValueEl) {
+            healthValueEl.textContent = robotHealth;
+            maxHealthValueEl.textContent = MAX_HEALTH;
+            // Add/remove class for color styling
+            if (robotHealth === MAX_HEALTH) {
+                healthValueEl.classList.add('full');
+            } else {
+                healthValueEl.classList.remove('full');
+            }
+        }
+    }
 
     // --- Function to Create Board from Layout ---
     function createBoard() {
@@ -717,6 +761,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.error("Could not place robot initially! Starting tile not found.");
         }
+
+        // --- Initialize Health Display ---
+        updateHealthUI(); // NEW: Set initial health display
     }
 
     // Initial setup for cards in hand
@@ -870,47 +917,61 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // --- NEW: Hole Check (Check AFTER conveyor and repair station) ---
+            let fellInHole = false; // Moved declaration higher for clarity
             if (currentTile && currentTile.classList.contains('hole')) {
                 console.log(`   Robot landed on a hole at (${robotRow}, ${robotCol})!`);
-                fellInHole = true; // Mark that the robot fell
+                fellInHole = true;
 
+                // --- Take Damage ---
+                robotHealth--; // Decrease health
+                console.log(`   Robot took 1 damage. Health is now ${robotHealth}`);
+                updateHealthUI(); // Update the display
+
+                // --- Check for Game Over (Health <= 0) ---
+                if (robotHealth <= 0) {
+                    console.error("   *** ROBOT DESTROYED! Health reached 0. ***");
+                    await sleep(100); // Short pause
+                    alert("Your robot has been destroyed!");
+                    // Keep button disabled, effectively ending the game
+                    return; // Exit the function, stopping further execution
+                }
+                // --- End Game Over Check ---
+
+
+                // --- Return to Last Station ---
                 if (lastVisitedStationKey) {
                     console.log(`   Returning to last visited station: ${lastVisitedStationKey}`);
-                    const [lastR, lastC] = lastVisitedStationKey.split('-').map(Number); // Parse row/col
+                    const [lastR, lastC] = lastVisitedStationKey.split('-').map(Number);
 
-                    // Check if the last station coordinates are valid before moving
                     if (getTileElement(lastR, lastC)) {
-                         updateRobotVisuals(lastR, lastC, robotOrientation); // Move robot back
-                         await sleep(600); // Pause to show the reset
-                         currentTile = getTileElement(robotRow, robotCol); // Update current tile after reset
+                         updateRobotVisuals(lastR, lastC, robotOrientation);
+                         await sleep(600);
+                         currentTile = getTileElement(robotRow, robotCol);
                     } else {
                          console.error(`   Last visited station key ${lastVisitedStationKey} points to an invalid tile! Cannot return.`);
-                         // Handle this error case? Maybe reset to 0,0? For now, just log.
                     }
-
                 } else {
                     console.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
-                    // Handle this edge case? Reset to 0,0? Destroy robot? For now, just log.
-                    // Maybe reset to absolute start:
-                    // updateRobotVisuals(0, 0, 'east'); // Reset to initial state
-                    // await sleep(600);
-                    // currentTile = getTileElement(robotRow, robotCol);
                 }
-            }
+            } // End Hole Check
 
-            // Add a small final delay before the next card, only if board didn't move
-            if (!boardMoved) {
+            // Add a small final delay before the next card, only if board didn't move AND didn't fall
+            // Note: fellInHole was already checked implicitly by the return logic above, but this is clearer
+            if (!boardMoved && !fellInHole) {
                  await sleep(100);
+            } else if (fellInHole) {
+                 // Delay already happened during reset/game over check
             }
 
         } // --- End Card Execution Loop ---
 
-        console.log("\n--- Program Finished ---");
-        // Decide what to do now. Reset? Deal new cards?
-        // For now, leave cards and re-enable button if not won
-        if (visitedRepairStations.size !== allRepairStations.length || allRepairStations.length === 0) {
+        // ... (rest of the function, including re-enabling button if not won/destroyed) ...
+        // Modify the final check to also consider health
+        if (robotHealth > 0 && (visitedRepairStations.size !== allRepairStations.length || allRepairStations.length === 0)) {
              runProgramButton.disabled = false;
-             updateRunButtonState(); // Ensure button state is correct based on slots
+             updateRunButtonState();
+        } else {
+             console.log("Game ended (Win or Destruction). Button remains disabled.");
         }
 
     }); // End runProgramButton click listener
