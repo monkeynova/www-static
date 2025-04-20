@@ -37,36 +37,42 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         // 1. Process Board Data
         const boardData = Board.parseBoardLayout(boardLayout);
-        GameLoop.setBoardData(boardData); // Make board data available to game loop
 
-        // 2. Create Board UI
-        UI.createBoardUI(boardData, boardData.cols); // Pass cols for index calculation
-
-        // 3. Initialize Robot State
+        // 2. Initialize Robot State (Do this BEFORE setBoardData needs it)
         Robot.initRobot(startRobotRow, startRobotCol, startRobotOrientation);
-        const initialRobotState = Robot.getRobotState();
 
-        // 4. Initialize Deck and Hand State & Get Initial Hand Data
+        // 3. Set Board Data in Game Loop (Updates internal state like visited stations)
+        GameLoop.setBoardData(boardData); // Now only updates state
+
+        // 4. Create Board UI (Creates flag indicators)
+        UI.createBoardUI(boardData, boardData.cols);
+
+        // 5. Initialize Deck and Hand State & Get Initial Hand Data
         const initialHandData = Cards.initDeckAndHand();
 
-        // 5. Initial UI Updates
-        // Place robot visually AFTER board UI is created
+        // 6. Initial UI Updates
+        const initialRobotState = Robot.getRobotState(); // Get state AFTER init
+        // Place robot visually
         UI.updateRobotVisualsUI(initialRobotState.row, initialRobotState.col, initialRobotState.orientation, boardData.cols);
-        // Update hand UI with initial cards
+        // Update hand UI
         UI.updateHandUI(initialHandData);
         // Update health display
         UI.updateHealthUI(initialRobotState.health, Config.MAX_HEALTH);
-        // Note: Starting flag indicator update is handled within GameLoop.setBoardData
 
-        // 6. Setup Event Listeners (Drag/Drop, Buttons)
-        // Pass the main game loop execution function as the callback for the run button
+        // --- NEW: Update starting flag indicator UI ---
+        // Check if the robot's state indicates it started on a station
+        if (initialRobotState.lastVisitedStationKey) {
+            Logger.log(`Updating UI for starting station: ${initialRobotState.lastVisitedStationKey}`);
+            UI.updateFlagIndicatorUI(initialRobotState.lastVisitedStationKey);
+        }
+
+        // 7. Setup Event Listeners
         UI.setupUIListeners(GameLoop.runProgramExecution);
 
         Logger.log("Game Initialized Successfully.");
 
     } catch (error) {
         Logger.error("Error during game initialization:", error);
-        // Display error to user?
         alert("Failed to initialize the game. Please check the console for errors.");
     }
 });

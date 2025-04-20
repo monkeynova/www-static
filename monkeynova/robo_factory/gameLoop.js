@@ -21,9 +21,6 @@ export function setBoardData(boardData) {
         const key = `${initialState.row}-${initialState.col}`;
         visitedRepairStations.add(key);
         Robot.setLastVisitedStation(key);
-        // Defer UI update to main.js after initial render? Or do it here?
-        // Let's do it here for simplicity, assuming UI is ready.
-         UI.updateFlagIndicatorUI(key);
     }
 }
 
