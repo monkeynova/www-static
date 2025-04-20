@@ -1,7 +1,9 @@
 // ui.js
 import * as Config from './config.js';
 // Import functions needed to update card state on drop
-import { getCardData, removeFromHandData, addToHandData } from './cards.js';
+import { getCardData, removeFromHandData, addToHandData, getDeckSize, getDiscardSize, getHandSize } from './cards.js'; // Added count getters
+import * as Logger from './logger.js';
+import { getHistory as getLogHistory } from './logger.js';
 
 // --- DOM Element References ---
 const factoryFloor = document.getElementById('factory-floor');
@@ -16,6 +18,13 @@ const modal = document.getElementById('end-game-modal');
 const modalTitleEl = document.getElementById('modal-title');
 const modalMessageEl = document.getElementById('modal-message');
 const modalCloseButton = document.getElementById('modal-close-button');
+const debugTrigger = document.getElementById('debug-trigger');
+const debugModal = document.getElementById('debug-modal');
+const debugDeckCount = document.getElementById('debug-deck-count');
+const debugDiscardCount = document.getElementById('debug-discard-count');
+const debugHandCount = document.getElementById('debug-hand-count');
+const debugCloseButton = document.getElementById('debug-close-button');
+const debugLogOutput = document.getElementById('debug-log-output'); // Add ref for log output area
 
 let robotElement = null; // Reference to the robot DOM element
 let draggedCardElement = null; // Track dragged DOM element during drag event
@@ -61,7 +70,7 @@ export function createBoardUI(boardData, gridCols) {
     // Create Robot Element (but don't place it yet)
     robotElement = document.createElement('div');
     robotElement.classList.add('robot');
-    console.log("Board UI created.");
+    Logger.log("Board UI created.");
 }
 
 // --- UI Update Functions ---
@@ -75,7 +84,7 @@ export function createBoardUI(boardData, gridCols) {
  */
 export function updateRobotVisualsUI(row, col, orientation, gridCols) {
     if (!robotElement) {
-        console.error("UI Error: Robot element not created yet.");
+        Logger.error("UI Error: Robot element not created yet.");
         return;
     }
     const tileElement = getTileElementUI(row, col, gridCols); // Get tile DOM element
@@ -86,7 +95,7 @@ export function updateRobotVisualsUI(row, col, orientation, gridCols) {
         // Move element
         tileElement.appendChild(robotElement);
     } else {
-        console.error(`UI Error: Cannot find tile element at (${row}, ${col}) to move robot.`);
+        Logger.error(`UI Error: Cannot find tile element at (${row}, ${col}) to move robot.`);
     }
 }
 
@@ -105,7 +114,7 @@ export function updateHandUI(handCardsData) {
         addDragHandlersToCardElement(cardElement); // Attach drag listeners
         cardHandContainer.appendChild(cardElement);
     });
-    // console.log("Hand UI updated.");
+    // Logger.log("Hand UI updated.");
 }
 
 /** Clears program slots and shows numbers. */
@@ -114,7 +123,7 @@ export function resetProgramSlotsUI() {
         slot.innerHTML = `${index + 1}`; // Restore number
         slot.className = 'program-slot drop-zone'; // Reset classes, keep drop-zone
     });
-    // console.log("Program slots UI reset.");
+    // Logger.log("Program slots UI reset.");
 }
 
 /** Updates the health display. */
@@ -132,7 +141,7 @@ export function updateFlagIndicatorUI(stationKey) {
     if (indicator) {
         indicator.classList.add('visited');
     } else {
-        console.warn(`UI: Could not find flag indicator for key ${stationKey}`);
+        Logger.warn(`UI: Could not find flag indicator for key ${stationKey}`);
     }
 }
 
@@ -150,6 +159,37 @@ export function showModalUI(isWin) {
 export function hideModalUI() {
     if (modal) {
         modal.style.display = 'none';
+    }
+}
+
+/** Shows the debug modal and updates its content. */
+export function showDebugModal() {
+    if (debugModal && debugDeckCount && debugDiscardCount && debugHandCount) {
+        // Get current counts from cards module
+        debugDeckCount.textContent = getDeckSize();
+        debugDiscardCount.textContent = getDiscardSize();
+        debugHandCount.textContent = getHandSize();
+
+        // --- Get and Display Log History ---
+        const history = getLogHistory();
+        // Display latest logs first, join with newlines
+        // Use textContent to prevent potential HTML injection issues
+        debugLogOutput.textContent = history.slice().reverse().join('\n');
+        // Scroll to the top of the log output
+        debugLogOutput.scrollTop = 0;
+        // --- End Log Display ---
+
+        // Show the modal
+        debugModal.style.display = 'flex';
+    } else {
+        Logger.error("Debug modal elements not found!");
+    }
+}
+
+/** Hides the debug modal. */
+export function hideDebugModal() {
+    if (debugModal) {
+        debugModal.style.display = 'none';
     }
 }
 
@@ -219,7 +259,7 @@ function handleDrop(e) {
 
     // Ensure we have the element that was actually dragged (from dragstart)
     if (!dropTarget || !draggedCardElement) {
-         console.warn("Drop failed: No drop target or dragged element reference.");
+         Logger.warn("Drop failed: No drop target or dragged element reference.");
          // Ensure dragging class is removed if dragend didn't fire correctly
          if(draggedCardElement) draggedCardElement.classList.remove('dragging');
          draggedCardElement = null;
@@ -233,7 +273,7 @@ function handleDrop(e) {
     const cardElement = draggedCardElement; // Use the stored element reference
 
     if (!cardElement || cardElement.id !== cardInstanceId) {
-         console.error("Drop error: Mismatch between dragged element and dataTransfer ID.");
+         Logger.error("Drop error: Mismatch between dragged element and dataTransfer ID.");
          if(draggedCardElement) draggedCardElement.classList.remove('dragging');
          draggedCardElement = null;
          return;
@@ -256,12 +296,12 @@ function handleDrop(e) {
                 // Update card data state (remove from hand)
                 if (originWasHand) {
                     if (!removeFromHandData(cardInstanceId)) {
-                        console.error(`Failed to remove ${cardInstanceId} from hand data on drop.`);
+                        Logger.error(`Failed to remove ${cardInstanceId} from hand data on drop.`);
                     }
                 }
             }
         } else {
-            console.log('Slot occupied by a different card, drop prevented.');
+            Logger.log('Slot occupied by a different card, drop prevented.');
             // Card automatically returns visually if drop is prevented.
         }
     }
@@ -272,7 +312,7 @@ function handleDrop(e) {
             cardHandContainer.appendChild(cardElement); // Move element visually
             // Update card data state (add back to hand)
             if (!addToHandData(cardInstanceId)) {
-                 console.error(`Failed to add ${cardInstanceId} back to hand data on drop.`);
+                 Logger.error(`Failed to add ${cardInstanceId} back to hand data on drop.`);
             }
         } else {
              // Card dragged from hand and dropped back onto hand.
@@ -323,11 +363,32 @@ export function setupUIListeners(runProgramCallback) {
     if (modalCloseButton) {
         modalCloseButton.addEventListener('click', hideModalUI);
     } else {
-         console.warn("Modal close button not found.");
+         Logger.warn("Modal close button not found.");
     }
 
+    if (debugTrigger) {
+        debugTrigger.addEventListener('click', showDebugModal);
+    } else {
+        Logger.warn("Debug trigger element not found.");
+    }
+
+    if (debugCloseButton) {
+        debugCloseButton.addEventListener('click', hideDebugModal);
+    } else {
+        Logger.warn("Debug close button element not found.");
+    }
+
+    // Optional: Close debug modal if clicking overlay
+    if (debugModal) {
+        debugModal.addEventListener('click', (event) => {
+            // Check if the click was directly on the overlay, not the content inside
+            if (event.target === debugModal) {
+                hideDebugModal();
+            }
+        });
+    }
 
     // Initial check for button state after setup
     checkProgramReady();
-    console.log("UI Listeners set up.");
+    Logger.log("UI Listeners set up.");
 }

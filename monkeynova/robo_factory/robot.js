@@ -1,5 +1,6 @@
 // robot.js
 import { orientations, MAX_HEALTH } from './config.js';
+import * as Logger from './logger.js';
 
 // Internal state - not directly exported
 let state = {
@@ -19,7 +20,7 @@ export function initRobot(startRow, startCol, startOrientation) {
     state.orientation = startOrientation;
     state.health = MAX_HEALTH;
     state.lastVisitedStationKey = null;
-    console.log("Robot state initialized:", { ...state });
+    Logger.log("Robot state initialized:", { ...state });
 }
 
 /**
@@ -43,7 +44,7 @@ export function turn(direction) {
         newIndex = (currentIndex + 1) % orientations.length;
     }
     state.orientation = orientations[newIndex];
-    // console.log(`Robot turned ${direction}. New orientation: ${state.orientation}`);
+    // Logger.log(`Robot turned ${direction}. New orientation: ${state.orientation}`);
     return state.orientation;
 }
 // Add U-Turn logic here later:
@@ -101,7 +102,7 @@ export function setPosition(row, col) {
  */
 export function takeDamage() {
     state.health--;
-    console.log(`Robot took 1 damage. Health: ${state.health}`);
+    Logger.log(`Robot took 1 damage. Health: ${state.health}`);
     return state.health;
 }
 

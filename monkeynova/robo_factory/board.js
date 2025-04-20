@@ -1,5 +1,6 @@
 // board.js
 import { TILE_CLASSES } from './config.js';
+import * as Logger from './logger.js';
 
 /**
  * Parses the board layout string array.
@@ -37,7 +38,7 @@ export function parseBoardLayout(boardLayout) {
         }
         tiles.push(rowTiles);
     }
-    console.log(`Parsed board: ${rows}x${cols}. Found ${repairStations.length} repair stations.`);
+    Logger.log(`Parsed board: ${rows}x${cols}. Found ${repairStations.length} repair stations.`);
     return { rows, cols, repairStations, tiles };
 }
 

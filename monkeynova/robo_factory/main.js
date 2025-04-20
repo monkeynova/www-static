@@ -5,6 +5,7 @@ import * as Robot from './robot.js';
 import * as Cards from './cards.js';
 import * as UI from './ui.js';
 import * as GameLoop from './gameLoop.js';
+import * as Logger from './logger.js';
 
 // --- Define the specific board for this game instance ---
 const boardLayout = [
@@ -31,7 +32,7 @@ const startRobotOrientation = 'east';
 
 // --- Initialize Game on DOM Load ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM Loaded. Initializing Robot Factory...");
+    Logger.log("DOM Loaded. Initializing Robot Factory...");
 
     try {
         // 1. Process Board Data
@@ -61,10 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Pass the main game loop execution function as the callback for the run button
         UI.setupUIListeners(GameLoop.runProgramExecution);
 
-        console.log("Game Initialized Successfully.");
+        Logger.log("Game Initialized Successfully.");
 
     } catch (error) {
-        console.error("Error during game initialization:", error);
+        Logger.error("Error during game initialization:", error);
         // Display error to user?
         alert("Failed to initialize the game. Please check the console for errors.");
     }

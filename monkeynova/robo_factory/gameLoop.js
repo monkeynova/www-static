@@ -4,6 +4,7 @@ import * as Board from './board.js';
 import * as Robot from './robot.js';
 import * as Cards from './cards.js';
 import * as UI from './ui.js';
+import * as Logger from './logger.js';
 
 let gameBoardData = null; // Stores the parsed board data
 const visitedRepairStations = new Set(); // Tracks visited stations for win condition
@@ -31,14 +32,14 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 /** Applies effects of the tile the robot is currently on. */
 async function applyBoardEffects() {
-    console.log("   Checking board actions...");
+    Logger.log("   Checking board actions...");
     let robotState = Robot.getRobotState();
     let currentTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
     let boardMoved = false;
     let fellInHole = false;
 
     if (!currentTileData) {
-        console.error("   Robot is on an invalid tile location!");
+        Logger.error("   Robot is on an invalid tile location!");
         return { gameEnded: false, boardMoved: false, fellInHole: false };
     }
 
@@ -59,7 +60,7 @@ async function applyBoardEffects() {
 
             // Basic check: is target tile valid? (Add wall check later)
             if (targetTileData /* && !targetTileData.classes.includes('wall') */) {
-                console.log(`   Activating conveyor (${direction}) to (${targetRow}, ${targetCol})`);
+                Logger.log(`   Activating conveyor (${direction}) to (${targetRow}, ${targetCol})`);
                 Robot.setPosition(targetRow, targetCol); // Update state
                 UI.updateRobotVisualsUI(targetRow, targetCol, robotState.orientation, gameBoardData.cols); // Update UI
                 boardMoved = true;
@@ -68,14 +69,14 @@ async function applyBoardEffects() {
                 robotState = Robot.getRobotState();
                 currentTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
             } else {
-                console.log("   Conveyor move failed: Hit boundary or obstacle.");
+                Logger.log("   Conveyor move failed: Hit boundary or obstacle.");
             }
         }
     }
 
     // Re-check tile data in case conveyor moved robot
     if (!currentTileData) {
-         console.error("   Robot is on an invalid tile location after conveyor!");
+         Logger.error("   Robot is on an invalid tile location after conveyor!");
          return { gameEnded: false, boardMoved, fellInHole: false };
     }
 
@@ -85,32 +86,32 @@ async function applyBoardEffects() {
         Robot.setLastVisitedStation(stationKey); // Always update last visited
 
         if (!visitedRepairStations.has(stationKey)) {
-            console.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
+            Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
             visitedRepairStations.add(stationKey);
             UI.updateFlagIndicatorUI(stationKey); // Update UI flag
 
             // --- Win Condition Check ---
-            console.log(`   Visited ${visitedRepairStations.size} / ${gameBoardData.repairStations.length} stations.`);
+            Logger.log(`   Visited ${visitedRepairStations.size} / ${gameBoardData.repairStations.length} stations.`);
             if (visitedRepairStations.size === gameBoardData.repairStations.length && gameBoardData.repairStations.length > 0) {
-                console.log("   *** WIN CONDITION MET! ***");
+                Logger.log("   *** WIN CONDITION MET! ***");
                 await sleep(100);
                 UI.showModalUI(true); // Show win modal
                 return { gameEnded: true, boardMoved, fellInHole: false }; // Signal game end
             }
         } else {
-            console.log(`   Already visited repair station at (${robotState.row}, ${robotState.col}).`);
+            Logger.log(`   Already visited repair station at (${robotState.row}, ${robotState.col}).`);
         }
     }
 
     // --- Hole ---
     if (currentTileData.classes.includes('hole')) {
-        console.log(`   Robot landed on a hole at (${robotState.row}, ${robotState.col})!`);
+        Logger.log(`   Robot landed on a hole at (${robotState.row}, ${robotState.col})!`);
         fellInHole = true;
         const newHealth = Robot.takeDamage(); // Update state
         UI.updateHealthUI(newHealth, Config.MAX_HEALTH); // Update UI
 
         if (Robot.isDestroyed()) {
-            console.error("   *** ROBOT DESTROYED! Health reached 0. ***");
+            Logger.error("   *** ROBOT DESTROYED! Health reached 0. ***");
             await sleep(100);
             UI.showModalUI(false); // Show loss modal
             return { gameEnded: true, boardMoved, fellInHole: true }; // Signal game end
@@ -119,7 +120,7 @@ async function applyBoardEffects() {
         // Return to last station if not destroyed
         const lastKey = robotState.lastVisitedStationKey; // Get key AFTER taking damage
         if (lastKey) {
-            console.log(`   Returning to last visited station: ${lastKey}`);
+            Logger.log(`   Returning to last visited station: ${lastKey}`);
             const [lastR, lastC] = lastKey.split('-').map(Number);
             // Check if the station coordinates are still valid on the board
             if (Board.getTileData(lastR, lastC, gameBoardData)) {
@@ -128,11 +129,11 @@ async function applyBoardEffects() {
                 UI.updateRobotVisualsUI(lastR, lastC, robotState.orientation, gameBoardData.cols); // Update UI
                 await sleep(600); // Visual delay for reset
             } else {
-                console.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
+                Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
                 // What happens here? Robot stays in hole? Game over? For now, just log.
             }
         } else {
-            console.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
+            Logger.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
             // What happens here? Reset to 0,0? For now, just log.
         }
     }
@@ -144,15 +145,15 @@ async function applyBoardEffects() {
 /** Executes the sequence of programmed cards and board actions. */
 export async function runProgramExecution() {
     if (!gameBoardData) {
-        console.error("Cannot run program: Board data not set.");
+        Logger.error("Cannot run program: Board data not set.");
         // UI.updateButtonStateUI(true); // Re-enable button?
         return;
     }
-    console.log("--- Starting Program Execution ---");
+    Logger.log("--- Starting Program Execution ---");
 
     const programmedCardElements = document.querySelectorAll('#program-slots .program-slot .card');
     if (programmedCardElements.length !== Config.PROGRAM_SIZE) {
-        console.error("Program is not full!");
+        Logger.error("Program is not full!");
         UI.updateButtonStateUI(true); // Re-enable button if error occurred before starting
         return;
     }
@@ -167,11 +168,11 @@ export async function runProgramExecution() {
 
         const cardData = Cards.getCardData(instanceId);
         if (!cardData) {
-            console.error(`Cannot find card data for ${instanceId}! Skipping card.`);
+            Logger.error(`Cannot find card data for ${instanceId}! Skipping card.`);
             continue;
         }
 
-        console.log(`\nExecuting Card ${i + 1}: ${cardData.text} (${cardData.type})`);
+        Logger.log(`\nExecuting Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         let cardMoved = false;
         let robotState = Robot.getRobotState(); // Get state before action
 
@@ -201,13 +202,13 @@ export async function runProgramExecution() {
 
                     // Example Obstacle Check (add 'wall' to TILE_CLASSES later)
                     // if (targetTileData && targetTileData.classes.includes('wall')) {
-                    //    console.log(`   Move blocked by wall at (${moveTarget.targetRow}, ${moveTarget.targetCol}).`);
+                    //    Logger.log(`   Move blocked by wall at (${moveTarget.targetRow}, ${moveTarget.targetCol}).`);
                     //    if (moveCount > 1) break; // Stop Move 2 if first step blocked
                     //    continue; // Skip this step if blocked
                     // }
 
                     // If not blocked, proceed with move
-                    console.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
+                    Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
                     Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Update state
                     // Get potentially updated orientation (though moves don't change it)
                     const currentOrientation = Robot.getRobotState().orientation;
@@ -216,7 +217,7 @@ export async function runProgramExecution() {
                     if (moveCount > 1) await sleep(500); // Delay between steps of Move 2
 
                 } else { // Move failed boundary check
-                    console.log("   Move failed: Hit boundary.");
+                    Logger.log("   Move failed: Hit boundary.");
                     if (moveCount > 1) break; // Stop Move 2 if first step fails
                 }
             } // End loop for move steps (for Move 2)
@@ -233,7 +234,7 @@ export async function runProgramExecution() {
             // Discard cards used *up to this point*
             Cards.discard(usedCardInstanceIds);
             UI.resetProgramSlotsUI(); // Clear slots visually
-            console.log("Game ended during board effects phase.");
+            Logger.log("Game ended during board effects phase.");
             return; // Exit the runProgramExecution function
         }
 
@@ -245,7 +246,7 @@ export async function runProgramExecution() {
     } // --- End Card Execution Loop ---
 
     // --- Post-Execution Cleanup (if game didn't end mid-turn) ---
-    console.log("\n--- Program Finished ---");
+    Logger.log("\n--- Program Finished ---");
     Cards.discard(usedCardInstanceIds); // Discard all used cards
     UI.resetProgramSlotsUI(); // Clear program slots visually
     const drawnCardsData = Cards.draw(Config.PROGRAM_SIZE); // Draw new cards (state updated in cards.js)
