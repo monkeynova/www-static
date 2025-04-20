@@ -168,27 +168,71 @@
             box-sizing: border-box; /* Include padding/border in width */
         }
 
-        #card-hand-area, #program-area {
-            /* Existing styles are likely fine */
+        /* Keep flex for card hand area if needed */
+        #card-hand-area {
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%; /* Ensure they take full width of controls */
+            flex-direction: column; /* Stack h2 and #card-hand */
+            align-items: center; /* Center h2 and #card-hand container */
+            width: 100%;
+            /* gap: 5px; */ /* Gap is handled by #controls */
+            /* margin-top: 10px; */
+            /* min-height: 60px; */
+            /* padding: 5px; */
+            /* border: 1px dashed #ccc; */ /* Border is on #controls */
+            /* background-color: #fff; */
+            /* box-sizing: border-box; */
+            /* justify-content: center; */
         }
 
-        #card-hand, #program-slots {
-            /* Existing styles are likely fine */
+        /* Remove flex from program area, use block layout + text-align */
+        #program-area {
+            width: 100%;
+            text-align: center; /* Center the h2 and button */
+            /* Let children stack vertically by default */
+        }
+
+        /* Ensure #program-slots still arranges slots horizontally */
+        #program-slots {
             display: flex;
-            flex-wrap: wrap; /* Allow cards/slots to wrap if needed */
+            flex-direction: row; /* Horizontal slots */
+            gap: 5px;
+            margin-top: 10px; /* Space below h2 */
+            min-height: 60px;
+            height: 70px;
+            padding: 5px;
+            border: 1px dashed #ccc;
+            background-color: #fff;
+            /* width: 100%; */ /* Let it size based on content + centering */
+            width: fit-content; /* Size to fit the 5 slots + gaps */
+            margin-left: auto; /* Center the block */
+            margin-right: auto; /* Center the block */
+            box-sizing: border-box;
+            justify-content: center; /* Center slots within this container (redundant with fit-content?) */
+            align-items: center;
+        }
+
+        /* Ensure button has margin */
+        #run-program {
+            margin-top: 15px; /* Space above button */
+            /* Other button styles remain */
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Specific rule for the card hand container */
+        #card-hand {
+            display: flex;
+            flex-wrap: wrap; /* Allow hand cards to wrap */
             gap: 5px;
             margin-top: 10px;
             min-height: 60px;
             padding: 5px;
             border: 1px dashed #ccc;
             background-color: #fff;
-            width: 100%; /* Take full width */
+            width: 100%;
             box-sizing: border-box;
-            justify-content: center; /* Center cards/slots within their container */
+            justify-content: center; /* Center cards within the hand area */
         }
 
         .card {
@@ -224,32 +268,34 @@
              border-color: #888;
         }
 
-        /* Style slots containing cards differently */
-        .program-slot:has(.card) {
-             padding: 0; /* Remove padding if card is inside */
-             background-color: transparent; /* Remove default background */
-             border: 1px solid #aaa; /* Reset border */
-             color: transparent; /* Hide the number */
-        }
-        .program-slot:has(.card) .card {
-            width: 100%; /* Make card fill the slot */
-            height: 100%;
-            cursor: grab; /* Indicate card can be moved again */
-            /* ADD THIS LINE BELOW */
-            color: initial; /* Reset color to default/inherited from card itself */
-        }
-
-
+        /* Ensure .program-slot still has box-sizing */
         .program-slot {
             border: 1px solid #aaa;
-            width: 60px; /* Slightly wider than cards */
-            height: 60px;
+            width: 60px;  /* Fixed width */
+            height: 60px; /* Fixed height */
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: #e8e8e8;
             color: #888;
             font-size: 18px;
+            box-sizing: border-box; /* Make sure this is still present */
+            flex-shrink: 0; /* Prevent slots from shrinking */
+        }
+
+        /* Ensure the :has rule is correct */
+         .program-slot:has(.card) {
+             padding: 0;
+             background-color: transparent;
+             border: 1px solid #aaa;
+             color: transparent;
+             box-sizing: border-box; /* Maintain box-sizing */
+        }
+        .program-slot:has(.card) .card {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            color: initial;
         }
 
         #run-program {
