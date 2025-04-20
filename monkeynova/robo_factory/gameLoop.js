@@ -3,7 +3,6 @@ import * as Config from './config.js';
 import * as Board from './board.js';
 import * as Robot from './robot.js';
 import * as Cards from './cards.js'; 
-import * as UI from './ui.js';
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
 
@@ -135,7 +134,7 @@ async function applyBoardEffects() {
 export async function runProgramExecution() {
     if (!gameBoardData) {
         Logger.error("Cannot run program: Board data not set.");
-        // UI.updateButtonStateUI(true); // Re-enable button?
+        emit('programExecutionFinished'); // EMIT EVENT
         return;
     }
     Logger.log("--- Starting Program Execution ---");
@@ -143,7 +142,7 @@ export async function runProgramExecution() {
     const programmedCardElements = document.querySelectorAll('#program-slots .program-slot .card');
     if (programmedCardElements.length !== Config.PROGRAM_SIZE) {
         Logger.error("Program is not full!");
-        UI.updateButtonStateUI(true); // Re-enable button if error occurred before starting
+        emit('programExecutionFinished'); // EMIT EVENT
         return;
     }
 
@@ -218,7 +217,7 @@ export async function runProgramExecution() {
         if (boardResult.gameEnded) {
             // Discard cards used *up to this point*
             Cards.discard(usedCardInstanceIds);
-            UI.resetProgramSlotsUI(); // Clear slots visually
+            emit('programExecutionFinished'); // EMIT EVENT
             Logger.log("Game ended during board effects phase.");
             return; // Exit the runProgramExecution function
         }
@@ -233,9 +232,8 @@ export async function runProgramExecution() {
     // --- Post-Execution Cleanup (if game didn't end mid-turn) ---
     Logger.log("\n--- Program Finished ---");
     Cards.discard(usedCardInstanceIds); // Discard all used cards
-    UI.resetProgramSlotsUI(); // Clear program slots visually
-    const drawnCardsData = Cards.draw(Config.PROGRAM_SIZE); // Draw new cards (state updated in cards.js)
-    UI.updateHandUI(Cards.getHandCards()); // Update hand UI with the new full hand
-    // Run button state will be updated by the checkProgramReady in ui.js when cards are dragged
+    emit('programExecutionFinished'); // EMIT EVENT
+    // Draw new cards (this will emit 'handUpdated' and 'cardCountsUpdated')
+    Cards.draw(Config.PROGRAM_SIZE);
 
 } // End runProgramExecution

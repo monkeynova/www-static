@@ -1,10 +1,10 @@
 // ui.js
 import * as Config from './config.js';
 // Import functions needed to update card state on drop
-import { getCardData, removeFromHandData, addToHandData, getDeckSize, getDiscardSize, getHandSize } from './cards.js'; // Added count getters
+import { getCardData, removeFromHandData, addToHandData } from './cards.js';
+import { on } from './eventEmitter.js';
 import * as Logger from './logger.js';
 import { getHistory as getLogHistory } from './logger.js';
-import { on } from './eventEmitter.js';
 
 // --- DOM Element References ---
 const factoryFloor = document.getElementById('factory-floor');
@@ -106,16 +106,20 @@ export function updateRobotVisualsUI(row, col, orientation, gridCols) {
  */
 export function updateHandUI(handCardsData) {
     cardHandContainer.innerHTML = ''; // Clear current UI cards
+    if (!handCardsData) {
+        Logger.warn("updateHandUI called with null/undefined hand data.");
+        return;
+    }
     handCardsData.forEach(cardData => {
         const cardElement = document.createElement('div');
-        cardElement.id = cardData.instanceId; // Use unique ID
+        cardElement.id = cardData.instanceId;
         cardElement.classList.add('card', cardData.type);
         cardElement.draggable = true;
         cardElement.textContent = cardData.text;
-        addDragHandlersToCardElement(cardElement); // Attach drag listeners
+        addDragHandlersToCardElement(cardElement);
         cardHandContainer.appendChild(cardElement);
     });
-    // Logger.log("Hand UI updated.");
+    Logger.log("Hand UI updated via event.");
 }
 
 /** Clears program slots and shows numbers. */
@@ -163,27 +167,30 @@ export function hideModalUI() {
     }
 }
 
+/**
+ * Updates the card counts in the debug modal.
+ * @param {object} counts - Object like { deck, discard, hand }.
+ */
+function updateDebugCountsUI(counts) {
+    if (debugDeckCount && debugDiscardCount && debugHandCount) {
+        debugDeckCount.textContent = counts.deck;
+        debugDiscardCount.textContent = counts.discard;
+        debugHandCount.textContent = counts.hand;
+    }
+}
+
 /** Shows the debug modal and updates its content. */
 export function showDebugModal() {
-    if (debugModal && debugDeckCount && debugDiscardCount && debugHandCount) {
-        // Get current counts from cards module
-        debugDeckCount.textContent = getDeckSize();
-        debugDiscardCount.textContent = getDiscardSize();
-        debugHandCount.textContent = getHandSize();
-
-        // --- Get and Display Log History ---
+    if (debugModal && debugLogOutput) { // Check only needed elements
+        // Counts are updated via event listener now, no need to fetch here
+        // const history = getLogHistory(); ... (log display logic remains) ...
         const history = getLogHistory();
-        // Display latest logs first, join with newlines
-        // Use textContent to prevent potential HTML injection issues
         debugLogOutput.textContent = history.slice().reverse().join('\n');
-        // Scroll to the top of the log output
         debugLogOutput.scrollTop = 0;
-        // --- End Log Display ---
 
-        // Show the modal
         debugModal.style.display = 'flex';
     } else {
-        Logger.error("Debug modal elements not found!");
+        console.error("Debug modal elements not found!");
     }
 }
 
@@ -285,40 +292,28 @@ function handleDrop(e) {
 
     // --- Logic for dropping ---
 
-    // Case 1: Dropping onto a program slot
+    // --- Logic for dropping ---
     if (dropTarget.classList.contains('program-slot')) {
         const existingCard = dropTarget.querySelector('.card');
-        // Allow drop if slot is empty OR if dropping card back onto itself
         if (!existingCard || existingCard === cardElement) {
-            if (existingCard !== cardElement) { // Don't do work if dropped onto self
-                dropTarget.innerHTML = ''; // Clear slot (removes number)
+            if (existingCard !== cardElement) {
+                dropTarget.innerHTML = '';
                 dropTarget.appendChild(cardElement); // Move element visually
-
-                // Update card data state (remove from hand)
+                // Update card data state (remove from hand) - This will trigger events
                 if (originWasHand) {
-                    if (!removeFromHandData(cardInstanceId)) {
-                        Logger.error(`Failed to remove ${cardInstanceId} from hand data on drop.`);
-                    }
+                    removeFromHandData(cardInstanceId); // Let cards.js emit events
                 }
             }
         } else {
             Logger.log('Slot occupied by a different card, drop prevented.');
-            // Card automatically returns visually if drop is prevented.
         }
-    }
-    // Case 2: Dropping onto the hand area
-    else if (dropTarget.id === 'card-hand') {
-        // Only process if returning from a slot (originWasHand is false)
+    } else if (dropTarget.id === 'card-hand') {
         if (!originWasHand) {
             cardHandContainer.appendChild(cardElement); // Move element visually
-            // Update card data state (add back to hand)
-            if (!addToHandData(cardInstanceId)) {
-                 Logger.error(`Failed to add ${cardInstanceId} back to hand data on drop.`);
-            }
+            // Update card data state (add back to hand) - This will trigger events
+            addToHandData(cardInstanceId); // Let cards.js emit events
         } else {
-             // Card dragged from hand and dropped back onto hand.
-             // Ensure it's visually appended back just in case.
-             cardHandContainer.appendChild(cardElement);
+            cardHandContainer.appendChild(cardElement); // Ensure visually back
         }
     }
 
@@ -406,15 +401,25 @@ function subscribeToModelEvents(boardData) { // Pass needed static data like gri
     on('healthChanged', ({ health, maxHealth }) => {
         updateHealthUI(health, maxHealth);
     });
-    on('handUpdated', (handCardsData) => { // Assuming cards.js emits this after draw/discard
-        updateHandUI(handCardsData);
-    });
     on('flagVisited', (stationKey) => { // Assuming gameLoop emits this
          updateFlagIndicatorUI(stationKey);
     });
     on('gameOver', (isWin) => { // Assuming gameLoop emits this
          showModalUI(isWin);
     });
-    // ... other listeners ...
+    on('handUpdated', (handData) => {
+        updateHandUI(handData);
+        checkProgramReady(); // Check button state whenever hand changes (might be empty)
+    });
+    on('cardCountsUpdated', (counts) => {
+        updateDebugCountsUI(counts);
+    });
+    on('programExecutionFinished', () => {
+        Logger.log("UI: Received programExecutionFinished event. Resetting slots.");
+        resetProgramSlotsUI();
+        // Also ensure the run button is disabled after reset, as the program is no longer full
+        // checkProgramReady() might be called by handUpdated, but let's be explicit
+        updateButtonStateUI(false);
+    });
     Logger.log("UI subscribed to model events.");
 }

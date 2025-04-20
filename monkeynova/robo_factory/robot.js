@@ -1,6 +1,7 @@
 // robot.js
 import { orientations, MAX_HEALTH } from './config.js';
 import * as Logger from './logger.js';
+import * as Config from './config.js';
 import { emit } from './eventEmitter.js';
 
 // Internal state - not directly exported

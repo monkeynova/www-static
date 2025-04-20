@@ -1,5 +1,6 @@
 // cards.js
 import { HAND_SIZE, FULL_DECK_DEFINITION } from './config.js';
+import { emit } from './eventEmitter.js'; // Import emit
 import * as Logger from './logger.js';
 
 let currentDeck = [];
@@ -17,19 +18,31 @@ function shuffle(deck) {
     }
 }
 
+/** Emits the current card counts */
+function emitCounts() {
+    emit('cardCountsUpdated', {
+        deck: currentDeck.length,
+        discard: discardPile.length,
+        hand: handCards.length
+    });
+}
+
 /**
  * Initializes the deck, shuffles, and draws the starting hand.
- * @returns {object[]} The initial hand card data.
+ * @returns {object[]} The initial hand card data (still useful for initial UI setup).
  */
 export function initDeckAndHand() {
-    currentDeck = [...FULL_DECK_DEFINITION]; // Use definition from config
+    currentDeck = [...FULL_DECK_DEFINITION];
     shuffle(currentDeck);
     handCards = [];
     discardPile = [];
     allCardInstances = {};
     cardInstanceCounter = 0;
     Logger.log(`Deck initialized with ${currentDeck.length} cards.`);
-    return draw(HAND_SIZE); // Draw and return initial hand
+    const initialHand = draw(HAND_SIZE); // Draw initial hand (this will emit events)
+    // Emit initial counts AFTER drawing is complete
+    // emitCounts(); // draw() already emits counts
+    return initialHand; // Return data for potential direct use in main.js if needed
 }
 
 /**
@@ -40,6 +53,7 @@ export function initDeckAndHand() {
 export function draw(count) {
     Logger.log(`Attempting to draw ${count} cards.`);
     const drawn = [];
+    let reshuffled = false; // Track if reshuffle happened
     for (let i = 0; i < count; i++) {
         if (currentDeck.length === 0) {
             if (discardPile.length > 0) {
@@ -47,20 +61,20 @@ export function draw(count) {
                 currentDeck = [...discardPile];
                 discardPile = [];
                 shuffle(currentDeck);
+                reshuffled = true; // Mark that reshuffle occurred
             } else {
                 Logger.warn("Deck and discard pile are empty! Cannot draw more cards.");
-                break; // Stop drawing
+                break;
             }
         }
 
-        // Check again after potential reshuffle
         if (currentDeck.length > 0) {
             const cardData = currentDeck.pop();
             const instanceId = `card-instance-${cardInstanceCounter++}`;
             const cardInstance = { ...cardData, instanceId: instanceId };
 
-            allCardInstances[instanceId] = cardInstance; // Store lookup
-            handCards.push(cardInstance); // Add to hand data array
+            allCardInstances[instanceId] = cardInstance;
+            handCards.push(cardInstance);
             drawn.push(cardInstance);
         } else {
             Logger.warn("Failed to draw card even after checking discard.");
@@ -68,6 +82,16 @@ export function draw(count) {
         }
     }
     Logger.log(`Drew ${drawn.length}. Hand: ${handCards.length}. Deck: ${currentDeck.length}. Discard: ${discardPile.length}.`);
+
+    // Emit events AFTER the draw loop is complete
+    if (drawn.length > 0) {
+        emit('handUpdated', [...handCards]); // Emit new hand state
+    }
+    // Always emit counts if anything changed (draw happened or reshuffle)
+    if (drawn.length > 0 || reshuffled) {
+         emitCounts();
+    }
+
     return drawn;
 }
 
@@ -80,7 +104,9 @@ export function removeFromHandData(instanceId) {
     const indexToRemove = handCards.findIndex(card => card.instanceId === instanceId);
     if (indexToRemove > -1) {
         handCards.splice(indexToRemove, 1);
-        // Logger.log(`Removed ${instanceId} from hand data. Hand size: ${handCards.length}`);
+        Logger.log(`Removed ${instanceId} from hand data. Hand size: ${handCards.length}`);
+        emit('handUpdated', [...handCards]); // Emit updated hand
+        emitCounts(); // Emit updated counts
         return true;
     }
     Logger.warn(`Card ${instanceId} not found in hand data to remove.`);
@@ -96,10 +122,11 @@ export function addToHandData(instanceId) {
     const cardData = allCardInstances[instanceId];
     if (cardData && !handCards.some(card => card.instanceId === instanceId)) {
         handCards.push(cardData);
-        // Logger.log(`Added ${instanceId} back to hand data. Hand size: ${handCards.length}`);
+        Logger.log(`Added ${instanceId} back to hand data. Hand size: ${handCards.length}`);
+        emit('handUpdated', [...handCards]); // Emit updated hand
+        emitCounts(); // Emit updated counts
         return true;
     }
-    // Logger.warn(`Cannot add ${instanceId} back to hand data (already present or data missing).`);
     return false;
 }
 
@@ -109,26 +136,30 @@ export function addToHandData(instanceId) {
  */
 export function discard(instanceIds) {
     let count = 0;
+    let changed = false;
     instanceIds.forEach(id => {
         const cardData = allCardInstances[id];
         if (cardData) {
-            // Optional: Remove from handCards if it's somehow still there? Should be removed by drop handler.
+            // Ensure it's not still in hand data (shouldn't be, but safety check)
             const handIndex = handCards.findIndex(c => c.instanceId === id);
             if (handIndex > -1) {
                 Logger.warn(`Card ${id} found in hand during discard phase. Removing.`);
                 handCards.splice(handIndex, 1);
+                changed = true; // Hand changed unexpectedly
             }
-
             discardPile.push(cardData);
             count++;
-            // Decide whether to keep card data in allCardInstances after discard.
-            // Keeping it allows potential future features (view discard, specific card effects).
-            // delete allCardInstances[id]; // If memory is a concern
         } else {
             Logger.warn(`Discard: Cannot find card data for ${id}`);
         }
     });
     Logger.log(`Discarded ${count} cards. Discard size: ${discardPile.length}`);
+    if (count > 0) {
+        emitCounts(); // Emit updated counts
+    }
+    if (changed) {
+         emit('handUpdated', [...handCards]); // Emit hand update if it changed
+    }
 }
 
 /**

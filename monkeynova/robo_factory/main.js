@@ -48,11 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4. Initialize Deck and Hand State
         const initialHandData = Cards.initDeckAndHand(); // Emits 'handUpdated' internally? If not, emit here.
 
-        // ***** Setup Event Listeners in UI BEFORE initial UI updates *****
-        // Pass boardData needed for listeners (e.g., gridCols)
+        // 5. Setup Event Listeners in UI BEFORE initial UI updates
         UI.setupUIListeners(GameLoop.runProgramExecution, boardData);
 
-        // 5. Create Board UI (Now just creates structure)
+        // 6. Create Board UI
         UI.createBoardUI(boardData, boardData.cols);
 
         // 6. Trigger Initial UI State Sync (Emit events or call UI functions once)
