@@ -1,6 +1,7 @@
 // robot.js
 import { orientations, MAX_HEALTH } from './config.js';
 import * as Logger from './logger.js';
+import { emit } from './eventEmitter.js';
 
 // Internal state - not directly exported
 let state = {
@@ -44,7 +45,7 @@ export function turn(direction) {
         newIndex = (currentIndex + 1) % orientations.length;
     }
     state.orientation = orientations[newIndex];
-    // Logger.log(`Robot turned ${direction}. New orientation: ${state.orientation}`);
+    emit('robotTurned', { row: state.row, col: state.col, orientation: state.orientation }); // Emit event
     return state.orientation;
 }
 // Add U-Turn logic here later:
@@ -83,18 +84,12 @@ export function calculateMoveTarget(steps, boardData) {
  * Directly sets the robot's position state.
  */
 export function setPosition(row, col) {
-    state.row = row;
-    state.col = col;
+    if (state.row !== row || state.col !== col) {
+        state.row = row;
+        state.col = col;
+        emit('robotMoved', { row, col, orientation: state.orientation }); // Emit event
+    }
 }
-
-/**
- * Directly sets the robot's orientation state.
- */
- export function setOrientation(orientation) {
-     if (orientations.includes(orientation)) {
-         state.orientation = orientation;
-     }
- }
 
 /**
  * Decreases robot health by 1.
@@ -102,7 +97,7 @@ export function setPosition(row, col) {
  */
 export function takeDamage() {
     state.health--;
-    Logger.log(`Robot took 1 damage. Health: ${state.health}`);
+    emit('healthChanged', { health: state.health, maxHealth: Config.MAX_HEALTH }); // Emit event
     return state.health;
 }
 

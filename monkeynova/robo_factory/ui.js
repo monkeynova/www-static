@@ -4,6 +4,7 @@ import * as Config from './config.js';
 import { getCardData, removeFromHandData, addToHandData, getDeckSize, getDiscardSize, getHandSize } from './cards.js'; // Added count getters
 import * as Logger from './logger.js';
 import { getHistory as getLogHistory } from './logger.js';
+import { on } from './eventEmitter.js';
 
 // --- DOM Element References ---
 const factoryFloor = document.getElementById('factory-floor');
@@ -341,7 +342,7 @@ function checkProgramReady() {
  * Sets up all static UI event listeners.
  * @param {Function} runProgramCallback - Function to call when Run button is clicked.
  */
-export function setupUIListeners(runProgramCallback) {
+export function setupUIListeners(runProgramCallback, boardData) { // Pass boardData
     // Attach drop listeners to static containers
     const dropZones = [cardHandContainer, ...programSlots];
     dropZones.forEach(zone => {
@@ -388,7 +389,32 @@ export function setupUIListeners(runProgramCallback) {
         });
     }
 
+    subscribeToModelEvents(boardData); // Setup model listeners
+
     // Initial check for button state after setup
     checkProgramReady();
     Logger.log("UI Listeners set up.");
+}
+
+function subscribeToModelEvents(boardData) { // Pass needed static data like gridCols
+    on('robotMoved', ({ row, col, orientation }) => {
+        updateRobotVisualsUI(row, col, orientation, boardData.cols);
+    });
+    on('robotTurned', ({ row, col, orientation }) => {
+        updateRobotVisualsUI(row, col, orientation, boardData.cols); // Same UI update needed
+    });
+    on('healthChanged', ({ health, maxHealth }) => {
+        updateHealthUI(health, maxHealth);
+    });
+    on('handUpdated', (handCardsData) => { // Assuming cards.js emits this after draw/discard
+        updateHandUI(handCardsData);
+    });
+    on('flagVisited', (stationKey) => { // Assuming gameLoop emits this
+         updateFlagIndicatorUI(stationKey);
+    });
+    on('gameOver', (isWin) => { // Assuming gameLoop emits this
+         showModalUI(isWin);
+    });
+    // ... other listeners ...
+    Logger.log("UI subscribed to model events.");
 }

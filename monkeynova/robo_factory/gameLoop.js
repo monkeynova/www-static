@@ -2,9 +2,10 @@
 import * as Config from './config.js';
 import * as Board from './board.js';
 import * as Robot from './robot.js';
-import * as Cards from './cards.js';
+import * as Cards from './cards.js'; 
 import * as UI from './ui.js';
 import * as Logger from './logger.js';
+import { emit } from './eventEmitter.js';
 
 let gameBoardData = null; // Stores the parsed board data
 const visitedRepairStations = new Set(); // Tracks visited stations for win condition
@@ -59,7 +60,6 @@ async function applyBoardEffects() {
             if (targetTileData /* && !targetTileData.classes.includes('wall') */) {
                 Logger.log(`   Activating conveyor (${direction}) to (${targetRow}, ${targetCol})`);
                 Robot.setPosition(targetRow, targetCol); // Update state
-                UI.updateRobotVisualsUI(targetRow, targetCol, robotState.orientation, gameBoardData.cols); // Update UI
                 boardMoved = true;
                 await sleep(400); // Visual delay
                 // Update state vars for subsequent checks this turn
@@ -83,16 +83,13 @@ async function applyBoardEffects() {
         Robot.setLastVisitedStation(stationKey); // Always update last visited
 
         if (!visitedRepairStations.has(stationKey)) {
-            Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
             visitedRepairStations.add(stationKey);
-            UI.updateFlagIndicatorUI(stationKey); // Update UI flag
+            emit('flagVisited', stationKey); // Emit event for UI
 
             // --- Win Condition Check ---
             Logger.log(`   Visited ${visitedRepairStations.size} / ${gameBoardData.repairStations.length} stations.`);
             if (visitedRepairStations.size === gameBoardData.repairStations.length && gameBoardData.repairStations.length > 0) {
-                Logger.log("   *** WIN CONDITION MET! ***");
-                await sleep(100);
-                UI.showModalUI(true); // Show win modal
+                emit('gameOver', true); // Emit event for UI
                 return { gameEnded: true, boardMoved, fellInHole: false }; // Signal game end
             }
         } else {
@@ -105,12 +102,9 @@ async function applyBoardEffects() {
         Logger.log(`   Robot landed on a hole at (${robotState.row}, ${robotState.col})!`);
         fellInHole = true;
         const newHealth = Robot.takeDamage(); // Update state
-        UI.updateHealthUI(newHealth, Config.MAX_HEALTH); // Update UI
 
         if (Robot.isDestroyed()) {
-            Logger.error("   *** ROBOT DESTROYED! Health reached 0. ***");
-            await sleep(100);
-            UI.showModalUI(false); // Show loss modal
+            emit('gameOver', false); // Emit event for UI
             return { gameEnded: true, boardMoved, fellInHole: true }; // Signal game end
         }
 
@@ -122,8 +116,6 @@ async function applyBoardEffects() {
             // Check if the station coordinates are still valid on the board
             if (Board.getTileData(lastR, lastC, gameBoardData)) {
                 Robot.setPosition(lastR, lastC); // Update state
-                // Orientation doesn't change when falling
-                UI.updateRobotVisualsUI(lastR, lastC, robotState.orientation, gameBoardData.cols); // Update UI
                 await sleep(600); // Visual delay for reset
             } else {
                 Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
@@ -177,7 +169,6 @@ export async function runProgramExecution() {
         if (cardData.type === 'turnL' || cardData.type === 'turnR') {
             const direction = cardData.type === 'turnL' ? 'left' : 'right';
             const newOrientation = Robot.turn(direction); // Update state
-            UI.updateRobotVisualsUI(robotState.row, robotState.col, newOrientation, gameBoardData.cols); // Update UI
         }
         // Add U-Turn later: else if (cardData.type === 'uturn') { ... }
         else { // Movement cards (move1, move2, back1)
@@ -207,9 +198,6 @@ export async function runProgramExecution() {
                     // If not blocked, proceed with move
                     Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
                     Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Update state
-                    // Get potentially updated orientation (though moves don't change it)
-                    const currentOrientation = Robot.getRobotState().orientation;
-                    UI.updateRobotVisualsUI(moveTarget.targetRow, moveTarget.targetCol, currentOrientation, gameBoardData.cols); // Update UI
                     cardMoved = true;
                     if (moveCount > 1) await sleep(500); // Delay between steps of Move 2
 

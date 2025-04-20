@@ -6,6 +6,7 @@ import * as Cards from './cards.js';
 import * as UI from './ui.js';
 import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
+import { emit } from './eventEmitter.js';
 
 // --- Define the specific board for this game instance ---
 const boardLayout = [
@@ -44,30 +45,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Set Board Data in Game Loop (Updates internal state like visited stations)
         GameLoop.setBoardData(boardData); // Now only updates state
 
-        // 4. Create Board UI (Creates flag indicators)
+        // 4. Initialize Deck and Hand State
+        const initialHandData = Cards.initDeckAndHand(); // Emits 'handUpdated' internally? If not, emit here.
+
+        // ***** Setup Event Listeners in UI BEFORE initial UI updates *****
+        // Pass boardData needed for listeners (e.g., gridCols)
+        UI.setupUIListeners(GameLoop.runProgramExecution, boardData);
+
+        // 5. Create Board UI (Now just creates structure)
         UI.createBoardUI(boardData, boardData.cols);
 
-        // 5. Initialize Deck and Hand State & Get Initial Hand Data
-        const initialHandData = Cards.initDeckAndHand();
-
-        // 6. Initial UI Updates
-        const initialRobotState = Robot.getRobotState(); // Get state AFTER init
-        // Place robot visually
-        UI.updateRobotVisualsUI(initialRobotState.row, initialRobotState.col, initialRobotState.orientation, boardData.cols);
-        // Update hand UI
-        UI.updateHandUI(initialHandData);
-        // Update health display
-        UI.updateHealthUI(initialRobotState.health, Config.MAX_HEALTH);
-
-        // --- NEW: Update starting flag indicator UI ---
-        // Check if the robot's state indicates it started on a station
-        if (initialRobotState.lastVisitedStationKey) {
-            Logger.log(`Updating UI for starting station: ${initialRobotState.lastVisitedStationKey}`);
-            UI.updateFlagIndicatorUI(initialRobotState.lastVisitedStationKey);
+        // 6. Trigger Initial UI State Sync (Emit events or call UI functions once)
+        emit('robotMoved', Robot.getRobotState()); // Assuming setPosition doesn't emit if no change
+        emit('healthChanged', { health: Robot.getRobotState().health, maxHealth: Config.MAX_HEALTH });
+        emit('handUpdated', initialHandData);
+        if (Robot.getRobotState().lastVisitedStationKey) {
+            emit('flagVisited', Robot.getRobotState().lastVisitedStationKey);
         }
-
-        // 7. Setup Event Listeners
-        UI.setupUIListeners(GameLoop.runProgramExecution);
 
         Logger.log("Game Initialized Successfully.");
 
