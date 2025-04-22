@@ -72,44 +72,65 @@
             align-items: center;
             justify-content: center;
             font-size: 24px;
-            /* Default border (thin, light) - overridden by wall styles */
-            border: 1px solid #ddd;
+            position: relative; /* Keep for robot indicator */
         }
 
         /* --- Wall Styling --- */
         /* Define wall appearance */
-        :root { /* Define CSS variables for easy changes */
-            --wall-thickness: 3px;
-            --wall-color: #663300; /* Dark brown */
+        :root {
+            --wall-thickness: 3px; /* Keep this */
+            --wall-stripes: repeating-linear-gradient( /* Keep this */
+                45deg,
+                #FFD700, #FFD700 4px,
+                #333333 4px, #333333 8px
+            );
         }
 
-        .tile.wall-north {
-            border-top-width: var(--wall-thickness);
-            border-top-style: solid;
-            border-top-color: var(--wall-color);
+        /* Common style for wall pseudo-elements */
+        .tile.wall-north::before,
+        .tile.wall-south::before,
+        .tile.wall-east::after,
+        .tile.wall-west::after {
+            content: '';
+            position: absolute;
+            background: var(--wall-stripes); /* Apply the gradient background */
+            z-index: 1; /* Place walls visually above tile background but below robot */
         }
-        .tile.wall-south {
-            border-bottom-width: var(--wall-thickness);
-            border-bottom-style: solid;
-            border-bottom-color: var(--wall-color);
+
+        /* Horizontal Walls (Top/Bottom) - Use ::before */
+        .tile.wall-north::before {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--wall-thickness);
         }
-        .tile.wall-east {
-            border-right-width: var(--wall-thickness);
-            border-right-style: solid;
-            border-right-color: var(--wall-color);
+        .tile.wall-south::before {
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: var(--wall-thickness);
         }
-        .tile.wall-west {
-            border-left-width: var(--wall-thickness);
-            border-left-style: solid;
-            border-left-color: var(--wall-color);
+
+        /* Vertical Walls (Left/Right) - Use ::after */
+        .tile.wall-west::after {
+            top: 0;
+            left: 0;
+            width: var(--wall-thickness);
+            height: 100%;
+        }
+        .tile.wall-east::after {
+            top: 0;
+            right: 0; /* Position on the right edge */
+            width: var(--wall-thickness);
+            height: 100%;
         }
 
         /* --- Adjustments for specific tile types --- */
         /* Ensure default tile borders don't conflict badly */
-        .plain { border-color: #ddd; }
-        .conveyor { border-color: #88ccf1; }
-        .repair-station { border-color: #66cd66; }
-        .hole { border-color: #000; }
+        .plain { background-color: #eee; }
+        .conveyor { background-color: #aaddff; }
+        .repair-station { background-color: #90ee90; }
+        .hole { background-color: #222; }
 
         /* Add direction indicators (simple text for now) */
         .conveyor.right::after { content: '→'; }
