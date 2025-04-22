@@ -3,6 +3,8 @@ import * as Config from './config.js';
 // Import functions needed to update card state on drop
 import { getCardData, removeFromHandData, addToHandData } from './cards.js';
 import { on } from './eventEmitter.js';
+import * as Board from './board.js';
+import { TILE_CLASSES } from './config.js';
 import * as Logger from './logger.js';
 import { getHistory as getLogHistory } from './logger.js';
 
@@ -34,31 +36,44 @@ let draggedCardElement = null; // Track dragged DOM element during drag event
 /**
  * Creates the visual board tiles and flag indicators.
  * @param {object} boardData - Parsed board data from board.js.
- * @param {number} gridCols - Number of columns for index calculation.
+ * @param {number} gridCols - Number of columns (passed explicitly now).
  */
-export function createBoardUI(boardData, gridCols) {
-    factoryFloor.innerHTML = ''; // Clear board
+export function createBoardUI(boardData, gridCols) { // gridCols might be redundant if boardData has it
+    factoryFloor.innerHTML = '';
     factoryFloor.style.gridTemplateColumns = `repeat(${boardData.cols}, 50px)`;
     factoryFloor.style.gridTemplateRows = `repeat(${boardData.rows}, 50px)`;
 
-    // Clear flag indicators
     flagStatusContainer.querySelectorAll('.flag-indicator').forEach(el => el.remove());
 
     // Create Tiles
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
-            const tileData = boardData.tiles[r][c];
+            const tileData = Board.getTileData(r, c, boardData); // Use Board helper
+            if (!tileData) {
+                 Logger.error(`UI Error: Could not get tile data for (${r},${c}) during board creation.`);
+                 continue;
+            }
             const tileElement = document.createElement('div');
-            // Add all classes from parsed data
-            tileData.classes.forEach(cls => tileElement.classList.add(cls));
-            // Store row/col on element for potential debugging/easier lookup?
-            // tileElement.dataset.row = r;
-            // tileElement.dataset.col = c;
+
+            // Get classes based on tile type using config mapping
+            const typeChar = tileData.type;
+            const typeClasses = TILE_CLASSES[typeChar] || ['plain'];
+            const allClasses = ['tile', ...typeClasses];
+            allClasses.forEach(cls => tileElement.classList.add(cls));
+
+            if (tileData.walls && Array.isArray(tileData.walls)) {
+                if (tileData.walls.includes('north')) tileElement.classList.add('wall-north');
+                if (tileData.walls.includes('south')) tileElement.classList.add('wall-south');
+                if (tileData.walls.includes('east')) tileElement.classList.add('wall-east');
+                if (tileData.walls.includes('west')) tileElement.classList.add('wall-west');
+            }
+            // --- End Optional ---
+
             factoryFloor.appendChild(tileElement);
         }
     }
 
-    // Create Flag Indicators
+    // Create Flag Indicators (remains the same)
     boardData.repairStations.forEach(station => {
         const stationKey = `${station.row}-${station.col}`;
         const indicator = document.createElement('div');
@@ -68,7 +83,7 @@ export function createBoardUI(boardData, gridCols) {
         flagStatusContainer.appendChild(indicator);
     });
 
-    // Create Robot Element (but don't place it yet)
+    // Create Robot Element (remains the same)
     robotElement = document.createElement('div');
     robotElement.classList.add('robot');
     Logger.log("Board UI created.");

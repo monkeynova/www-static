@@ -8,22 +8,59 @@ import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
 
-// --- Define the specific board for this game instance ---
-const boardLayout = [
-    //   0123456789ABCDEF
-        "R >>>>>v         ", // 0
-        "    O  v         ", // 1
-        " ^<<<<<v   >>>>v ", // 2
-        " ^     v  O    v ", // 3
-        " ^ >>>>^       v ", // 4
-        "      O^  <<<v v ", // 5
-        "       ^     v v ", // 6
-        "       ^ >>>^v v ", // 7
-        "  O        ^     ", // 8
-        "           ^     ", // 9
-        "           ^>>>> ", // A (10)
-        "                R"  // B (11)
+// --- Define the board using objects ---
+const boardRows = 12;
+const boardCols = 17;
+const boardDataDefinition = [];
+
+// Helper to create a default tile object
+function createTileObject(type = ' ', walls = []) {
+    return { type, walls };
+}
+
+// Create the grid structure
+for (let r = 0; r < boardRows; r++) {
+    const row = [];
+    for (let c = 0; c < boardCols; c++) {
+        // Start with a plain tile, add walls later
+        row.push(createTileObject(' '));
+    }
+    boardDataDefinition.push(row);
+}
+
+// --- Apply Tile Types from the old layout (for initial setup) ---
+const oldLayout = [
+    "R >>>>>v         ", "    O  v         ", " ^<<<<<v   >>>>v ",
+    " ^     v  O    v ", " ^ >>>>^       v ", "      O^  <<<v v ",
+    "       ^     v v ", "       ^ >>>^v v ", "  O        ^     ",
+    "           ^     ", "           ^>>>> ", "                R"
 ];
+for (let r = 0; r < boardRows; r++) {
+    for (let c = 0; c < boardCols; c++) {
+        if (oldLayout[r] && oldLayout[r][c]) {
+            boardDataDefinition[r][c].type = oldLayout[r][c];
+        }
+    }
+}
+
+// --- Add Outer Boundary Walls ---
+for (let c = 0; c < boardCols; c++) {
+    boardDataDefinition[0][c].walls.push('north');       // Top edge
+    boardDataDefinition[boardRows - 1][c].walls.push('south'); // Bottom edge
+}
+for (let r = 0; r < boardRows; r++) {
+    boardDataDefinition[r][0].walls.push('west');        // Left edge
+    boardDataDefinition[r][boardCols - 1].walls.push('east'); // Right edge
+}
+
+// --- Example: Add an Internal Wall ---
+// Add a wall EAST of (1, 4) which is also WEST of (1, 5)
+if (boardDataDefinition[1] && boardDataDefinition[1][4]) {
+    boardDataDefinition[1][3].walls.push('east');
+}
+if (boardDataDefinition[1] && boardDataDefinition[1][5]) {
+    boardDataDefinition[1][4].walls.push('west');
+}
 
 // --- Define starting position ---
 // Could potentially find the first 'R' in the layout
@@ -37,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
         // 1. Process Board Data
-        const boardData = Board.parseBoardLayout(boardLayout);
+        const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
 
         // 2. Initialize Robot State (Do this BEFORE setBoardData needs it)
         Robot.initRobot(startRobotRow, startRobotCol, startRobotOrientation);
@@ -61,6 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Robot.getRobotState().lastVisitedStationKey) {
             emit('flagVisited', Robot.getRobotState().lastVisitedStationKey);
         }
+        // Emit initial counts
+        emit('cardCountsUpdated', {
+            deck: Cards.getDeckSize(),
+            discard: Cards.getDiscardSize(),
+            hand: Cards.getHandSize()
+        });
 
         Logger.log("Game Initialized Successfully.");
 

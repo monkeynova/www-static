@@ -67,24 +67,49 @@
         .tile {
             width: 50px;
             height: 50px;
-            box-sizing: border-box; /* Include padding/border in element's total width/height */
-            display: flex; /* For centering content later (like arrows or robots) */
+            box-sizing: border-box; /* IMPORTANT for borders */
+            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px; /* For potential symbols */
-        }
-
-        /* --- Tile Types --- */
-
-        .plain {
-            background-color: #eee; /* Light grey for plain floor */
+            font-size: 24px;
+            /* Default border (thin, light) - overridden by wall styles */
             border: 1px solid #ddd;
         }
 
-        .conveyor {
-            background-color: #aaddff; /* Light blue for conveyors */
-            border: 1px solid #88ccf1;
+        /* --- Wall Styling --- */
+        /* Define wall appearance */
+        :root { /* Define CSS variables for easy changes */
+            --wall-thickness: 3px;
+            --wall-color: #663300; /* Dark brown */
         }
+
+        .tile.wall-north {
+            border-top-width: var(--wall-thickness);
+            border-top-style: solid;
+            border-top-color: var(--wall-color);
+        }
+        .tile.wall-south {
+            border-bottom-width: var(--wall-thickness);
+            border-bottom-style: solid;
+            border-bottom-color: var(--wall-color);
+        }
+        .tile.wall-east {
+            border-right-width: var(--wall-thickness);
+            border-right-style: solid;
+            border-right-color: var(--wall-color);
+        }
+        .tile.wall-west {
+            border-left-width: var(--wall-thickness);
+            border-left-style: solid;
+            border-left-color: var(--wall-color);
+        }
+
+        /* --- Adjustments for specific tile types --- */
+        /* Ensure default tile borders don't conflict badly */
+        .plain { border-color: #ddd; }
+        .conveyor { border-color: #88ccf1; }
+        .repair-station { border-color: #66cd66; }
+        .hole { border-color: #000; }
 
         /* Add direction indicators (simple text for now) */
         .conveyor.right::after { content: '→'; }

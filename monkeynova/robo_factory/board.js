@@ -3,50 +3,62 @@ import { TILE_CLASSES } from './config.js';
 import * as Logger from './logger.js';
 
 /**
- * Parses the board layout string array.
- * @param {string[]} boardLayout - Array of strings representing the board.
+ * Parses the board layout defined as an array of objects.
+ * @param {object[][]} boardDefinition - 2D array of tile objects {type, walls}.
  * @returns {object} { rows, cols, repairStations, tiles }
  */
-export function parseBoardLayout(boardLayout) {
-    if (!boardLayout || boardLayout.length === 0) {
-        throw new Error("Board layout is empty or invalid.");
+export function parseBoardObjectDefinition(boardDefinition) {
+    if (!boardDefinition || boardDefinition.length === 0 || !boardDefinition[0] || boardDefinition[0].length === 0) {
+        throw new Error("Board definition is empty or invalid.");
     }
-    const rows = boardLayout.length;
-    const cols = boardLayout[0].length;
+    const rows = boardDefinition.length;
+    const cols = boardDefinition[0].length;
     const repairStations = [];
-    const tiles = []; // Store parsed data for each tile
+    const tiles = []; // Store processed data for each tile
+
+    Logger.log(`Parsing ${rows}x${cols} object board definition...`);
 
     for (let r = 0; r < rows; r++) {
-        if (boardLayout[r].length !== cols) {
-            throw new Error(`Board layout row ${r} has inconsistent length.`);
+        if (!boardDefinition[r] || boardDefinition[r].length !== cols) {
+            throw new Error(`Board definition row ${r} has inconsistent length or is missing.`);
         }
         const rowTiles = [];
         for (let c = 0; c < cols; c++) {
-            const char = boardLayout[r][c];
-            const classes = TILE_CLASSES[char] || ['plain']; // Default to plain
+            const tileDef = boardDefinition[r][c];
+            if (!tileDef || typeof tileDef.type === 'undefined') {
+                 throw new Error(`Invalid tile definition at (${r}, ${c})`);
+            }
+
+            const typeChar = tileDef.type;
+            const classes = TILE_CLASSES[typeChar] || ['plain']; // Get classes from config
+            const walls = Array.isArray(tileDef.walls) ? tileDef.walls : []; // Ensure walls is an array
+
             const tileData = {
-                char: char,
+                type: typeChar, // Store original type character
                 classes: ['tile', ...classes], // Include base 'tile' class
+                walls: walls, // Store the walls defined for this tile
                 row: r,
                 col: c
             };
             rowTiles.push(tileData);
 
-            if (char === 'R') {
+            if (typeChar === 'R') {
                 repairStations.push({ row: r, col: c });
             }
         }
         tiles.push(rowTiles);
     }
-    Logger.log(`Parsed board: ${rows}x${cols}. Found ${repairStations.length} repair stations.`);
+    Logger.log(`Parsed board. Found ${repairStations.length} repair stations.`);
+    // Note: Wall consistency (east wall of A matching west wall of B) is assumed
+    // to be handled correctly in the definition for now.
     return { rows, cols, repairStations, tiles };
 }
 
 /**
- * Gets the parsed data for a specific tile.
+ * Gets the processed data for a specific tile.
  * @param {number} r - Row index.
  * @param {number} c - Column index.
- * @param {object} boardData - The object returned by parseBoardLayout.
+ * @param {object} boardData - The object returned by parseBoardObjectDefinition.
  * @returns {object|null} Tile data object or null if out of bounds.
  */
 export function getTileData(r, c, boardData) {
@@ -55,4 +67,30 @@ export function getTileData(r, c, boardData) {
         return null; // Out of bounds
     }
     return boardData.tiles[r][c];
+}
+
+/**
+ * Checks if there is a wall on a specific side of a given tile.
+ * @param {number} r - Tile's row index.
+ * @param {number} c - Tile's column index.
+ * @param {'north' | 'south' | 'east' | 'west'} side - The side to check.
+ * @param {object} boardData - The object returned by parseBoardObjectDefinition.
+ * @returns {boolean} True if a wall exists on that side.
+ */
+export function hasWall(r, c, side, boardData) {
+    const tileData = getTileData(r, c, boardData);
+    if (!tileData || !tileData.walls) {
+        // If tile doesn't exist or has no wall data, assume no wall for safety? Or throw error?
+        // Let's assume no wall if tile data is missing, but log a warning.
+        // Logger.warn(`Checking wall on non-existent tile or tile without wall data at (${r}, ${c})`);
+        return false;
+    }
+
+    // Direct check on the specified tile's wall array
+    return tileData.walls.includes(side);
+
+    // Note: This assumes the definition is consistent. E.g., if tile A has 'east' wall,
+    // tile B (to its east) should have 'west' wall defined.
+    // A more robust check could look at both adjacent tiles, but relies heavily
+    // on the definition being perfectly symmetrical. Let's stick to the simpler check for now.
 }

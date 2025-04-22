@@ -17,7 +17,7 @@ export function setBoardData(boardData) {
     // Check if robot starts on a station and update state/UI
     const initialState = Robot.getRobotState();
     const startTileData = Board.getTileData(initialState.row, initialState.col, gameBoardData);
-    if (startTileData && startTileData.char === 'R') {
+    if (startTileData && startTileData.type === 'R') {
         const key = `${initialState.row}-${initialState.col}`;
         visitedRepairStations.add(key);
         Robot.setLastVisitedStation(key);
@@ -44,31 +44,35 @@ async function applyBoardEffects() {
     if (currentTileData.classes.includes('conveyor')) {
         let dr = 0, dc = 0;
         let direction = '';
-        // Determine direction from classes
-        if (currentTileData.classes.includes('up')) { dr = -1; direction = 'Up'; }
-        else if (currentTileData.classes.includes('down')) { dr = 1; direction = 'Down'; }
-        else if (currentTileData.classes.includes('left')) { dc = -1; direction = 'Left'; }
-        else if (currentTileData.classes.includes('right')) { dc = 1; direction = 'Right'; }
+        let wallSideToCheck = null; // Which side of the *current* tile blocks this move?
+
+        if (currentTileData.classes.includes('up'))    { dr = -1; direction = 'Up'; wallSideToCheck = 'north'; }
+        else if (currentTileData.classes.includes('down'))  { dr = 1;  direction = 'Down'; wallSideToCheck = 'south'; }
+        else if (currentTileData.classes.includes('left'))  { dc = -1; direction = 'Left'; wallSideToCheck = 'west'; }
+        else if (currentTileData.classes.includes('right')) { dc = 1;  direction = 'Right'; wallSideToCheck = 'east'; }
 
         if (direction) {
             const targetRow = robotState.row + dr;
             const targetCol = robotState.col + dc;
-            const targetTileData = Board.getTileData(targetRow, targetCol, gameBoardData);
 
-            // Basic check: is target tile valid? (Add wall check later)
-            if (targetTileData /* && !targetTileData.classes.includes('wall') */) {
+            // Check boundaries AND walls before moving
+            const targetTileData = Board.getTileData(targetRow, targetCol, gameBoardData);
+            const isBlocked = Board.hasWall(robotState.row, robotState.col, wallSideToCheck, gameBoardData);
+
+            if (targetTileData && !isBlocked) { // Check target exists AND path isn't blocked
                 Logger.log(`   Activating conveyor (${direction}) to (${targetRow}, ${targetCol})`);
-                Robot.setPosition(targetRow, targetCol); // Update state
+                Robot.setPosition(targetRow, targetCol);
                 boardMoved = true;
-                await sleep(400); // Visual delay
-                // Update state vars for subsequent checks this turn
+                await sleep(400);
                 robotState = Robot.getRobotState();
                 currentTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
+            } else if (isBlocked) {
+                Logger.log(`   Conveyor move (${direction}) failed: Hit wall.`);
             } else {
-                Logger.log("   Conveyor move failed: Hit boundary or obstacle.");
+                Logger.log(`   Conveyor move (${direction}) failed: Hit boundary.`);
             }
         }
-    }
+    } // End Conveyor
 
     // Re-check tile data in case conveyor moved robot
     if (!currentTileData) {
@@ -180,31 +184,27 @@ export async function runProgramExecution() {
             const stepType = cardData.type === 'back1' ? -1 : 1; // -1 for back, 1 for move
 
             for (let moveStep = 0; moveStep < moveCount; moveStep++) {
-                // Calculate where the robot *would* go
+                // Calculate target and check boundaries/walls
                 const moveTarget = Robot.calculateMoveTarget(stepType, gameBoardData);
 
                 if (moveTarget.success) {
-                    // Check for obstacles on the target tile BEFORE moving state/UI
-                    const targetTileData = Board.getTileData(moveTarget.targetRow, moveTarget.targetCol, gameBoardData);
-
-                    // Example Obstacle Check (add 'wall' to TILE_CLASSES later)
-                    // if (targetTileData && targetTileData.classes.includes('wall')) {
-                    //    Logger.log(`   Move blocked by wall at (${moveTarget.targetRow}, ${moveTarget.targetCol}).`);
-                    //    if (moveCount > 1) break; // Stop Move 2 if first step blocked
-                    //    continue; // Skip this step if blocked
-                    // }
-
-                    // If not blocked, proceed with move
+                    // No need for extra obstacle check here, calculateMoveTarget did it
                     Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
-                    Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Update state
+                    Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
+                    const currentOrientation = Robot.getRobotState().orientation;
+                    // UI update is handled by event listener now
+                    // UI.updateRobotVisualsUI(moveTarget.targetRow, moveTarget.targetCol, currentOrientation, gameBoardData.cols);
                     cardMoved = true;
-                    if (moveCount > 1) await sleep(500); // Delay between steps of Move 2
-
-                } else { // Move failed boundary check
-                    Logger.log("   Move failed: Hit boundary.");
+                    if (moveCount > 1) await sleep(500);
+                } else { // Move failed boundary or wall check
+                    if (moveTarget.blockedByWall) {
+                        Logger.log("   Move failed: Hit wall.");
+                    } else {
+                        Logger.log("   Move failed: Hit boundary.");
+                    }
                     if (moveCount > 1) break; // Stop Move 2 if first step fails
                 }
-            } // End loop for move steps (for Move 2)
+            } // End loop for move steps
         } // End movement card logic
 
         // Delay after card action completes

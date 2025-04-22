@@ -2,6 +2,7 @@
 import { orientations, MAX_HEALTH } from './config.js';
 import * as Logger from './logger.js';
 import * as Config from './config.js';
+import * as Board from './board.js';
 import { emit } from './eventEmitter.js';
 
 // Internal state - not directly exported
@@ -55,30 +56,45 @@ export function turn(direction) {
 
 /**
  * Calculates the target coordinates for a move attempt.
- * Does NOT change the robot's state.
+ * Checks boundaries and walls. Does NOT change the robot's state.
  * @param {number} steps - Number of steps (+ve forward, -ve backward).
- * @param {object} boardData - Parsed board data for boundary checks.
- * @returns {object} { targetRow, targetCol, success: boolean }
+ * @param {object} boardData - Parsed board data for boundary/wall checks.
+ * @returns {object} { targetRow, targetCol, success: boolean, blockedByWall: boolean }
  */
 export function calculateMoveTarget(steps, boardData) {
     let dr = 0, dc = 0;
-    const moveDir = steps > 0 ? 1 : -1; // 1 for forward/move2, -1 for back1
+    const moveDir = steps > 0 ? 1 : -1;
+    let wallSideToCheck = null; // Which side of the *current* tile blocks this move?
 
     switch (state.orientation) {
-        case 'north': dr = -moveDir; break;
-        case 'east':  dc = moveDir;  break;
-        case 'south': dr = moveDir;  break;
-        case 'west':  dc = -moveDir; break;
+        case 'north': dr = -moveDir; wallSideToCheck = 'north'; break;
+        case 'east':  dc = moveDir;  wallSideToCheck = 'east';  break;
+        case 'south': dr = moveDir;  wallSideToCheck = 'south'; break;
+        case 'west':  dc = -moveDir; wallSideToCheck = 'west';  break;
     }
 
     const targetRow = state.row + dr;
     const targetCol = state.col + dc;
 
-    // Check boundaries
-    const isValid = targetRow >= 0 && targetRow < boardData.rows &&
-                    targetCol >= 0 && targetCol < boardData.cols;
+    // 1. Check Boundaries
+    const isInBounds = targetRow >= 0 && targetRow < boardData.rows &&
+                       targetCol >= 0 && targetCol < boardData.cols;
 
-    return { targetRow, targetCol, success: isValid };
+    if (!isInBounds) {
+        return { targetRow, targetCol, success: false, blockedByWall: false };
+    }
+
+    // 2. Check Walls (only if in bounds)
+    // Check the wall on the side of the *current* tile that leads to the target tile.
+    const isBlocked = Board.hasWall(state.row, state.col, wallSideToCheck, boardData);
+
+    if (isBlocked) {
+        Logger.log(`Move from (${state.row}, ${state.col}) towards ${wallSideToCheck} blocked by wall.`);
+        return { targetRow, targetCol, success: false, blockedByWall: true };
+    }
+
+    // If in bounds and not blocked by wall
+    return { targetRow, targetCol, success: true, blockedByWall: false };
 }
 
 /**
