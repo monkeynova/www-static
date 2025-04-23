@@ -1,15 +1,12 @@
 // ui.js
 import * as Config from './config.js';
-// Import functions needed to update card state on drop
-import { getCardData, removeFromHandData, addToHandData } from './cards.js';
+import * as Board from './board.js'; // Need this for tile/wall data
 import { on } from './eventEmitter.js';
-import * as Board from './board.js';
-import { TILE_CLASSES } from './config.js';
 import * as Logger from './logger.js';
-import { getHistory as getLogHistory } from './logger.js';
+// Card imports remain if needed for drag/drop state updates
+import { getCardData, removeFromHandData, addToHandData } from './cards.js';
 
 // --- DOM Element References ---
-const factoryFloor = document.getElementById('factory-floor');
 const cardHandContainer = document.getElementById('card-hand');
 const programSlots = document.querySelectorAll('#program-slots .program-slot');
 const programSlotsContainer = document.getElementById('program-slots');
@@ -28,92 +25,226 @@ const debugDiscardCount = document.getElementById('debug-discard-count');
 const debugHandCount = document.getElementById('debug-hand-count');
 const debugCloseButton = document.getElementById('debug-close-button');
 const debugLogOutput = document.getElementById('debug-log-output'); // Add ref for log output area
+const boardContainer = document.getElementById('board-container'); // NEW
+const boardCanvas = document.getElementById('board-canvas');     // NEW
 
+// --- Canvas / Rendering State ---
+let ctx = null; // Canvas 2D context
 let robotElement = null; // Reference to the robot DOM element
 let draggedCardElement = null; // Track dragged DOM element during drag event
+let wallStripePattern = null; // Store the created pattern
 
 // --- Board UI ---
-/**
- * Creates the visual board tiles and flag indicators.
- * @param {object} boardData - Parsed board data from board.js.
- * @param {number} gridCols - Number of columns (passed explicitly now).
- */
-export function createBoardUI(boardData, gridCols) { // gridCols might be redundant if boardData has it
-    factoryFloor.innerHTML = '';
-    factoryFloor.style.gridTemplateColumns = `repeat(${boardData.cols}, 50px)`;
-    factoryFloor.style.gridTemplateRows = `repeat(${boardData.rows}, 50px)`;
+/** Initialize Canvas dimensions and context */
+export function initCanvas(boardData) {
+    if (!boardCanvas) {
+        Logger.error("Canvas element not found!");
+        return false;
+    }
+    try {
+        ctx = boardCanvas.getContext('2d');
+        if (!ctx) {
+             Logger.error("Failed to get 2D context from canvas!");
+             return false;
+        }
+        boardCanvas.width = boardData.cols * Config.TILE_SIZE;
+        boardCanvas.height = boardData.rows * Config.TILE_SIZE;
+        Logger.log(`Canvas initialized to ${boardCanvas.width}x${boardCanvas.height}`);
 
-    flagStatusContainer.querySelectorAll('.flag-indicator').forEach(el => el.remove());
+        // --- Create Wall Stripe Pattern ---
+        const patternCanvas = document.createElement('canvas');
+        const patternCtx = patternCanvas.getContext('2d');
+        const patternSize = 8; // Match the gradient repeat size
+        patternCanvas.width = patternSize;
+        patternCanvas.height = patternSize;
 
-    // Create Tiles
+        // Draw the pattern onto the small canvas (adjust colors/size)
+        patternCtx.fillStyle = '#333333'; // Background color of pattern
+        patternCtx.fillRect(0, 0, patternSize, patternSize);
+        patternCtx.strokeStyle = '#FFD700'; // Stripe color
+        patternCtx.lineWidth = 1.5; // Adjust for desired stripe thickness
+        patternCtx.beginPath();
+        // Draw diagonal lines for the pattern
+        for (let i = -patternSize; i < patternSize * 2; i += 4) { // Adjust spacing (4px here)
+             patternCtx.moveTo(i, -1);
+             patternCtx.lineTo(i + patternSize + 1, patternSize + 1);
+        }
+        patternCtx.stroke();
+        wallStripePattern = ctx.createPattern(patternCanvas, 'repeat');
+        Logger.log("Wall stripe pattern created.");
+        // --- End Pattern Creation ---
+
+        return true;
+    } catch (error) {
+        Logger.error("Error initializing canvas:", error);
+        return false;
+    }
+}
+
+/** Renders the entire static board (tiles, walls) onto the canvas */
+export function renderBoard(boardData) {
+    if (!ctx || !boardData) {
+        Logger.error("Cannot render board: Missing context or board data.");
+        return;
+    }
+    Logger.log("Rendering board to canvas...");
+    ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height); // Clear previous frame
+
+    // --- Get computed styles for colors (more robust than hardcoding) ---
+    const styles = getComputedStyle(document.documentElement);
+    const plainColor = styles.getPropertyValue('--tile-plain-color').trim() || '#eee';
+    const conveyorColor = styles.getPropertyValue('--tile-conveyor-color').trim() || '#aaddff';
+    const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
+    const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
+    const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
+    // Use pattern if available, otherwise fallback color
+    const wallFill = wallStripePattern || styles.getPropertyValue('--wall-solid-color').trim() || '#630';
+
+
+    // --- Draw Tiles ---
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
-            const tileData = Board.getTileData(r, c, boardData); // Use Board helper
-            if (!tileData) {
-                 Logger.error(`UI Error: Could not get tile data for (${r},${c}) during board creation.`);
-                 continue;
+            const tileData = Board.getTileData(r, c, boardData);
+            if (!tileData) continue;
+
+            const x = c * Config.TILE_SIZE;
+            const y = r * Config.TILE_SIZE;
+
+            // 1. Draw Tile Background Color
+            switch (tileData.type) {
+                case 'R': ctx.fillStyle = repairColor; break;
+                case 'O': ctx.fillStyle = holeColor; break;
+                case '^': case 'v': case '<': case '>':
+                    ctx.fillStyle = conveyorColor; break;
+                case ' ': default: ctx.fillStyle = plainColor; break;
             }
-            const tileElement = document.createElement('div');
+            ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
 
-            // Get classes based on tile type using config mapping
-            const typeChar = tileData.type;
-            const typeClasses = TILE_CLASSES[typeChar] || ['plain'];
-            const allClasses = ['tile', ...typeClasses];
-            allClasses.forEach(cls => tileElement.classList.add(cls));
+            // 2. Draw Symbols (Optional - can be kept in CSS if preferred)
+            ctx.fillStyle = '#333'; // Symbol color
+            ctx.font = '24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const centerX = x + Config.TILE_SIZE / 2;
+            const centerY = y + Config.TILE_SIZE / 2;
 
-            if (tileData.walls && Array.isArray(tileData.walls)) {
-                if (tileData.walls.includes('north')) tileElement.classList.add('wall-north');
-                if (tileData.walls.includes('south')) tileElement.classList.add('wall-south');
-                if (tileData.walls.includes('east')) tileElement.classList.add('wall-east');
-                if (tileData.walls.includes('west')) tileElement.classList.add('wall-west');
+            switch (tileData.type) {
+                case 'R': ctx.fillText('🔧', centerX, centerY); break;
+                case '>': ctx.fillText('→', centerX, centerY); break;
+                case '<': ctx.fillText('←', centerX, centerY); break;
+                case '^': ctx.fillText('↑', centerX, centerY); break;
+                case 'v': ctx.fillText('↓', centerX, centerY); break;
             }
-            // --- End Optional ---
-
-            factoryFloor.appendChild(tileElement);
         }
     }
 
-    // Create Flag Indicators (remains the same)
-    boardData.repairStations.forEach(station => {
+    // --- Draw Walls (Draw AFTER all tiles for correct layering) ---
+    ctx.fillStyle = wallFill;
+    for (let r = 0; r < boardData.rows; r++) {
+        for (let c = 0; c < boardData.cols; c++) {
+             const tileData = Board.getTileData(r, c, boardData);
+             if (!tileData || !tileData.walls) continue;
+
+             const x = c * Config.TILE_SIZE;
+             const y = r * Config.TILE_SIZE;
+
+             if (tileData.walls.includes('north')) {
+                 ctx.fillRect(x, y, Config.TILE_SIZE, wallThickness);
+             }
+             if (tileData.walls.includes('south')) {
+                 // Draw slightly offset so it doesn't overlap tile below's north wall
+                 ctx.fillRect(x, y + Config.TILE_SIZE - wallThickness, Config.TILE_SIZE, wallThickness);
+             }
+             if (tileData.walls.includes('west')) {
+                 ctx.fillRect(x, y, wallThickness, Config.TILE_SIZE);
+             }
+             if (tileData.walls.includes('east')) {
+                 // Draw slightly offset
+                 ctx.fillRect(x + Config.TILE_SIZE - wallThickness, y, wallThickness, Config.TILE_SIZE);
+             }
+        }
+    }
+    Logger.log("Board rendering complete.");
+}
+
+/** Creates the flag indicator DOM elements */
+export function createFlagIndicatorsUI(repairStations) {
+    if (!flagStatusContainer) {
+        Logger.error("UI Error: Flag status container not found.");
+        return;
+    }
+    // Clear any previous indicators
+    flagStatusContainer.querySelectorAll('.flag-indicator').forEach(el => el.remove());
+
+    if (!repairStations || repairStations.length === 0) {
+        Logger.warn("UI: No repair stations found in board data to create indicators for.");
+        return;
+    }
+
+    Logger.log(`UI: Creating indicators for ${repairStations.length} stations.`);
+    repairStations.forEach(station => {
         const stationKey = `${station.row}-${station.col}`;
         const indicator = document.createElement('div');
         indicator.classList.add('flag-indicator');
         indicator.dataset.stationKey = stationKey; // Link indicator to station data
-        indicator.textContent = Config.TILE_SYMBOLS['repair-station'] || '🔧'; // Use symbol from config
+        // Use symbol from config if available, otherwise fallback
+        const symbol = Config.TILE_SYMBOLS ? (Config.TILE_SYMBOLS['repair-station'] || '🔧') : '🔧';
+        indicator.textContent = symbol;
         flagStatusContainer.appendChild(indicator);
     });
-
-    // Create Robot Element (remains the same)
-    robotElement = document.createElement('div');
-    robotElement.classList.add('robot');
-    Logger.log("Board UI created.");
 }
 
-// --- UI Update Functions ---
+/** Creates the robot DOM element and appends it to the container */
+export function createRobotElement() {
+    if (robotElement) { // Avoid creating multiple robots
+        robotElement.remove();
+    }
+    robotElement = document.createElement('div');
+    robotElement.id = 'robot-element'; // Assign an ID
+    robotElement.className = 'robot'; // Use class for base styling
+
+    // Add orientation indicator structure if needed (CSS handles the ::before)
+
+    if (boardContainer) {
+        boardContainer.appendChild(robotElement);
+        Logger.log("Robot DOM element created.");
+    } else {
+        Logger.error("Cannot create robot element: boardContainer not found.");
+    }
+}
 
 /**
- * Updates the robot's position and orientation in the UI.
+ * Updates the robot's position and orientation in the UI (DOM element).
  * @param {number} row
  * @param {number} col
  * @param {string} orientation
- * @param {number} gridCols - Needed for index calculation.
  */
-export function updateRobotVisualsUI(row, col, orientation, gridCols) {
+export function updateRobotVisualsUI(row, col, orientation) {
     if (!robotElement) {
-        Logger.error("UI Error: Robot element not created yet.");
+        Logger.error("UI Error: Robot element not ready for update.");
         return;
     }
-    const tileElement = getTileElementUI(row, col, gridCols); // Get tile DOM element
-    if (tileElement) {
-        // Update orientation class
-        robotElement.classList.remove('facing-north', 'facing-east', 'facing-south', 'facing-west');
-        robotElement.classList.add(`facing-${orientation}`);
-        // Move element
-        tileElement.appendChild(robotElement);
-    } else {
-        Logger.error(`UI Error: Cannot find tile element at (${row}, ${col}) to move robot.`);
-    }
+
+    // Calculate pixel position (top-left corner of the robot)
+    const robotStyle = getComputedStyle(robotElement);
+    const robotWidth = parseInt(robotStyle.width) || 35; // Get actual size
+    const robotHeight = parseInt(robotStyle.height) || 35;
+
+    // Center the robot within the tile
+    const targetX = col * Config.TILE_SIZE + (Config.TILE_SIZE - robotWidth) / 2;
+    const targetY = row * Config.TILE_SIZE + (Config.TILE_SIZE - robotHeight) / 2;
+
+    // Apply styles
+    robotElement.style.left = `${targetX}px`;
+    robotElement.style.top = `${targetY}px`;
+
+    // Update orientation class for rotation (CSS handles ::before rotation)
+    robotElement.className = `robot facing-${orientation}`; // Reset classes and add current
+
+    // Logger.log(`UI: Moved robot to (${row}, ${col}), facing ${orientation}`);
 }
+
+// --- UI Update Functions ---
 
 /**
  * Updates the card hand display based on provided card data.
@@ -281,13 +412,20 @@ function handleDrop(e) {
     const dropTarget = e.target.closest('.program-slot, #card-hand');
 
     // Ensure we have the element that was actually dragged (from dragstart)
-    if (!dropTarget || !draggedCardElement) {
-         Logger.warn("Drop failed: No drop target or dragged element reference.");
+    if (!dropTarget) {
+         Logger.warn("Drop failed: No drop target.");
          // Ensure dragging class is removed if dragend didn't fire correctly
          if(draggedCardElement) draggedCardElement.classList.remove('dragging');
          draggedCardElement = null;
          return;
     }
+    if (!draggedCardElement) {
+        Logger.warn("Drop failed: No dragged element reference.");
+        // Ensure dragging class is removed if dragend didn't fire correctly
+        if(draggedCardElement) draggedCardElement.classList.remove('dragging');
+        draggedCardElement = null;
+        return;
+   }
 
     dropTarget.classList.remove('drag-over'); // Remove highlight
 
@@ -399,7 +537,7 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
         });
     }
 
-    subscribeToModelEvents(boardData); // Setup model listeners
+    subscribeToModelEvents(); // Setup model listeners
 
     // Initial check for button state after setup
     checkProgramReady();
@@ -408,10 +546,10 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
 
 function subscribeToModelEvents(boardData) { // Pass needed static data like gridCols
     on('robotMoved', ({ row, col, orientation }) => {
-        updateRobotVisualsUI(row, col, orientation, boardData.cols);
+        updateRobotVisualsUI(row, col, orientation);
     });
     on('robotTurned', ({ row, col, orientation }) => {
-        updateRobotVisualsUI(row, col, orientation, boardData.cols); // Same UI update needed
+        updateRobotVisualsUI(row, col, orientation); // Same UI update needed
     });
     on('healthChanged', ({ health, maxHealth }) => {
         updateHealthUI(health, maxHealth);

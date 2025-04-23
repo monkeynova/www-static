@@ -50,117 +50,36 @@
             content: '🔧'; /* Wrench symbol */
             color: #333;
         }
-            
-        #factory-floor {
-            /* Define the grid */
-            display: grid;
-            /* NEW: 16 columns, each 50px wide */
-            grid-template-columns: repeat(16, 50px);
-            /* NEW: 12 rows, each 50px high */
-            grid-template-rows: repeat(12, 50px);
-            gap: 1px; /* Small gap between tiles */
-            border: 2px solid #333; /* Border around the factory floor */
-            background-color: #ccc; /* Background for the gaps */
-            gap: 1px;
+
+        #board-container {
+            position: relative; /* Crucial for positioning robot */
+            width: fit-content; /* Size to canvas */
+            height: fit-content;
+            line-height: 0; /* Prevent extra space below canvas */
         }
 
-        .tile {
-            width: 50px;
-            height: 50px;
-            box-sizing: border-box; /* IMPORTANT for borders */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            position: relative; /* Keep for robot indicator */
+        #board-canvas {
+            display: block; /* Prevent extra space */
+            /* Border and background set inline for simplicity, or style here */
+            /* border: 2px solid #333; */
+            /* background-color: #ccc; */
         }
 
-        /* --- Wall Styling --- */
-        /* Define wall appearance */
-        :root {
-            --wall-thickness: 3px; /* Keep this */
-            --wall-stripes: repeating-linear-gradient( /* Keep this */
-                45deg,
-                #FFD700, #FFD700 4px,
-                #333333 4px, #333333 8px
-            );
-        }
-
-        /* Common style for wall pseudo-elements */
-        .tile.wall-north::before,
-        .tile.wall-south::before,
-        .tile.wall-east::after,
-        .tile.wall-west::after {
-            content: '';
-            position: absolute;
-            background: var(--wall-stripes); /* Apply the gradient background */
-            z-index: 1; /* Place walls visually above tile background but below robot */
-        }
-
-        /* Horizontal Walls (Top/Bottom) - Use ::before */
-        .tile.wall-north::before {
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: var(--wall-thickness);
-        }
-        .tile.wall-south::before {
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: var(--wall-thickness);
-        }
-
-        /* Vertical Walls (Left/Right) - Use ::after */
-        .tile.wall-west::after {
-            top: 0;
-            left: 0;
-            width: var(--wall-thickness);
-            height: 100%;
-        }
-        .tile.wall-east::after {
-            top: 0;
-            right: 0; /* Position on the right edge */
-            width: var(--wall-thickness);
-            height: 100%;
-        }
-
-        /* --- Adjustments for specific tile types --- */
-        /* Ensure default tile borders don't conflict badly */
-        .plain { background-color: #eee; }
-        .conveyor { background-color: #aaddff; }
-        .repair-station { background-color: #90ee90; }
-        .hole { background-color: #222; }
-
-        /* Add direction indicators (simple text for now) */
-        .conveyor.right::after { content: '→'; }
-        .conveyor.left::after  { content: '←'; }
-        .conveyor.up::after    { content: '↑'; }
-        .conveyor.down::after  { content: '↓'; }
-
-        /* NEW: Hole Tile */
-        .hole {
-            background-color: #222; /* Dark grey / black for holes */
-            border: 1px solid #000;
-        }
-        /* Ensure hole doesn't show conveyor/repair symbols */
-        .hole::after {
-            content: '';
-        }
-
-        /* Example: Add a robot visually (can be improved later) */
         .robot {
-            background-color: #f9a; /* Pinkish color for robot */
-            border-radius: 50%; /* Make it round */
-            width: 70%;
-            height: 70%;
-            z-index: 10; /* Ensure robot is above tile content */
-            position: relative; /* Needed for absolute positioning of pseudo-element */
-            box-shadow: 0 0 3px rgba(0,0,0,0.5); /* Optional: slight shadow */
+            position: absolute; /* Position over the canvas */
+            /* Define size in pixels (e.g., 70% of TILE_SIZE) */
+            width: 35px; /* Example: 70% of 50px */
+            height: 35px; /* Example: 70% of 50px */
+            background-color: #f9a;
+            border-radius: 50%;
+            z-index: 10; /* Ensure robot is above canvas */
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+            /* Center the rotation */
+            transform-origin: center center;
+            /* Smooth transitions for movement and rotation */
+            transition: top 0.1s linear, left 0.1s linear, transform 0.3s ease;
+            /* ::before for orientation indicator remains the same */
         }
-        .robot::after { content: ''; } /* Override conveyor arrows if robot is present */
-
-        /* NEW: Robot Orientation Indicator (Triangle) */
         .robot::before {
             content: '';
             position: absolute;
@@ -196,6 +115,21 @@
             transform: translate(-50%, -50%) rotate(180deg);
             left: 10%;
             top: 50%;
+        }
+
+        :root {
+            --wall-thickness: 3px;
+            --wall-stripes: repeating-linear-gradient(
+                45deg,
+                #FFD700, #FFD700 4px,
+                #333333 4px, #333333 8px
+            );
+            /* Add solid colors for canvas drawing */
+            --tile-plain-color: #eee;
+            --tile-conveyor-color: #aaddff;
+            --tile-repair-color: #90ee90;
+            --tile-hole-color: #222;
+            --wall-solid-color: #663300; /* Fallback/alternative */
         }
 
         /* --- Controls Area --- */
@@ -551,8 +485,12 @@
         </div> <!-- End #left-panel -->
 
         <!-- Factory Floor (remains as a direct child of game-container) -->
-        <div id="factory-floor">
-            <!-- Tiles will be generated here by JavaScript -->
+        <div id="board-container" style="position: relative; line-height: 0;"> <!-- Container for canvas + robot -->
+            <canvas id="board-canvas" style="border: 2px solid #333; background-color: #ccc;">
+                <!-- Fallback content for browsers that don't support Canvas -->
+                Your browser does not support the HTML canvas element.
+            </canvas>
+            <!-- Robot div will be added here by JS -->
         </div>
 
     </div> <!-- End #game-container -->

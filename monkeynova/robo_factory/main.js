@@ -76,34 +76,43 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Process Board Data
         const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
 
-        // 2. Initialize Robot State (Do this BEFORE setBoardData needs it)
+        // 2. Initialize Robot State
         Robot.initRobot(startRobotRow, startRobotCol, startRobotOrientation);
 
-        // 3. Set Board Data in Game Loop (Updates internal state like visited stations)
-        GameLoop.setBoardData(boardData); // Now only updates state
+        // 3. Set Board Data in Game Loop (Internal state)
+        GameLoop.setBoardData(boardData);
 
         // 4. Initialize Deck and Hand State
-        const initialHandData = Cards.initDeckAndHand(); // Emits 'handUpdated' internally? If not, emit here.
+        const initialHandData = Cards.initDeckAndHand(); // Emits events
 
-        // 5. Setup Event Listeners in UI BEFORE initial UI updates
-        UI.setupUIListeners(GameLoop.runProgramExecution, boardData);
+        // 5. Setup Event Listeners in UI (BEFORE initial draw/sync)
+        UI.setupUIListeners(GameLoop.runProgramExecution);
 
-        // 6. Create Board UI
-        UI.createBoardUI(boardData, boardData.cols);
-
-        // 6. Trigger Initial UI State Sync (Emit events or call UI functions once)
-        emit('robotMoved', Robot.getRobotState()); // Assuming setPosition doesn't emit if no change
-        emit('healthChanged', { health: Robot.getRobotState().health, maxHealth: Config.MAX_HEALTH });
-        emit('handUpdated', initialHandData);
-        if (Robot.getRobotState().lastVisitedStationKey) {
-            emit('flagVisited', Robot.getRobotState().lastVisitedStationKey);
+        // 6. Initialize Canvas
+        if (!UI.initCanvas(boardData)) {
+             throw new Error("Canvas initialization failed.");
         }
-        // Emit initial counts
-        emit('cardCountsUpdated', {
-            deck: Cards.getDeckSize(),
-            discard: Cards.getDiscardSize(),
-            hand: Cards.getHandSize()
-        });
+
+        // 7. Render Static Board on Canvas
+        UI.renderBoard(boardData);
+
+        // 8. Create Flag Indicator DOM Elements <<< NEW STEP
+        UI.createFlagIndicatorsUI(boardData.repairStations);
+
+        // 9. Create Robot DOM Element
+        UI.createRobotElement();
+
+        // 10. Trigger Initial UI State Sync (Direct Calls)
+        Logger.log("Performing initial UI sync...");
+        const initialRobotState = Robot.getRobotState();
+        UI.updateRobotVisualsUI(initialRobotState.row, initialRobotState.col, initialRobotState.orientation);
+        UI.updateHealthUI(initialRobotState.health, Config.MAX_HEALTH);
+        UI.updateHandUI(initialHandData); // Handled by event
+        if (initialRobotState.lastVisitedStationKey) {
+            // This call should now succeed because the elements were created in step 8
+            UI.updateFlagIndicatorUI(initialRobotState.lastVisitedStationKey);
+        }
+        // UI.updateDebugCountsUI({...}); // Counts handled by event
 
         Logger.log("Game Initialized Successfully.");
 

@@ -2,6 +2,7 @@
 export const HAND_SIZE = 7;
 export const PROGRAM_SIZE = 5;
 export const MAX_HEALTH = 10;
+export const TILE_SIZE = 50; // Define tile size in pixels
 
 // Board dimensions (can be derived, but useful for reference)
 // export const GRID_ROWS = 12; // Derived from layout in main.js now
