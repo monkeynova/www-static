@@ -56,27 +56,21 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Set Board Data in Game Loop (Internal state)
         GameLoop.setBoardData(boardData);
 
-        // 4. Setup Event Listeners in UI (BEFORE initial draw/sync)
-        UI.setupUIListeners(GameLoop.runProgramExecution);
-
-        // 5. Initialize Deck and Hand State
-        const initialHandData = Cards.initDeckAndHand(); // Emits events
-
-        // 6. Initialize Canvas
-        if (!UI.initCanvas(boardData)) {
-             throw new Error("Canvas initialization failed.");
+        // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
+        // This replaces initCanvas, renderBoard, createFlags, createRobot
+        if (!UI.initializeUI(boardData)) {
+            throw new Error("UI Initialization failed.");
         }
 
-        // 7. Render Static Board on Canvas
-        UI.renderBoard(boardData);
+        // 5. Setup UI Listeners (Subscribes UI to future events)
+        // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
+        // and AFTER model init if listeners need initial state immediately (less common).
+        UI.setupUIListeners(GameLoop.runProgramExecution);
 
-        // 8. Create Flag Indicator DOM Elements <<< NEW STEP
-        UI.createFlagIndicatorsUI(boardData.repairStations);
+        // 6. Initialize Deck and Hand State
+        Cards.initDeckAndHand(); // Emits events
 
-        // 9. Create Robot DOM Element
-        UI.createRobotElement();
-
-        // --- 10. Emit Initial State Events (Replaces Direct UI Calls) ---
+        // 7. Trigger Initial Visual State Sync (Emit events NOW that UI is listening)
         Logger.log("Emitting initial state events for UI sync...");
         const initialRobotState = Robot.getRobotState();
 
@@ -92,11 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
             health: initialRobotState.health,
             maxHealth: Config.MAX_HEALTH
         });
-
         // Emit starting flag visit status (if applicable)
         if (initialRobotState.lastVisitedStationKey) {
             emit('flagVisited', initialRobotState.lastVisitedStationKey);
         }
+        // Emit initial counts explicitly after listeners are set up
+        emit('cardCountsUpdated', {
+            deck: Cards.getDeckSize(),
+            discard: Cards.getDiscardSize(),
+            hand: Cards.getHandSize()
+       });
 
         Logger.log("Game Initialized Successfully.");
 

@@ -196,9 +196,6 @@ export async function runProgramExecution() {
                     // No need for extra obstacle check here, calculateMoveTarget did it
                     Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
                     Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
-                    const currentOrientation = Robot.getRobotState().orientation;
-                    // UI update is handled by event listener now
-                    // UI.updateRobotVisualsUI(moveTarget.targetRow, moveTarget.targetCol, currentOrientation, gameBoardData.cols);
                     cardMoved = true;
                     if (moveCount > 1) await sleep(500);
                 } else { // Move failed boundary or wall check

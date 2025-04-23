@@ -115,7 +115,22 @@ let robotElement = null; // Reference to the robot DOM element
 let draggedCardElement = null; // Track dragged DOM element during drag event
 let wallStripePattern = null; // Store the created pattern
 
-// --- Board UI ---
+/**
+ * Initializes the entire game UI (canvas, static board, indicators, robot element).
+ * Should be called once during application startup.
+ * @param {object} boardData - Parsed board data.
+ * @returns {boolean} True if initialization was successful, false otherwise.
+ */
+export function initializeUI(boardData) {
+    Logger.log("Initializing UI...");
+    if (!initCanvas(boardData)) return false; // Init canvas size/context
+    renderBoard(boardData);                 // Draw static board
+    createFlagIndicatorsUI(boardData.repairStations); // Create flag DOM elements
+    createRobotElement();                   // Create robot DOM element
+    Logger.log("UI Initialization complete.");
+    return true;
+}
+
 /** Initialize Canvas dimensions and context */
 export function initCanvas(boardData) {
     if (!boardCanvas) {
@@ -320,7 +335,7 @@ export function createRobotElement() {
  * @param {number} col
  * @param {string} orientation
  */
-export function updateRobotVisualsUI(row, col, orientation) {
+function updateRobotVisualsUI(row, col, orientation) {
     if (!robotElement) {
         Logger.error("UI Error: Robot element not ready for update.");
         return;
@@ -351,7 +366,7 @@ export function updateRobotVisualsUI(row, col, orientation) {
  * Updates the card hand display based on provided card data.
  * @param {object[]} handCardsData - Array of card data objects from cards.js.
  */
-export function updateHandUI(handCardsData) {
+function updateHandUI(handCardsData) {
     cardHandContainer.innerHTML = ''; // Clear current UI cards
     if (!handCardsData) {
         Logger.warn("updateHandUI called with null/undefined hand data.");
@@ -370,7 +385,7 @@ export function updateHandUI(handCardsData) {
 }
 
 /** Clears program slots and shows numbers. */
-export function resetProgramSlotsUI() {
+function resetProgramSlotsUI() {
     programSlots.forEach((slot, index) => {
         slot.innerHTML = `${index + 1}`; // Restore number
         slot.className = 'program-slot drop-zone'; // Reset classes, keep drop-zone
@@ -379,7 +394,7 @@ export function resetProgramSlotsUI() {
 }
 
 /** Updates the health display. */
-export function updateHealthUI(health, maxHealth) {
+function updateHealthUI(health, maxHealth) {
     if (healthValueEl && maxHealthValueEl) {
         healthValueEl.textContent = health;
         maxHealthValueEl.textContent = maxHealth;
@@ -388,7 +403,7 @@ export function updateHealthUI(health, maxHealth) {
 }
 
 /** Marks a flag indicator as visited. */
-export function updateFlagIndicatorUI(stationKey) {
+function updateFlagIndicatorUI(stationKey) {
     const indicator = flagStatusContainer.querySelector(`.flag-indicator[data-station-key="${stationKey}"]`);
     if (indicator) {
         indicator.classList.add('visited');
@@ -398,7 +413,7 @@ export function updateFlagIndicatorUI(stationKey) {
 }
 
 /** Shows the end game modal. */
-export function showModalUI(isWin) {
+function showModalUI(isWin) {
     if (modal && modalTitleEl && modalMessageEl) {
         modalTitleEl.textContent = isWin ? "You Win!" : "Robot Destroyed!";
         modalTitleEl.className = isWin ? 'win' : 'loss'; // Add class for styling
@@ -408,7 +423,7 @@ export function showModalUI(isWin) {
 }
 
 /** Hides the end game modal. */
-export function hideModalUI() {
+function hideModalUI() {
     if (modal) {
         modal.style.display = 'none';
     }
@@ -418,7 +433,7 @@ export function hideModalUI() {
  * Updates the card counts in the debug modal.
  * @param {object} counts - Object like { deck, discard, hand }.
  */
-export function updateDebugCountsUI(counts) {
+function updateDebugCountsUI(counts) {
     if (debugDeckCount && debugDiscardCount && debugHandCount) {
         debugDeckCount.textContent = counts.deck;
         debugDiscardCount.textContent = counts.discard;
@@ -427,7 +442,7 @@ export function updateDebugCountsUI(counts) {
 }
 
 /** Shows the debug modal and updates its content. */
-export function showDebugModal() {
+function showDebugModal() {
     if (debugModal && debugLogOutput) { // Check only needed elements
         const history = Logger.getHistory();
         debugLogOutput.textContent = history.slice().reverse().join('\n');
@@ -440,14 +455,14 @@ export function showDebugModal() {
 }
 
 /** Hides the debug modal. */
-export function hideDebugModal() {
+function hideDebugModal() {
     if (debugModal) {
         debugModal.style.display = 'none';
     }
 }
 
 /** Enables or disables the Run Program button. */
-export function updateButtonStateUI(isEnabled) {
+function updateButtonStateUI(isEnabled) {
     runProgramButton.disabled = !isEnabled;
 }
 
