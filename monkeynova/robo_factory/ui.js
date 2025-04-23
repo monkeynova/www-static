@@ -99,7 +99,7 @@ export function renderBoard(boardData) {
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
     // Use pattern if available, otherwise fallback color
     const wallFill = wallStripePattern || styles.getPropertyValue('--wall-solid-color').trim() || '#630';
-
+    const gridLineColor = '#cccccc'; // Define light grey for grid lines
 
     // --- Draw Tiles ---
     for (let r = 0; r < boardData.rows; r++) {
@@ -137,6 +137,26 @@ export function renderBoard(boardData) {
             }
         }
     }
+
+    ctx.strokeStyle = gridLineColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); // Start a new path for all grid lines
+
+    // Draw horizontal lines (skip first row)
+    for (let r = 1; r < boardData.rows; r++) {
+        const y = r * Config.TILE_SIZE;
+        ctx.moveTo(0, y - 0.5); // Use -0.5 for sharper lines on some displays
+        ctx.lineTo(boardCanvas.width, y - 0.5);
+    }
+
+    // Draw vertical lines (skip first column)
+    for (let c = 1; c < boardData.cols; c++) {
+        const x = c * Config.TILE_SIZE;
+        ctx.moveTo(x - 0.5, 0);
+        ctx.lineTo(x - 0.5, boardCanvas.height);
+    }
+
+    ctx.stroke(); // Draw all the lines added to the path
 
     // --- Draw Walls (Draw AFTER all tiles for correct layering) ---
     ctx.fillStyle = wallFill;
