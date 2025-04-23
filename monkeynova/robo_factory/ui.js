@@ -1,4 +1,85 @@
 // ui.js
+/**
+ * =============================================================================
+ * UI Module (View Layer) for Robot Factory Game
+ * =============================================================================
+ *
+ * PRINCIPLE: Separation of Concerns (MVC - View)
+ * This module is responsible ONLY for presenting the game state to the user
+ * and capturing user input. It should be decoupled from the core game logic
+ * (Model) and the main execution flow (Controller).
+ *
+ * INTERACTIONS:
+ *  - Listens To: Events emitted by the Model (e.g., 'robotMoved', 'healthChanged',
+ *    'handUpdated', 'gameOver') via the eventEmitter.
+ *  - Updates: The DOM (HTML elements) and Canvas based on data received from events.
+ *  - Captures: User input (button clicks, drag-and-drop).
+ *  - Triggers: Controller actions (e.g., calling `runProgramExecution` from gameLoop.js)
+ *    or specific Model updates related to input (e.g., calling `Cards.addToHandData`
+ *    after a drop event) in response to user input.
+ *
+ * RESPONSIBILITIES:
+ *  - Creating/Updating DOM elements (robot div, cards in hand, status text, modals).
+ *  - Rendering graphics onto the Canvas (board tiles, walls, grid, lasers).
+ *  - Setting up UI-specific event listeners (buttons, drag/drop targets).
+ *  - Subscribing to relevant events from the eventEmitter to know *when* to update.
+ *  - Displaying data provided via events.
+ *
+ * RESTRICTIONS (What this module SHOULD NOT DO):
+ *  - DO NOT implement core game logic (e.g., calculating movement paths,
+ *    determining damage, checking win/loss conditions, deck shuffling rules).
+ *    This belongs in the Model (`robot.js`, `cards.js`, `board.js`) or
+ *    Controller (`gameLoop.js`).
+ *  - DO NOT directly modify the game state stored in other modules (e.g.,
+ *    do not change `Robot.state.health` directly). State changes should happen
+ *    within the Model modules, triggered by the Controller or Model logic itself.
+ *  - DO NOT directly call functions in `gameLoop.js` or Model modules *except*
+ *    when forwarding a direct user input action (like the 'Run Program' button
+ *    click calling `runProgramExecution`, or a drop event calling card state updates).
+ *
+ * GUIDANCE FOR FUTURE CHANGES:
+ *  - To display new game state information:
+ *      1. Ensure the Model emits an event with the necessary data when that state changes.
+ *      2. Add a listener for that event in `subscribeToModelEvents` within this module.
+ *      3. Create or update a function here to modify the DOM/Canvas accordingly.
+ *  - To add new user interactions:
+ *      1. Add the necessary HTML elements.
+ *      2. Set up an event listener for the interaction in `setupUIListeners`.
+ *      3. In the listener's callback, call the appropriate function in the
+ *         Controller (`gameLoop.js`) or Model (`cards.js`, `robot.js`) to
+ *         handle the *consequence* of that user action.
+ *
+ * NECESSARY EXPORTS:
+ *  - Initialization Function(s): A function (e.g., `initializeUI`) that sets up
+ *    the canvas, renders the initial static board, creates necessary DOM
+ *    elements (like the robot, flag indicators), etc. This is called once by `main.js`.
+ *  - Listener Setup Function: A function (e.g., `setupUIListeners`) that attaches
+ *    event listeners to interactive UI elements (buttons, drag/drop zones) and
+ *    subscribes internal UI update functions to events from the Model via the
+ *    eventEmitter. This connects user actions to the Controller and Model updates
+ *    to the View.
+ *
+ * DISCOURAGED / FORBIDDEN EXPORTS:
+ *  - Specific Update Functions: Functions like `updateRobotVisualsUI`, `updateHandUI`,
+ *    `updateHealthUI`, `showModalUI`, `resetProgramSlotsUI`, etc., should generally
+ *    NOT be exported. Their execution should be triggered *internally* within this
+ *    module in response to events received from the eventEmitter. Exporting them
+ *    allows external modules to directly manipulate the UI, bypassing the event system
+ *    and violating the MVC separation.
+ *  - Internal Helper Functions: Any functions used solely within `ui.js` should
+ *    not be exported.
+ *
+ * RATIONALE:
+ * By limiting exports, we ensure that:
+ *  1. The primary way the UI updates is by reacting to state changes announced via events.
+ *  2. The internal implementation details of how the UI renders state are hidden
+ *     (encapsulated) within this module.
+ *  3. Other modules cannot accidentally (or intentionally) cause UI inconsistencies
+ *     by calling update functions directly at the wrong time or with incorrect data.
+ *
+ * =============================================================================
+ */
+
 import * as Config from './config.js';
 import * as Board from './board.js'; // Need this for tile/wall data
 import { on } from './eventEmitter.js';
