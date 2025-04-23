@@ -51,11 +51,22 @@
             color: #333;
         }
 
+        #board-scroll-area {
+            flex-grow: 1; /* Allow it to take up remaining space */
+            overflow: auto; /* Add scrollbars ONLY if needed */
+            /* Define max dimensions to prevent it taking over the whole page */
+            /* Adjust these based on desired layout */
+            max-width: calc(100vw - 400px); /* Example: Viewport width minus left panel width minus some margin */
+            max-height: 90vh; /* Example: Limit height relative to viewport */
+            border: 1px dotted grey; /* Optional: Visualize the scroll area */
+        }
+
         #board-container {
             position: relative; /* Crucial for positioning robot */
             width: fit-content; /* Size to canvas */
             height: fit-content;
             line-height: 0; /* Prevent extra space below canvas */
+            flex-shrink: 0;
         }
 
         #board-canvas {
@@ -485,12 +496,13 @@
         </div> <!-- End #left-panel -->
 
         <!-- Factory Floor (remains as a direct child of game-container) -->
-        <div id="board-container" style="position: relative; line-height: 0;"> <!-- Container for canvas + robot -->
-            <canvas id="board-canvas" style="border: 2px solid #333; background-color: #ccc;">
-                <!-- Fallback content for browsers that don't support Canvas -->
-                Your browser does not support the HTML canvas element.
-            </canvas>
-            <!-- Robot div will be added here by JS -->
+        <div id="board-scroll-area">
+            <div id="board-container" style="position: relative; line-height: 0;">
+                <canvas id="board-canvas" style="border: 2px solid #333; background-color: #ccc;">
+                    Your browser does not support the HTML canvas element.
+                </canvas>
+                <!-- Robot div will be added here by JS -->
+            </div>
         </div>
 
     </div> <!-- End #game-container -->
