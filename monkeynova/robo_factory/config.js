@@ -56,5 +56,6 @@ export const FULL_DECK_DEFINITION = [
     { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' },
     { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' },
     { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' }, { type: 'turnR', text: 'Turn R' },
-    // Add U-Turn later: { type: 'uturn', text: 'U-Turn' }, ...
+    // U-Turn (2)
+    { type: 'uturn', text: 'U-Turn' }, { type: 'uturn', text: 'U-Turn' },
 ];

@@ -47,11 +47,21 @@ export function turn(direction) {
         newIndex = (currentIndex + 1) % orientations.length;
     }
     state.orientation = orientations[newIndex];
+    Logger.log(`Robot turned ${direction}. New orientation: ${state.orientation}`);
     emit('robotTurned', { row: state.row, col: state.col, orientation: state.orientation }); // Emit event
     return state.orientation;
 }
-// Add U-Turn logic here later:
-// export function uTurn() { ... state.orientation = opposite ... }
+
+/** Reverses the robot's orientation */
+export function uTurn() {
+    const currentIndex = orientations.indexOf(state.orientation);
+    // Add 2 (180 degrees) to the index, wrap around using modulo
+    const newIndex = (currentIndex + 2) % orientations.length;
+    state.orientation = orientations[newIndex];
+    Logger.log(`Robot performed U-Turn. New orientation: ${state.orientation}`);
+    emit('robotTurned', { row: state.row, col: state.col, orientation: state.orientation }); // Emit the same event as turn
+    return state.orientation;
+}
 
 
 /**

@@ -173,7 +173,11 @@ export async function runProgramExecution() {
             const direction = cardData.type === 'turnL' ? 'left' : 'right';
             const newOrientation = Robot.turn(direction); // Update state
         }
-        // Add U-Turn later: else if (cardData.type === 'uturn') { ... }
+        // --- Handle U-Turn ---
+        else if (cardData.type === 'uturn') {
+            Robot.uTurn(); // Update state & emit event
+            // UI update is handled by event listener
+        }
         else { // Movement cards (move1, move2, back1)
             let steps = 0;
             if (cardData.type === 'move1') steps = 1;
