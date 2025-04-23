@@ -111,12 +111,11 @@ export function renderBoard(boardData) {
             const y = r * Config.TILE_SIZE;
 
             // 1. Draw Tile Background Color
-            switch (tileData.type) {
-                case 'R': ctx.fillStyle = repairColor; break;
-                case 'O': ctx.fillStyle = holeColor; break;
-                case '^': case 'v': case '<': case '>':
-                    ctx.fillStyle = conveyorColor; break;
-                case ' ': default: ctx.fillStyle = plainColor; break;
+            switch (tileData.primaryType) {
+                case 'repair-station': ctx.fillStyle = repairColor; break;
+                case 'hole': ctx.fillStyle = holeColor; break;
+                case 'conveyor': ctx.fillStyle = conveyorColor; break;
+                case 'plain': default: ctx.fillStyle = plainColor; break;
             }
             ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
 
@@ -128,12 +127,13 @@ export function renderBoard(boardData) {
             const centerX = x + Config.TILE_SIZE / 2;
             const centerY = y + Config.TILE_SIZE / 2;
 
-            switch (tileData.type) {
-                case 'R': ctx.fillText('🔧', centerX, centerY); break;
-                case '>': ctx.fillText('→', centerX, centerY); break;
-                case '<': ctx.fillText('←', centerX, centerY); break;
-                case '^': ctx.fillText('↑', centerX, centerY); break;
-                case 'v': ctx.fillText('↓', centerX, centerY); break;
+            if (tileData.classes.includes('repair-station')) {
+                ctx.fillText('🔧', centerX, centerY);
+            } else if (tileData.classes.includes('conveyor')) {
+                if (tileData.classes.includes('right')) ctx.fillText('→', centerX, centerY);
+                else if (tileData.classes.includes('left')) ctx.fillText('←', centerX, centerY);
+                else if (tileData.classes.includes('up')) ctx.fillText('↑', centerX, centerY);
+                else if (tileData.classes.includes('down')) ctx.fillText('↓', centerX, centerY);
             }
         }
     }

@@ -17,7 +17,7 @@ export function setBoardData(boardData) {
     // Check if robot starts on a station and update state/UI
     const initialState = Robot.getRobotState();
     const startTileData = Board.getTileData(initialState.row, initialState.col, gameBoardData);
-    if (startTileData && startTileData.type === 'R') {
+    if (startTileData && startTileData.classes.includes('repair-station')) {
         const key = `${initialState.row}-${initialState.col}`;
         visitedRepairStations.add(key);
         Robot.setLastVisitedStation(key);
@@ -86,6 +86,7 @@ async function applyBoardEffects() {
         Robot.setLastVisitedStation(stationKey); // Always update last visited
 
         if (!visitedRepairStations.has(stationKey)) {
+            Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
             visitedRepairStations.add(stationKey);
             emit('flagVisited', stationKey); // Emit event for UI
 

@@ -1,5 +1,4 @@
 // board.js
-import { TILE_CLASSES } from './config.js';
 import * as Logger from './logger.js';
 
 /**
@@ -25,24 +24,26 @@ export function parseBoardObjectDefinition(boardDefinition) {
         const rowTiles = [];
         for (let c = 0; c < cols; c++) {
             const tileDef = boardDefinition[r][c];
-            if (!tileDef || typeof tileDef.type === 'undefined') {
-                 throw new Error(`Invalid tile definition at (${r}, ${c})`);
+            if (!tileDef || !Array.isArray(tileDef.classes)) { // Check for classes array
+                throw new Error(`Invalid tile definition at (${r}, ${c})`);
             }
 
-            const typeChar = tileDef.type;
-            const classes = TILE_CLASSES[typeChar] || ['plain']; // Get classes from config
-            const walls = Array.isArray(tileDef.walls) ? tileDef.walls : []; // Ensure walls is an array
+            const definedClasses = tileDef.classes;
+            const walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
+
+            // Determine primary type (assuming first class is primary)
+            const primaryType = definedClasses[0] || 'plain'; // Default to plain if empty array
 
             const tileData = {
-                type: typeChar, // Store original type character
-                classes: ['tile', ...classes], // Include base 'tile' class
-                walls: walls, // Store the walls defined for this tile
+                classes: ['tile', ...definedClasses], // Combine base 'tile' with defined classes
+                walls: walls,
                 row: r,
-                col: c
+                col: c,
+                primaryType: primaryType // Store derived primary type
             };
             rowTiles.push(tileData);
 
-            if (typeChar === 'R') {
+            if (definedClasses.includes('repair-station')) {
                 repairStations.push({ row: r, col: c });
             }
         }

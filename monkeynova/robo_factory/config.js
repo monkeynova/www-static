@@ -10,18 +10,6 @@ export const TILE_SIZE = 50; // Define tile size in pixels
 
 export const orientations = ['north', 'east', 'south', 'west'];
 
-// Mapping from board layout characters to CSS classes
-export const TILE_CLASSES = {
-    'R': ['repair-station'],
-    ' ': ['plain'],
-    '>': ['conveyor', 'right'],
-    '<': ['conveyor', 'left'],
-    '^': ['conveyor', 'up'],
-    'v': ['conveyor', 'down'],
-    'O': ['hole'],
-    // Add future tiles here, e.g., 'W': ['wall']
-};
-
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',
