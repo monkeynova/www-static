@@ -337,7 +337,7 @@ export function hideModalUI() {
  * Updates the card counts in the debug modal.
  * @param {object} counts - Object like { deck, discard, hand }.
  */
-function updateDebugCountsUI(counts) {
+export function updateDebugCountsUI(counts) {
     if (debugDeckCount && debugDiscardCount && debugHandCount) {
         debugDeckCount.textContent = counts.deck;
         debugDiscardCount.textContent = counts.discard;
@@ -348,9 +348,7 @@ function updateDebugCountsUI(counts) {
 /** Shows the debug modal and updates its content. */
 export function showDebugModal() {
     if (debugModal && debugLogOutput) { // Check only needed elements
-        // Counts are updated via event listener now, no need to fetch here
-        // const history = getLogHistory(); ... (log display logic remains) ...
-        const history = getLogHistory();
+        const history = Logger.getHistory();
         debugLogOutput.textContent = history.slice().reverse().join('\n');
         debugLogOutput.scrollTop = 0;
 
@@ -373,15 +371,6 @@ export function updateButtonStateUI(isEnabled) {
 }
 
 // --- UI Helpers ---
-
-/** Gets the DOM element for a specific tile. */
-function getTileElementUI(row, col, gridCols) {
-    const index = row * gridCols + col;
-    if (index >= 0 && index < factoryFloor.children.length) {
-        return factoryFloor.children[index];
-    }
-    return null;
-}
 
 // --- Drag and Drop Handlers ---
 

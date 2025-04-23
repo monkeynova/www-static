@@ -8,60 +8,34 @@ import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
 
-// --- Define the board using objects ---
-const boardRows = 12;
-const boardCols = 17;
-const boardDataDefinition = [];
-
-// Helper to create a default tile object
-function createTileObject(type = ' ', walls = []) {
-    return { type, walls };
-}
-
-// Create the grid structure
-for (let r = 0; r < boardRows; r++) {
-    const row = [];
-    for (let c = 0; c < boardCols; c++) {
-        // Start with a plain tile, add walls later
-        row.push(createTileObject(' '));
-    }
-    boardDataDefinition.push(row);
-}
-
-// --- Apply Tile Types from the old layout (for initial setup) ---
-const oldLayout = [
-    "R >>>>>v         ", "    O  v         ", " ^<<<<<v   >>>>v ",
-    " ^     v  O    v ", " ^ >>>>^       v ", "      O^  <<<v v ",
-    "       ^     v v ", "       ^ >>>^v v ", "  O        ^     ",
-    "           ^     ", "           ^>>>> ", "                R"
-];
-for (let r = 0; r < boardRows; r++) {
-    for (let c = 0; c < boardCols; c++) {
-        if (oldLayout[r] && oldLayout[r][c]) {
-            boardDataDefinition[r][c].type = oldLayout[r][c];
-        }
-    }
-}
-
-// --- Add Outer Boundary Walls ---
-for (let c = 0; c < boardCols; c++) {
-    boardDataDefinition[0][c].walls.push('north');       // Top edge
-    boardDataDefinition[boardRows - 1][c].walls.push('south'); // Bottom edge
-}
-for (let r = 0; r < boardRows; r++) {
-    boardDataDefinition[r][0].walls.push('west');        // Left edge
-    boardDataDefinition[r][boardCols - 1].walls.push('east'); // Right edge
-}
-
-// --- Example: Add an Internal Wall ---
-// Add a wall EAST of (1, 4) which is also WEST of (1, 5)
-if (boardDataDefinition[1] && boardDataDefinition[1][4]) {
-    boardDataDefinition[1][3].walls.push('east');
-}
-if (boardDataDefinition[1] && boardDataDefinition[1][5]) {
-    boardDataDefinition[1][4].walls.push('west');
-}
-
+// Each object: { type: 'char', walls: ['north'?, 'south'?, 'east'?, 'west'?] }
+const boardDataDefinition = [
+    // Row 0 (Top Edge: 'north' wall)
+    [ { type: 'R', walls: ['north', 'west'] }, { type: ' ', walls: ['north'] }, { type: '>', walls: ['north'] }, { type: '>', walls: ['north'] }, { type: '>', walls: ['north'] }, { type: '>', walls: ['north'] }, { type: '>', walls: ['north'] }, { type: 'v', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north'] }, { type: ' ', walls: ['north', 'east'] } ],
+    // Row 1 (Internal Wall between c=3 and c=4)
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: ['east'] },  { type: 'O', walls: ['west'] },  { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: ['east'] } ],
+    // Row 2
+    [ { type: ' ', walls: ['west'] },          { type: '^', walls: [] },          { type: '<', walls: [] },          { type: '<', walls: [] },          { type: '<', walls: [] },          { type: '<', walls: [] },          { type: '<', walls: [] },          { type: 'v', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: 'v', walls: ['east'] } ],
+    // Row 3
+    [ { type: ' ', walls: ['west'] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'O', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: ['east'] } ],
+    // Row 4
+    [ { type: ' ', walls: ['west'] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: ['east'] } ],
+    // Row 5
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'O', walls: [] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '<', walls: [] },          { type: '<', walls: [] },          { type: '<', walls: [] },          { type: 'v', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: ['east'] } ],
+    // Row 6
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: ['east'] } ],
+    // Row 7
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '^', walls: [] },          { type: 'v', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: 'v', walls: ['east'] } ],
+    // Row 8
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: 'O', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: ['east'] } ],
+    // Row 9
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '^', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: ['east'] } ],
+    // Row 10
+    [ { type: ' ', walls: ['west'] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: ' ', walls: [] },          { type: '^', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: [] },          { type: '>', walls: ['east'] } ],
+    // Row 11 (Bottom Edge: 'south' wall)
+    [ { type: ' ', walls: ['south', 'west'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: ' ', walls: ['south'] }, { type: 'R', walls: ['south', 'east'] } ]
+  ];
+  
 // --- Define starting position ---
 // Could potentially find the first 'R' in the layout
 const startRobotRow = 0;
@@ -82,11 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Set Board Data in Game Loop (Internal state)
         GameLoop.setBoardData(boardData);
 
-        // 4. Initialize Deck and Hand State
-        const initialHandData = Cards.initDeckAndHand(); // Emits events
-
-        // 5. Setup Event Listeners in UI (BEFORE initial draw/sync)
+        // 4. Setup Event Listeners in UI (BEFORE initial draw/sync)
         UI.setupUIListeners(GameLoop.runProgramExecution);
+
+        // 5. Initialize Deck and Hand State
+        const initialHandData = Cards.initDeckAndHand(); // Emits events
 
         // 6. Initialize Canvas
         if (!UI.initCanvas(boardData)) {
@@ -102,17 +76,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // 9. Create Robot DOM Element
         UI.createRobotElement();
 
-        // 10. Trigger Initial UI State Sync (Direct Calls)
-        Logger.log("Performing initial UI sync...");
+        // --- 10. Emit Initial State Events (Replaces Direct UI Calls) ---
+        Logger.log("Emitting initial state events for UI sync...");
         const initialRobotState = Robot.getRobotState();
-        UI.updateRobotVisualsUI(initialRobotState.row, initialRobotState.col, initialRobotState.orientation);
-        UI.updateHealthUI(initialRobotState.health, Config.MAX_HEALTH);
-        UI.updateHandUI(initialHandData); // Handled by event
+
+        // Emit robot position and orientation
+        emit('robotMoved', { // Use 'robotMoved' as it updates position and orientation class
+            row: initialRobotState.row,
+            col: initialRobotState.col,
+            orientation: initialRobotState.orientation
+        });
+
+        // Emit initial health
+        emit('healthChanged', {
+            health: initialRobotState.health,
+            maxHealth: Config.MAX_HEALTH
+        });
+
+        // Emit starting flag visit status (if applicable)
         if (initialRobotState.lastVisitedStationKey) {
-            // This call should now succeed because the elements were created in step 8
-            UI.updateFlagIndicatorUI(initialRobotState.lastVisitedStationKey);
+            emit('flagVisited', initialRobotState.lastVisitedStationKey);
         }
-        // UI.updateDebugCountsUI({...}); // Counts handled by event
 
         Logger.log("Game Initialized Successfully.");
 
