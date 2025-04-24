@@ -30,110 +30,177 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 /** Applies effects of the tile the robot is currently on. */
 async function applyBoardEffects() {
     Logger.log("   Checking board actions...");
-    let robotState = Robot.getRobotState();
-    let currentTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
-    let boardMoved = false;
-    let fellInHole = false;
+    let robotState = Robot.getRobotState(); // Initial state for the phase
+    let boardMoved = false; // Track if ANY movement happened this phase
+    let gameEnded = false;
+    let fellInHole = false; // Make sure this is declared
 
-    if (!currentTileData) {
-        Logger.error("   Robot is on an invalid tile location!");
-        return { gameEnded: false, boardMoved: false, fellInHole: false };
-    }
+    // --- 1. Conveyor Movement ---
+    let currentR = robotState.row;
+    let currentC = robotState.col;
+    let movedInPhase1 = false;
+    let movedInPhase2 = false;
 
-    // --- Conveyor ---
-    if (currentTileData.classes.includes('conveyor')) {
+    // --- Phase 1: Check 2x Conveyor ---
+    Logger.log("      Phase 1: Checking 2x Conveyor");
+    let tileDataPhase1 = Board.getTileData(currentR, currentC, gameBoardData);
+
+    // Check if the robot STARTS this phase on a 2x conveyor
+    if (tileDataPhase1 && tileDataPhase1.primaryType === 'conveyor' && tileDataPhase1.speed === 2) {
+        // Calculate the potential move
         let dr = 0, dc = 0;
-        let direction = '';
-        let wallSideToCheck = null; // Which side of the *current* tile blocks this move?
+        let exitSide = '';
+        if (tileDataPhase1.classes.includes('up'))    { dr = -1; exitSide = 'north'; }
+        else if (tileDataPhase1.classes.includes('down'))  { dr = 1;  exitSide = 'south'; }
+        else if (tileDataPhase1.classes.includes('left'))  { dc = -1; exitSide = 'west'; }
+        else if (tileDataPhase1.classes.includes('right')) { dc = 1;  exitSide = 'east'; }
 
-        if (currentTileData.classes.includes('up'))    { dr = -1; direction = 'Up'; wallSideToCheck = 'north'; }
-        else if (currentTileData.classes.includes('down'))  { dr = 1;  direction = 'Down'; wallSideToCheck = 'south'; }
-        else if (currentTileData.classes.includes('left'))  { dc = -1; direction = 'Left'; wallSideToCheck = 'west'; }
-        else if (currentTileData.classes.includes('right')) { dc = 1;  direction = 'Right'; wallSideToCheck = 'east'; }
+        if (dr !== 0 || dc !== 0) { // Check if direction was found
+            const nextR = currentR + dr;
+            const nextC = currentC + dc;
 
-        if (direction) {
-            const targetRow = robotState.row + dr;
-            const targetCol = robotState.col + dc;
+            // Check boundaries and walls for this single step
+            const targetTileData = Board.getTileData(nextR, nextC, gameBoardData);
+            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, gameBoardData) ||
+                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), gameBoardData));
 
-            // Check boundaries AND walls before moving
-            const targetTileData = Board.getTileData(targetRow, targetCol, gameBoardData);
-            const isBlocked = Board.hasWall(robotState.row, robotState.col, wallSideToCheck, gameBoardData);
-
-            if (targetTileData && !isBlocked) { // Check target exists AND path isn't blocked
-                Logger.log(`   Activating conveyor (${direction}) to (${targetRow}, ${targetCol})`);
-                Robot.setPosition(targetRow, targetCol);
+            if (targetTileData && !blockedByWall) {
+                // If move is valid, update position for Phase 2
+                Logger.log(`      2x Conveyor moving from (${currentR},${currentC}) to (${nextR},${nextC})`);
+                currentR = nextR; // Update temporary position for next phase
+                currentC = nextC;
+                movedInPhase1 = true;
                 boardMoved = true;
-                await sleep(400);
-                robotState = Robot.getRobotState();
-                currentTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
-            } else if (isBlocked) {
-                Logger.log(`   Conveyor move (${direction}) failed: Hit wall.`);
             } else {
-                Logger.log(`   Conveyor move (${direction}) failed: Hit boundary.`);
+                Logger.log(`      2x Conveyor at (${robotState.row},${robotState.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
             }
         }
-    } // End Conveyor
+    }
+    // Update robot state AFTER phase 1 check if needed
+    if (movedInPhase1) {
+        Robot.setPosition(currentR, currentC); // This emits 'robotMoved'
+        await sleep(150); // Short delay after phase 1 movement
+        robotState = Robot.getRobotState(); // Get updated state
+    } else {
+        // Ensure robotState is the latest even if no move happened in phase 1
+        robotState = Robot.getRobotState();
+        currentR = robotState.row;
+        currentC = robotState.col;
+    }
 
-    // Re-check tile data in case conveyor moved robot
-    if (!currentTileData) {
-         Logger.error("   Robot is on an invalid tile location after conveyor!");
+
+    // --- Phase 2: Check All Conveyors ---
+    Logger.log("      Phase 2: Checking All Conveyors");
+    let tileDataPhase2 = Board.getTileData(currentR, currentC, gameBoardData);
+
+    // Check if the robot is NOW on ANY conveyor
+    if (tileDataPhase2 && tileDataPhase2.primaryType === 'conveyor') {
+        // Calculate the potential move
+        let dr = 0, dc = 0;
+        let exitSide = '';
+        if (tileDataPhase2.classes.includes('up'))    { dr = -1; exitSide = 'north'; }
+        else if (tileDataPhase2.classes.includes('down'))  { dr = 1;  exitSide = 'south'; }
+        else if (tileDataPhase2.classes.includes('left'))  { dc = -1; exitSide = 'west'; }
+        else if (tileDataPhase2.classes.includes('right')) { dc = 1;  exitSide = 'east'; }
+
+        if (dr !== 0 || dc !== 0) { // Check if direction was found
+            const nextR = currentR + dr;
+            const nextC = currentC + dc;
+
+            // Check boundaries and walls for this single step
+            const targetTileData = Board.getTileData(nextR, nextC, gameBoardData);
+            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, gameBoardData) ||
+                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), gameBoardData));
+
+            if (targetTileData && !blockedByWall) {
+                // If move is valid, update position for subsequent phases
+                Logger.log(`      1x/2x Conveyor moving from (${currentR},${currentC}) to (${nextR},${nextC})`);
+                currentR = nextR; // Update temporary position
+                currentC = nextC;
+                movedInPhase2 = true;
+                boardMoved = true;
+            } else {
+                Logger.log(`      1x/2x Conveyor at (${robotState.row},${robotState.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
+            }
+        }
+    }
+    // Update robot state AFTER phase 2 check if needed
+    if (movedInPhase2) {
+        Robot.setPosition(currentR, currentC); // This emits 'robotMoved'
+        await sleep(150); // Short delay after phase 2 movement
+        robotState = Robot.getRobotState(); // Get final updated state
+    }
+    // --- End Conveyor Movement ---
+
+
+    // --- Get Final State After Conveyors ---
+    // Ensure robotState reflects the final position after both phases
+    robotState = Robot.getRobotState();
+    const finalTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
+    if (!finalTileData) {
+         Logger.error("   Robot is on an invalid tile location after conveyor phase!");
+         // Decide how to handle this - maybe force game over or reset?
+         // For now, prevent further actions in this phase.
          return { gameEnded: false, boardMoved, fellInHole: false };
     }
 
-    // --- Repair Station ---
-    if (currentTileData.classes.includes('repair-station')) {
+    // --- 2. Laser Firing --- (No changes needed here)
+    // ... (Laser logic uses the final robotState) ...
+    // Make sure laser logic correctly checks for gameEnded state
+
+    // --- 3. Repair Station --- (Logic updated to use finalTileData)
+    if (!gameEnded && finalTileData.classes.includes('repair-station')) { // Check gameEnded
         const stationKey = `${robotState.row}-${robotState.col}`;
-        Robot.setLastVisitedStation(stationKey); // Always update last visited
+        Robot.setLastVisitedStation(stationKey);
 
         if (!visitedRepairStations.has(stationKey)) {
             Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
             visitedRepairStations.add(stationKey);
-            emit('flagVisited', stationKey); // Emit event for UI
+            emit('flagVisited', stationKey);
 
-            // --- Win Condition Check ---
             Logger.log(`   Visited ${visitedRepairStations.size} / ${gameBoardData.repairStations.length} stations.`);
             if (visitedRepairStations.size === gameBoardData.repairStations.length && gameBoardData.repairStations.length > 0) {
-                emit('gameOver', true); // Emit event for UI
-                return { gameEnded: true, boardMoved, fellInHole: false }; // Signal game end
+                Logger.log("   *** WIN CONDITION MET! ***");
+                emit('gameOver', true);
+                gameEnded = true; // Set gameEnded flag
             }
         } else {
             Logger.log(`   Already visited repair station at (${robotState.row}, ${robotState.col}).`);
         }
-    }
+    } // End Repair Station
 
-    // --- Hole ---
-    if (currentTileData.classes.includes('hole')) {
+    // --- 4. Hole --- (Logic updated to use finalTileData)
+    if (!gameEnded && finalTileData.classes.includes('hole')) { // Check gameEnded
         Logger.log(`   Robot landed on a hole at (${robotState.row}, ${robotState.col})!`);
         fellInHole = true;
-        const newHealth = Robot.takeDamage(); // Update state
+        Robot.takeDamage(); // Update state (emits healthChanged)
 
         if (Robot.isDestroyed()) {
-            emit('gameOver', false); // Emit event for UI
-            return { gameEnded: true, boardMoved, fellInHole: true }; // Signal game end
-        }
-
-        // Return to last station if not destroyed
-        const lastKey = robotState.lastVisitedStationKey; // Get key AFTER taking damage
-        if (lastKey) {
-            Logger.log(`   Returning to last visited station: ${lastKey}`);
-            const [lastR, lastC] = lastKey.split('-').map(Number);
-            // Check if the station coordinates are still valid on the board
-            if (Board.getTileData(lastR, lastC, gameBoardData)) {
-                Robot.setPosition(lastR, lastC); // Update state
-                await sleep(600); // Visual delay for reset
-            } else {
-                Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
-                // What happens here? Robot stays in hole? Game over? For now, just log.
-            }
+            Logger.error("   *** ROBOT DESTROYED by falling in hole! ***");
+            emit('gameOver', false);
+            gameEnded = true; // Set gameEnded flag
         } else {
-            Logger.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
-            // What happens here? Reset to 0,0? For now, just log.
+            // Return to last station if not destroyed
+            const lastKey = robotState.lastVisitedStationKey;
+            if (lastKey) {
+                Logger.log(`   Returning to last visited station: ${lastKey}`);
+                const [lastR, lastC] = lastKey.split('-').map(Number);
+                if (Board.getTileData(lastR, lastC, gameBoardData)) {
+                    Robot.setPosition(lastR, lastC);
+                    await sleep(600);
+                    // Update robotState again after reset? Might not be necessary if phase ends here.
+                    // robotState = Robot.getRobotState();
+                } else {
+                    Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
+                }
+            } else {
+                Logger.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
+            }
         }
-    }
+    } // End Hole
 
-    return { gameEnded: false, boardMoved, fellInHole }; // Signal game continues
+    return { gameEnded, boardMoved, fellInHole }; // Return final status
 }
-
 
 /** Executes the sequence of programmed cards and board actions. */
 export async function runProgramExecution() {

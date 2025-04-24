@@ -30,16 +30,17 @@ export function parseBoardObjectDefinition(boardDefinition) {
 
             const definedClasses = tileDef.classes;
             const walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
+            const primaryType = definedClasses[0] || 'plain';
 
-            // Determine primary type (assuming first class is primary)
-            const primaryType = definedClasses[0] || 'plain'; // Default to plain if empty array
+            const speed = definedClasses.includes('speed-2x') ? 2 : 1;
 
             const tileData = {
                 classes: ['tile', ...definedClasses], // Combine base 'tile' with defined classes
                 walls: walls,
                 row: r,
                 col: c,
-                primaryType: primaryType // Store derived primary type
+                primaryType: primaryType,
+                speed: speed
             };
             rowTiles.push(tileData);
 

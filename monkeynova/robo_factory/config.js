@@ -13,10 +13,16 @@ export const orientations = ['north', 'east', 'south', 'west'];
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',
+    // Single Arrows
     'conveyor right': '→',
     'conveyor left': '←',
     'conveyor up': '↑',
     'conveyor down': '↓',
+    // Double Arrows (Using Unicode double arrows)
+    'conveyor right speed-2x': '⇒',
+    'conveyor left speed-2x': '⇐',
+    'conveyor up speed-2x': '⇑',
+    'conveyor down speed-2x': '⇓',
 };
 
 // Card definitions (can also live in cards.js)

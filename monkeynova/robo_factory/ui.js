@@ -223,14 +223,25 @@ export function renderBoard(boardData) {
             const centerX = x + Config.TILE_SIZE / 2;
             const centerY = y + Config.TILE_SIZE / 2;
 
+            let symbol = '';
+            const isSpeed2x = tileData.classes.includes('speed-2x');
+
             if (tileData.classes.includes('repair-station')) {
                 ctx.fillText('🔧', centerX, centerY);
             } else if (tileData.classes.includes('conveyor')) {
-                if (tileData.classes.includes('right')) ctx.fillText('→', centerX, centerY);
-                else if (tileData.classes.includes('left')) ctx.fillText('←', centerX, centerY);
-                else if (tileData.classes.includes('up')) ctx.fillText('↑', centerX, centerY);
-                else if (tileData.classes.includes('down')) ctx.fillText('↓', centerX, centerY);
-            }
+                if (tileData.classes.includes('right')) {
+                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor right speed-2x'] || '⇒') : (Config.TILE_SYMBOLS['conveyor right'] || '→');
+                } else if (tileData.classes.includes('left')) {
+                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor left speed-2x'] || '⇐') : (Config.TILE_SYMBOLS['conveyor left'] || '←');
+                } else if (tileData.classes.includes('up')) {
+                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor up speed-2x'] || '⇑') : (Config.TILE_SYMBOLS['conveyor up'] || '↑');
+                } else if (tileData.classes.includes('down')) {
+                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor down speed-2x'] || '⇓') : (Config.TILE_SYMBOLS['conveyor down'] || '↓');
+                }
+           }
+           if (symbol) {
+               ctx.fillText(symbol, centerX, centerY);
+           }
         }
     }
 
