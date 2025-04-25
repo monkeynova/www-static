@@ -137,6 +137,51 @@ const testScenarios = [
         }
     ),
 
+    defineTest(
+        "Movement: Back 1 into wall blocks motion",
+        async () => {
+            // Setup: Robot at (0,1) facing East. Wall West of (0,1).
+            const testBoardDef = [
+                // Row 0
+                [
+                    { classes: ['plain'], walls: ['north', 'west'] }, // Tile (0,0)
+                    { classes: ['plain'], walls: ['north', 'west'] }, // Tile (0,1) - Add 'west' wall
+                    { classes: ['plain'], walls: ['north', 'east'] }  // Tile (0,2)
+                ],
+                // Row 1
+                [
+                    { classes: ['plain'], walls: ['south', 'west'] },
+                    { classes: ['plain'], walls: ['south'] },
+                    { classes: ['plain'], walls: ['south', 'east'] }
+                ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            // Start robot at (0,1) facing East. Moving Back 1 would try to go West into the wall.
+            const robot = new Robot(0, 1, 'east');
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Action: Simulate calculating and attempting a "Back 1" move (steps = -1)
+            const moveTarget = setupData.robot.calculateMoveTarget(-1, setupData.boardData);
+            // We expect moveTarget.success to be false.
+            // If it were true (which would be a bug), we'd simulate the move.
+            if (moveTarget.success) {
+                Logger.error("   TEST ERROR: calculateMoveTarget unexpectedly succeeded for Back 1 into wall.");
+                setupData.robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
+            } else {
+                Logger.log("   Action: calculateMoveTarget correctly failed due to wall.");
+            }
+        },
+        { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Robot remains at (0,1) facing East
+        (actualState, expectedState) => {
+            // Assert: Check final robot position and orientation
+            const posMatch = actualState.row === expectedState.robot.row && actualState.col === expectedState.robot.col;
+            const orientMatch = actualState.orientation === expectedState.robot.orientation;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expectedState.robot.row},${expectedState.robot.col}), Got (${actualState.row},${actualState.col})`);
+            if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${expectedState.robot.orientation}, Got ${actualState.orientation}`);
+            return posMatch && orientMatch;
+        }
+    ),
 ];
 
 /** Runs all defined test scenarios */

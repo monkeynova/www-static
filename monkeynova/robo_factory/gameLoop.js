@@ -143,9 +143,10 @@ export async function applyBoardEffects(boardData, robot) {
             Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
             robot.visitStation(stationKey);
             emit('flagVisited', stationKey);
+            const visitCount = robot.getVisitedStationCount()
 
-            Logger.log(`   Visited ${visitedStations.size} / ${boardData.repairStations.length} stations.`);
-            if (robot.getVisitedStationCount() === boardData.repairStations.length && boardData.repairStations.length > 0) {
+            Logger.log(`   Visited ${visitCount} / ${boardData.repairStations.length} stations.`);
+            if (visitCount === boardData.repairStations.length && boardData.repairStations.length > 0) {
                 Logger.log("   *** WIN CONDITION MET! ***");
                 emit('gameOver', true);
                 gameEnded = true; // Set gameEnded flag

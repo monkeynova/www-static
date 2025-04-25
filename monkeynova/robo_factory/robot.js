@@ -118,15 +118,22 @@ class Robot {
     calculateMoveTarget(steps, boardData) {
         let dr = 0, dc = 0;
         const moveDir = steps > 0 ? 1 : -1;
-        let wallSideToCheck = null;
 
         // Use current instance orientation
         switch (this.orientation) {
-            case 'north': dr = -moveDir; wallSideToCheck = 'north'; break;
-            case 'east':  dc = moveDir;  wallSideToCheck = 'east';  break;
-            case 'south': dr = moveDir;  wallSideToCheck = 'south'; break;
-            case 'west':  dc = -moveDir; wallSideToCheck = 'west';  break;
+            case 'north': dr = -moveDir; break;
+            case 'east':  dc = moveDir;  break;
+            case 'south': dr = moveDir;  break;
+            case 'west':  dc = -moveDir; break;
         }
+
+        // Determine the wall side to check based on the ACTUAL delta (dr, dc)
+        let wallSideToCheck;
+        if (dr === -1) wallSideToCheck = 'north';
+        else if (dr === 1) wallSideToCheck = 'south';
+        else if (dc === -1) wallSideToCheck = 'west'; // Correctly identifies 'west' when dc is -1
+        else if (dc === 1) wallSideToCheck = 'east';
+        else return { targetRow: this.row, targetCol: this.col, success: false, blockedByWall: false }; // Should not happen if orientation is valid
 
         // Use current instance position
         const targetRow = this.row + dr;
