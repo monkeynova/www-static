@@ -86,6 +86,7 @@ import { on } from './eventEmitter.js';
 import * as Logger from './logger.js';
 // Card imports remain if needed for drag/drop state updates
 import { getCardData, removeFromHandData, addToHandData } from './cards.js';
+import * as TestRunner from './testRunner.js'; // Import the test runner
 
 // --- DOM Element References ---
 const cardHandContainer = document.getElementById('card-hand');
@@ -105,9 +106,10 @@ const debugDeckCount = document.getElementById('debug-deck-count');
 const debugDiscardCount = document.getElementById('debug-discard-count');
 const debugHandCount = document.getElementById('debug-hand-count');
 const debugCloseButton = document.getElementById('debug-close-button');
-const debugLogOutput = document.getElementById('debug-log-output'); // Add ref for log output area
-const boardContainer = document.getElementById('board-container'); // NEW
-const boardCanvas = document.getElementById('board-canvas');     // NEW
+const debugLogOutput = document.getElementById('debug-log-output');
+const boardContainer = document.getElementById('board-container');
+const boardCanvas = document.getElementById('board-canvas');
+const runTestsButton = document.getElementById('run-tests-button');
 
 // --- Canvas / Rendering State ---
 let ctx = null; // Canvas 2D context
@@ -651,6 +653,26 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
                 hideDebugModal();
             }
         });
+    }
+
+    // Add listener for test button
+    if (runTestsButton) {
+        runTestsButton.addEventListener('click', async () => {
+            Logger.log("Run Tests button clicked.");
+            // Disable button while running?
+            runTestsButton.disabled = true;
+            runTestsButton.textContent = "Running Tests...";
+            try {
+                await TestRunner.runTests(); // Execute tests
+            } catch(e) {
+                 Logger.error("Error running test suite:", e);
+            } finally {
+                 runTestsButton.disabled = false; // Re-enable
+                 runTestsButton.textContent = "Run Tests";
+            }
+        });
+    } else {
+        Logger.warn("Run Tests button not found.");
     }
 
     subscribeToModelEvents(); // Setup model listeners

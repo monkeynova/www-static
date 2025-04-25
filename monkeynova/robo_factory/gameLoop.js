@@ -24,11 +24,16 @@ export function setBoardData(boardData) {
     }
 }
 
+/** Gets the current board data used by the game loop */
+export function getBoardData() { // NEW Getter
+    return gameBoardData;
+}
+
 // Simple sleep utility
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 /** Applies effects of the tile the robot is currently on. */
-async function applyBoardEffects() {
+export async function applyBoardEffects() {
     Logger.log("   Checking board actions...");
     let robotState = Robot.getRobotState(); // Initial state for the phase
     let boardMoved = false; // Track if ANY movement happened this phase
