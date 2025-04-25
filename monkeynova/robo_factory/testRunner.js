@@ -46,8 +46,7 @@ const testScenarios = [
             return { boardData, robot };
         },
         async (setupData) => {
-            const visitedStations = new Set();
-            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
         },
         {
             // Expected: Robot should end up 2 tiles over
@@ -76,8 +75,7 @@ const testScenarios = [
             return { boardData, robot };
         },
         async (setupData) => {
-            const visitedStations = new Set();
-            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves only 1 space
         (actual, expected) => {
@@ -100,8 +98,7 @@ const testScenarios = [
             return { boardData, robot };
         },
         async (setupData) => {
-            const visitedStations = new Set();
-            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves 1 space (phase 1), blocked in phase 2
         (actual, expected) => {
@@ -151,19 +148,9 @@ export async function runTests() {
     for (const test of testScenarios) {
         Logger.log(`\n--- Test: ${test.description} ---`);
         try {
-            // 1. Setup state for this specific test
-            const setupData = await test.setup(); // e.g., { boardData }
-            Logger.log("   Setup complete.");
-
-            // 2. Execute the action
+            const setupData = await test.setup();
             await test.action(setupData);
-            Logger.log("   Action complete.");
-
-            // 3. Get the actual resulting state
-            const actualState = setupData.robot.getRobotState(); // Assuming this reflects the result
-            Logger.log("   Actual final state:", actualState);
-            Logger.log("   Expected final state:", test.expected);
-
+            const actualState = setupData.robot.getRobotState();
 
             // 4. Assert the result
             if (test.assert(actualState, test.expected)) {
@@ -172,6 +159,8 @@ export async function runTests() {
             } else {
                 // Assertion function should log specific failure details
                 Logger.error("   Result: FAIL");
+                Logger.log("   Actual final state:", actualState);
+                Logger.log("   Expected final state:", test.expected);
                 failed++;
             }
         } catch (error) {

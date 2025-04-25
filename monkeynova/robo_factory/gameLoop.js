@@ -11,10 +11,10 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 /**
  * Applies effects of the tile the robot is currently on.
  * @param {object} boardData - The parsed board data.
- * @param {Set<string>} visitedStations - The set of visited station keys.
+ * @param {Robot} robot - The robot instance.
  * @returns {Promise<object>} { gameEnded, boardMoved, fellInHole }
  */
-export async function applyBoardEffects(boardData, visitedStations, robot) {
+export async function applyBoardEffects(boardData, robot) {
     Logger.log("   Checking board actions...");
     let robotState = robot.getRobotState(); // Initial state for the phase
     let boardMoved = false; // Track if ANY movement happened this phase
@@ -139,13 +139,13 @@ export async function applyBoardEffects(boardData, visitedStations, robot) {
         const stationKey = `${robotState.row}-${robotState.col}`;
         robot.setLastVisitedStation(stationKey);
 
-        if (!visitedStations.has(stationKey)) {
+        if (!robot.hasVisitedStation(stationKey)) {
             Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
             visitedStations.add(stationKey);
             emit('flagVisited', stationKey);
 
             Logger.log(`   Visited ${visitedStations.size} / ${boardData.repairStations.length} stations.`);
-            if (visitedStations.size === boardData.repairStations.length && boardData.repairStations.length > 0) {
+            if (robot.getVisitedStationCount() === boardData.repairStations.length && boardData.repairStations.length > 0) {
                 Logger.log("   *** WIN CONDITION MET! ***");
                 emit('gameOver', true);
                 gameEnded = true; // Set gameEnded flag
@@ -189,12 +189,12 @@ export async function applyBoardEffects(boardData, visitedStations, robot) {
 }
 
 /**
-* Executes the sequence of programmed cards and board actions.
-* @param {object} boardData - The parsed board data.
-* @param {Set<string>} visitedStations - The set of visited station keys.
-*/
-export async function runProgramExecution(boardData, visitedStations, robot) {
-   if (!boardData) {
+ * Executes the sequence of programmed cards and board actions.
+ * @param {object} boardData - The parsed board data.
+ * @param {Robot} robot - The robot instance.
+ */
+export async function runProgramExecution(boardData, robot) {
+    if (!boardData) {
         Logger.error("Cannot run program: Board data not set.");
         emit('programExecutionFinished'); // EMIT EVENT
         return;
@@ -271,7 +271,7 @@ export async function runProgramExecution(boardData, visitedStations, robot) {
         await sleep(cardMoved ? 200 : 500);
 
         // --- 2. Execute Board Actions ---
-        const boardResult = await applyBoardEffects(boardData, visitedStations, robot);
+        const boardResult = await applyBoardEffects(boardData, robot);
 
         // If board effects ended the game, stop processing cards
         if (boardResult.gameEnded) {

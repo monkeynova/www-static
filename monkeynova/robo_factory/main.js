@@ -46,9 +46,6 @@ const startRobotOrientation = 'east';
 document.addEventListener('DOMContentLoaded', () => {
     Logger.log("DOM Loaded. Initializing Robot Factory...");
 
-    // --- Declare game state variables here ---
-    const visitedRepairStations = new Set();
-
     try {
         // 1. Process Board Data
         const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
@@ -62,8 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (startTileData && startTileData.classes.includes('repair-station')) {
             const key = `${initialRobotStateForCheck.row}-${initialRobotStateForCheck.col}`;
             Logger.log(`Robot starts on station ${key}. Updating state.`);
-            visitedRepairStations.add(key); // Add to local Set
-            robot.setLastVisitedStation(key); // Update robot model state
+            robot.visitStation(key);
+            robot.setLastVisitedStation(key);
             // UI update for this will happen via initial event emission later
         }
         // --- End Initial Station Check ---
@@ -77,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 5. Setup UI Listeners (Subscribes UI to future events)
         // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
         // and AFTER model init if listeners need initial state immediately (less common).
-        UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, visitedRepairStations, robot));
+        UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, robot));
 
         // 6. Initialize Deck and Hand State
         Cards.initDeckAndHand(); // Emits events

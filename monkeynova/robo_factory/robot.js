@@ -15,6 +15,7 @@ class Robot {
     orientation;
     health;
     lastVisitedStationKey;
+    visitedRepairStations;
 
     /**
      * Initializes a new Robot instance.
@@ -28,11 +29,12 @@ class Robot {
         this.orientation = startOrientation;
         this.health = MAX_HEALTH;
         this.lastVisitedStationKey = null;
+        this.visitedRepairStations = new Set();
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
     }
 
     /**
-     * Returns a copy of the current robot state.
+     * Returns a copy of the current robot state (excluding visited stations).
      * @returns {object} A copy of the robot's state properties.
      */
     getRobotState() {
@@ -44,6 +46,35 @@ class Robot {
             health: this.health,
             lastVisitedStationKey: this.lastVisitedStationKey,
         };
+    }
+
+    /**
+     * Marks a repair station as visited by this robot.
+     * @param {string} stationKey - The key ('row-col') of the station.
+     */
+    visitStation(stationKey) {
+        if (stationKey && !this.visitedRepairStations.has(stationKey)) {
+            this.visitedRepairStations.add(stationKey);
+            Logger.log(`Robot visited new station: ${stationKey}. Total: ${this.visitedRepairStations.size}`);
+            // Note: We still emit 'flagVisited' from gameLoop when this happens
+        }
+    }
+
+    /**
+     * Checks if this robot has visited a specific repair station.
+     * @param {string} stationKey - The key ('row-col') of the station.
+     * @returns {boolean} True if the station has been visited.
+     */
+    hasVisitedStation(stationKey) {
+        return this.visitedRepairStations.has(stationKey);
+    }
+
+    /**
+     * Gets the number of unique repair stations visited by this robot.
+     * @returns {number} The count of visited stations.
+     */
+    getVisitedStationCount() {
+        return this.visitedRepairStations.size;
     }
 
     /**
