@@ -141,7 +141,7 @@ export async function applyBoardEffects(boardData, robot) {
 
         if (!robot.hasVisitedStation(stationKey)) {
             Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
-            visitedStations.add(stationKey);
+            robot.visitStation(stationKey);
             emit('flagVisited', stationKey);
 
             Logger.log(`   Visited ${visitedStations.size} / ${boardData.repairStations.length} stations.`);
