@@ -1,6 +1,6 @@
 // testRunner.js
 import * as Board from './board.js';
-import * as Robot from './robot.js';
+import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
 import * as Config from './config.js'; // May need for constants like MAX_HEALTH
@@ -42,12 +42,12 @@ const testScenarios = [
                 ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
-            Robot.initRobot(0, 0, 'east'); // Start on the 2x conveyor
-            return { boardData }; // Return needed data for action/assert
+            const robot = new Robot(0, 0, 'east');
+            return { boardData, robot };
         },
         async (setupData) => {
             const visitedStations = new Set();
-            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations);
+            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations, setupData.robot);
         },
         {
             // Expected: Robot should end up 2 tiles over
@@ -72,12 +72,12 @@ const testScenarios = [
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
-            Robot.initRobot(0, 0, 'east');
-            return { boardData }; // Return needed data for action/assert
+            const robot = new Robot(0, 0, 'east');
+            return { boardData, robot };
         },
         async (setupData) => {
             const visitedStations = new Set();
-            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations);
+            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations, setupData.robot);
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves only 1 space
         (actual, expected) => {
@@ -96,12 +96,12 @@ const testScenarios = [
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
-            Robot.initRobot(0, 0, 'east');
-            return { boardData }; // Return needed data for action/assert
+            const robot = new Robot(0, 0, 'east');
+            return { boardData, robot };
         },
         async (setupData) => {
             const visitedStations = new Set();
-            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations);
+            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations, setupData.robot);
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves 1 space (phase 1), blocked in phase 2
         (actual, expected) => {
@@ -121,14 +121,14 @@ const testScenarios = [
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
-            Robot.initRobot(0, 0, 'east'); // Start at (0,0) facing wall
-            return { boardData }; // Return boardData
+            const robot = new Robot(0, 0, 'east');
+            return { boardData, robot };
         },
         async (setupData) => {
             // Pass boardData from setup
-            const moveTarget = Robot.calculateMoveTarget(1, setupData.boardData);
+            const moveTarget = setupData.robot.calculateMoveTarget(1, setupData.boardData);
             if (moveTarget.success) {
-                Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Simulate move if calc succeeded (it shouldn't)
+                setupData.robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Simulate move if calc succeeded (it shouldn't)
             }
             // Note: This only tests the calculation. Testing the full runProgramExecution is more complex.
         },
@@ -160,7 +160,7 @@ export async function runTests() {
             Logger.log("   Action complete.");
 
             // 3. Get the actual resulting state
-            const actualState = Robot.getRobotState(); // Assuming this reflects the result
+            const actualState = setupData.robot.getRobotState(); // Assuming this reflects the result
             Logger.log("   Actual final state:", actualState);
             Logger.log("   Expected final state:", test.expected);
 

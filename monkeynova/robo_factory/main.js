@@ -1,7 +1,7 @@
 // main.js
 import * as Config from './config.js';
 import * as Board from './board.js';
-import * as Robot from './robot.js';
+import Robot from './robot.js';
 import * as Cards from './cards.js';
 import * as UI from './ui.js';
 import * as GameLoop from './gameLoop.js';
@@ -54,16 +54,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
 
         // 2. Initialize Robot State
-        Robot.initRobot(startRobotRow, startRobotCol, startRobotOrientation);
+        const robot = new Robot(startRobotRow, startRobotCol, startRobotOrientation);
 
         // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
-        const initialRobotStateForCheck = Robot.getRobotState();
+        const initialRobotStateForCheck = robot.getRobotState();
         const startTileData = Board.getTileData(initialRobotStateForCheck.row, initialRobotStateForCheck.col, boardData);
         if (startTileData && startTileData.classes.includes('repair-station')) {
             const key = `${initialRobotStateForCheck.row}-${initialRobotStateForCheck.col}`;
             Logger.log(`Robot starts on station ${key}. Updating state.`);
             visitedRepairStations.add(key); // Add to local Set
-            Robot.setLastVisitedStation(key); // Update robot model state
+            robot.setLastVisitedStation(key); // Update robot model state
             // UI update for this will happen via initial event emission later
         }
         // --- End Initial Station Check ---
@@ -77,14 +77,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 5. Setup UI Listeners (Subscribes UI to future events)
         // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
         // and AFTER model init if listeners need initial state immediately (less common).
-        UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, visitedRepairStations));
+        UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, visitedRepairStations, robot));
 
         // 6. Initialize Deck and Hand State
         Cards.initDeckAndHand(); // Emits events
 
         // 7. Trigger Initial Visual State Sync (Emit events NOW that UI is listening)
         Logger.log("Emitting initial state events for UI sync...");
-        const initialRobotState = Robot.getRobotState();
+        const initialRobotState = robot.getRobotState();
 
         // Emit robot position and orientation
         emit('robotMoved', { // Use 'robotMoved' as it updates position and orientation class

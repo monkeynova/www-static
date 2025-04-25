@@ -1,7 +1,6 @@
 // gameLoop.js
 import * as Config from './config.js';
 import * as Board from './board.js';
-import * as Robot from './robot.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
@@ -15,9 +14,9 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
  * @param {Set<string>} visitedStations - The set of visited station keys.
  * @returns {Promise<object>} { gameEnded, boardMoved, fellInHole }
  */
-export async function applyBoardEffects(boardData, visitedStations) {
+export async function applyBoardEffects(boardData, visitedStations, robot) {
     Logger.log("   Checking board actions...");
-    let robotState = Robot.getRobotState(); // Initial state for the phase
+    let robotState = robot.getRobotState(); // Initial state for the phase
     let boardMoved = false; // Track if ANY movement happened this phase
     let gameEnded = false;
     let fellInHole = false; // Make sure this is declared
@@ -65,12 +64,12 @@ export async function applyBoardEffects(boardData, visitedStations) {
     }
     // Update robot state AFTER phase 1 check if needed
     if (movedInPhase1) {
-        Robot.setPosition(currentR, currentC); // This emits 'robotMoved'
+        robot.setPosition(currentR, currentC); // This emits 'robotMoved'
         await sleep(150); // Short delay after phase 1 movement
-        robotState = Robot.getRobotState(); // Get updated state
+        robotState = robot.getRobotState(); // Get updated state
     } else {
         // Ensure robotState is the latest even if no move happened in phase 1
-        robotState = Robot.getRobotState();
+        robotState = robot.getRobotState();
         currentR = robotState.row;
         currentC = robotState.col;
     }
@@ -113,16 +112,16 @@ export async function applyBoardEffects(boardData, visitedStations) {
     }
     // Update robot state AFTER phase 2 check if needed
     if (movedInPhase2) {
-        Robot.setPosition(currentR, currentC); // This emits 'robotMoved'
+        robot.setPosition(currentR, currentC); // This emits 'robotMoved'
         await sleep(150); // Short delay after phase 2 movement
-        robotState = Robot.getRobotState(); // Get final updated state
+        robotState = robot.getRobotState(); // Get final updated state
     }
     // --- End Conveyor Movement ---
 
 
     // --- Get Final State After Conveyors ---
     // Ensure robotState reflects the final position after both phases
-    robotState = Robot.getRobotState();
+    robotState = robot.getRobotState();
     const finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
     if (!finalTileData) {
          Logger.error("   Robot is on an invalid tile location after conveyor phase!");
@@ -138,7 +137,7 @@ export async function applyBoardEffects(boardData, visitedStations) {
     // --- 3. Repair Station --- (Logic updated to use finalTileData)
     if (!gameEnded && finalTileData.classes.includes('repair-station')) { // Check gameEnded
         const stationKey = `${robotState.row}-${robotState.col}`;
-        Robot.setLastVisitedStation(stationKey);
+        robot.setLastVisitedStation(stationKey);
 
         if (!visitedStations.has(stationKey)) {
             Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
@@ -160,9 +159,9 @@ export async function applyBoardEffects(boardData, visitedStations) {
     if (!gameEnded && finalTileData.classes.includes('hole')) { // Check gameEnded
         Logger.log(`   Robot landed on a hole at (${robotState.row}, ${robotState.col})!`);
         fellInHole = true;
-        Robot.takeDamage(); // Update state (emits healthChanged)
+        robot.takeDamage(); // Update state (emits healthChanged)
 
-        if (Robot.isDestroyed()) {
+        if (robot.isDestroyed()) {
             Logger.error("   *** ROBOT DESTROYED by falling in hole! ***");
             emit('gameOver', false);
             gameEnded = true; // Set gameEnded flag
@@ -173,10 +172,10 @@ export async function applyBoardEffects(boardData, visitedStations) {
                 Logger.log(`   Returning to last visited station: ${lastKey}`);
                 const [lastR, lastC] = lastKey.split('-').map(Number);
                 if (Board.getTileData(lastR, lastC, boardData)) {
-                    Robot.setPosition(lastR, lastC);
+                    robot.setPosition(lastR, lastC);
                     await sleep(600);
                     // Update robotState again after reset? Might not be necessary if phase ends here.
-                    // robotState = Robot.getRobotState();
+                    // robotState = robot.getRobotState();
                 } else {
                     Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
                 }
@@ -194,7 +193,7 @@ export async function applyBoardEffects(boardData, visitedStations) {
 * @param {object} boardData - The parsed board data.
 * @param {Set<string>} visitedStations - The set of visited station keys.
 */
-export async function runProgramExecution(boardData, visitedStations) {
+export async function runProgramExecution(boardData, visitedStations, robot) {
    if (!boardData) {
         Logger.error("Cannot run program: Board data not set.");
         emit('programExecutionFinished'); // EMIT EVENT
@@ -226,16 +225,16 @@ export async function runProgramExecution(boardData, visitedStations) {
 
         Logger.log(`\nExecuting Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         let cardMoved = false;
-        let robotState = Robot.getRobotState(); // Get state before action
+        let robotState = robot.getRobotState(); // Get state before action
 
         // --- 1. Execute Card Action ---
         if (cardData.type === 'turnL' || cardData.type === 'turnR') {
             const direction = cardData.type === 'turnL' ? 'left' : 'right';
-            const newOrientation = Robot.turn(direction); // Update state
+            const newOrientation = robot.turn(direction); // Update state
         }
         // --- Handle U-Turn ---
         else if (cardData.type === 'uturn') {
-            Robot.uTurn(); // Update state & emit event
+            robot.uTurn(); // Update state & emit event
             // UI update is handled by event listener
         }
         else { // Movement cards (move1, move2, back1)
@@ -249,12 +248,12 @@ export async function runProgramExecution(boardData, visitedStations) {
 
             for (let moveStep = 0; moveStep < moveCount; moveStep++) {
                 // Calculate target and check boundaries/walls
-                const moveTarget = Robot.calculateMoveTarget(stepType, boardData);
+                const moveTarget = robot.calculateMoveTarget(stepType, boardData);
 
                 if (moveTarget.success) {
                     // No need for extra obstacle check here, calculateMoveTarget did it
                     Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
-                    Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
+                    robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
                     cardMoved = true;
                     if (moveCount > 1) await sleep(500);
                 } else { // Move failed boundary or wall check
@@ -272,7 +271,7 @@ export async function runProgramExecution(boardData, visitedStations) {
         await sleep(cardMoved ? 200 : 500);
 
         // --- 2. Execute Board Actions ---
-        const boardResult = await applyBoardEffects(boardData, visitedStations);
+        const boardResult = await applyBoardEffects(boardData, visitedStations, robot);
 
         // If board effects ended the game, stop processing cards
         if (boardResult.gameEnded) {
