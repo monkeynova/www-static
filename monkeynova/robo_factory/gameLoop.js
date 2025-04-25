@@ -6,34 +6,16 @@ import * as Cards from './cards.js';
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
 
-let gameBoardData = null; // Stores the parsed board data
-const visitedRepairStations = new Set(); // Tracks visited stations for win condition
-
-/** Stores the parsed board data for use in the loop. */
-export function setBoardData(boardData) {
-    gameBoardData = boardData;
-    visitedRepairStations.clear(); // Reset on new board data
-
-    // Check if robot starts on a station and update state/UI
-    const initialState = Robot.getRobotState();
-    const startTileData = Board.getTileData(initialState.row, initialState.col, gameBoardData);
-    if (startTileData && startTileData.classes.includes('repair-station')) {
-        const key = `${initialState.row}-${initialState.col}`;
-        visitedRepairStations.add(key);
-        Robot.setLastVisitedStation(key);
-    }
-}
-
-/** Gets the current board data used by the game loop */
-export function getBoardData() { // NEW Getter
-    return gameBoardData;
-}
-
 // Simple sleep utility
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-/** Applies effects of the tile the robot is currently on. */
-export async function applyBoardEffects() {
+/**
+ * Applies effects of the tile the robot is currently on.
+ * @param {object} boardData - The parsed board data.
+ * @param {Set<string>} visitedStations - The set of visited station keys.
+ * @returns {Promise<object>} { gameEnded, boardMoved, fellInHole }
+ */
+export async function applyBoardEffects(boardData, visitedStations) {
     Logger.log("   Checking board actions...");
     let robotState = Robot.getRobotState(); // Initial state for the phase
     let boardMoved = false; // Track if ANY movement happened this phase
@@ -48,7 +30,7 @@ export async function applyBoardEffects() {
 
     // --- Phase 1: Check 2x Conveyor ---
     Logger.log("      Phase 1: Checking 2x Conveyor");
-    let tileDataPhase1 = Board.getTileData(currentR, currentC, gameBoardData);
+    let tileDataPhase1 = Board.getTileData(currentR, currentC, boardData);
 
     // Check if the robot STARTS this phase on a 2x conveyor
     if (tileDataPhase1 && tileDataPhase1.primaryType === 'conveyor' && tileDataPhase1.speed === 2) {
@@ -65,9 +47,9 @@ export async function applyBoardEffects() {
             const nextC = currentC + dc;
 
             // Check boundaries and walls for this single step
-            const targetTileData = Board.getTileData(nextR, nextC, gameBoardData);
-            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, gameBoardData) ||
-                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), gameBoardData));
+            const targetTileData = Board.getTileData(nextR, nextC, boardData);
+            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, boardData) ||
+                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), boardData));
 
             if (targetTileData && !blockedByWall) {
                 // If move is valid, update position for Phase 2
@@ -96,7 +78,7 @@ export async function applyBoardEffects() {
 
     // --- Phase 2: Check All Conveyors ---
     Logger.log("      Phase 2: Checking All Conveyors");
-    let tileDataPhase2 = Board.getTileData(currentR, currentC, gameBoardData);
+    let tileDataPhase2 = Board.getTileData(currentR, currentC, boardData);
 
     // Check if the robot is NOW on ANY conveyor
     if (tileDataPhase2 && tileDataPhase2.primaryType === 'conveyor') {
@@ -113,9 +95,9 @@ export async function applyBoardEffects() {
             const nextC = currentC + dc;
 
             // Check boundaries and walls for this single step
-            const targetTileData = Board.getTileData(nextR, nextC, gameBoardData);
-            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, gameBoardData) ||
-                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), gameBoardData));
+            const targetTileData = Board.getTileData(nextR, nextC, boardData);
+            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, boardData) ||
+                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), boardData));
 
             if (targetTileData && !blockedByWall) {
                 // If move is valid, update position for subsequent phases
@@ -141,7 +123,7 @@ export async function applyBoardEffects() {
     // --- Get Final State After Conveyors ---
     // Ensure robotState reflects the final position after both phases
     robotState = Robot.getRobotState();
-    const finalTileData = Board.getTileData(robotState.row, robotState.col, gameBoardData);
+    const finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
     if (!finalTileData) {
          Logger.error("   Robot is on an invalid tile location after conveyor phase!");
          // Decide how to handle this - maybe force game over or reset?
@@ -158,13 +140,13 @@ export async function applyBoardEffects() {
         const stationKey = `${robotState.row}-${robotState.col}`;
         Robot.setLastVisitedStation(stationKey);
 
-        if (!visitedRepairStations.has(stationKey)) {
+        if (!visitedStations.has(stationKey)) {
             Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
-            visitedRepairStations.add(stationKey);
+            visitedStations.add(stationKey);
             emit('flagVisited', stationKey);
 
-            Logger.log(`   Visited ${visitedRepairStations.size} / ${gameBoardData.repairStations.length} stations.`);
-            if (visitedRepairStations.size === gameBoardData.repairStations.length && gameBoardData.repairStations.length > 0) {
+            Logger.log(`   Visited ${visitedStations.size} / ${boardData.repairStations.length} stations.`);
+            if (visitedStations.size === boardData.repairStations.length && boardData.repairStations.length > 0) {
                 Logger.log("   *** WIN CONDITION MET! ***");
                 emit('gameOver', true);
                 gameEnded = true; // Set gameEnded flag
@@ -190,7 +172,7 @@ export async function applyBoardEffects() {
             if (lastKey) {
                 Logger.log(`   Returning to last visited station: ${lastKey}`);
                 const [lastR, lastC] = lastKey.split('-').map(Number);
-                if (Board.getTileData(lastR, lastC, gameBoardData)) {
+                if (Board.getTileData(lastR, lastC, boardData)) {
                     Robot.setPosition(lastR, lastC);
                     await sleep(600);
                     // Update robotState again after reset? Might not be necessary if phase ends here.
@@ -207,15 +189,20 @@ export async function applyBoardEffects() {
     return { gameEnded, boardMoved, fellInHole }; // Return final status
 }
 
-/** Executes the sequence of programmed cards and board actions. */
-export async function runProgramExecution() {
-    if (!gameBoardData) {
+/**
+* Executes the sequence of programmed cards and board actions.
+* @param {object} boardData - The parsed board data.
+* @param {Set<string>} visitedStations - The set of visited station keys.
+*/
+export async function runProgramExecution(boardData, visitedStations) {
+   if (!boardData) {
         Logger.error("Cannot run program: Board data not set.");
         emit('programExecutionFinished'); // EMIT EVENT
         return;
     }
     Logger.log("--- Starting Program Execution ---");
 
+    // TODO: UI method?
     const programmedCardElements = document.querySelectorAll('#program-slots .program-slot .card');
     if (programmedCardElements.length !== Config.PROGRAM_SIZE) {
         Logger.error("Program is not full!");
@@ -262,7 +249,7 @@ export async function runProgramExecution() {
 
             for (let moveStep = 0; moveStep < moveCount; moveStep++) {
                 // Calculate target and check boundaries/walls
-                const moveTarget = Robot.calculateMoveTarget(stepType, gameBoardData);
+                const moveTarget = Robot.calculateMoveTarget(stepType, boardData);
 
                 if (moveTarget.success) {
                     // No need for extra obstacle check here, calculateMoveTarget did it
@@ -285,7 +272,7 @@ export async function runProgramExecution() {
         await sleep(cardMoved ? 200 : 500);
 
         // --- 2. Execute Board Actions ---
-        const boardResult = await applyBoardEffects();
+        const boardResult = await applyBoardEffects(boardData, visitedStations);
 
         // If board effects ended the game, stop processing cards
         if (boardResult.gameEnded) {

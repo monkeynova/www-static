@@ -619,11 +619,17 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
     });
 
     // Attach run button listener
-    runProgramButton.addEventListener('click', () => {
-        // Disable button immediately in UI
-        updateButtonStateUI(false);
-        // Call the provided game loop execution function
-        runProgramCallback();
+    runProgramButton.addEventListener('click', async () => {
+        Logger.log("Run Program button clicked.");
+        updateButtonStateUI(false); // Disable button immediately
+        try {
+            // Directly call the provided callback, which now has boardData baked in
+            await runProgramCallback();
+        } catch (err) {
+            Logger.error("Error during program execution:", err);
+            // Optionally re-enable button on error? Or rely on programExecutionFinished event?
+            // updateButtonStateUI(true);
+        }
     });
 
     // Attach modal close button listener

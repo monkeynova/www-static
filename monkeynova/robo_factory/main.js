@@ -46,6 +46,9 @@ const startRobotOrientation = 'east';
 document.addEventListener('DOMContentLoaded', () => {
     Logger.log("DOM Loaded. Initializing Robot Factory...");
 
+    // --- Declare game state variables here ---
+    const visitedRepairStations = new Set();
+
     try {
         // 1. Process Board Data
         const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
@@ -53,8 +56,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Initialize Robot State
         Robot.initRobot(startRobotRow, startRobotCol, startRobotOrientation);
 
-        // 3. Set Board Data in Game Loop (Internal state)
-        GameLoop.setBoardData(boardData);
+        // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
+        const initialRobotStateForCheck = Robot.getRobotState();
+        const startTileData = Board.getTileData(initialRobotStateForCheck.row, initialRobotStateForCheck.col, boardData);
+        if (startTileData && startTileData.classes.includes('repair-station')) {
+            const key = `${initialRobotStateForCheck.row}-${initialRobotStateForCheck.col}`;
+            Logger.log(`Robot starts on station ${key}. Updating state.`);
+            visitedRepairStations.add(key); // Add to local Set
+            Robot.setLastVisitedStation(key); // Update robot model state
+            // UI update for this will happen via initial event emission later
+        }
+        // --- End Initial Station Check ---
 
         // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
         // This replaces initCanvas, renderBoard, createFlags, createRobot
@@ -65,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 5. Setup UI Listeners (Subscribes UI to future events)
         // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
         // and AFTER model init if listeners need initial state immediately (less common).
-        UI.setupUIListeners(GameLoop.runProgramExecution);
+        UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, visitedRepairStations));
 
         // 6. Initialize Deck and Hand State
         Cards.initDeckAndHand(); // Emits events

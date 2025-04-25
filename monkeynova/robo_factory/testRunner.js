@@ -43,11 +43,11 @@ const testScenarios = [
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
             Robot.initRobot(0, 0, 'east'); // Start on the 2x conveyor
-            GameLoop.setBoardData(boardData); // Set this specific board for the game loop
+            return { boardData }; // Return needed data for action/assert
         },
-        async () => {
-            // Action: Run the board effects phase
-            await GameLoop.applyBoardEffects();
+        async (setupData) => {
+            const visitedStations = new Set();
+            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations);
         },
         {
             // Expected: Robot should end up 2 tiles over
@@ -73,9 +73,12 @@ const testScenarios = [
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
             Robot.initRobot(0, 0, 'east');
-            GameLoop.setBoardData(boardData);
+            return { boardData }; // Return needed data for action/assert
         },
-        async () => await GameLoop.applyBoardEffects(),
+        async (setupData) => {
+            const visitedStations = new Set();
+            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations);
+        },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves only 1 space
         (actual, expected) => {
             const pass = actual.row === expected.robot.row && actual.col === expected.robot.col;
@@ -94,9 +97,12 @@ const testScenarios = [
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
             Robot.initRobot(0, 0, 'east');
-            GameLoop.setBoardData(boardData);
+            return { boardData }; // Return needed data for action/assert
         },
-        async () => await GameLoop.applyBoardEffects(),
+        async (setupData) => {
+            const visitedStations = new Set();
+            await GameLoop.applyBoardEffects(setupData.boardData, visitedStations);
+        },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves 1 space (phase 1), blocked in phase 2
         (actual, expected) => {
             const pass = actual.row === expected.robot.row && actual.col === expected.robot.col;
@@ -116,13 +122,11 @@ const testScenarios = [
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
             Robot.initRobot(0, 0, 'east'); // Start at (0,0) facing wall
-            GameLoop.setBoardData(boardData); // Set board for calculateMoveTarget
+            return { boardData }; // Return boardData
         },
-        async () => {
-            // Action: Simulate executing a 'Move 1' card
-            // We need access to boardData within the action scope
-            const boardData = GameLoop.getBoardData(); // Add a getter in gameLoop.js if needed, or pass it
-            const moveTarget = Robot.calculateMoveTarget(1, boardData); // Simulate calc
+        async (setupData) => {
+            // Pass boardData from setup
+            const moveTarget = Robot.calculateMoveTarget(1, setupData.boardData);
             if (moveTarget.success) {
                 Robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Simulate move if calc succeeded (it shouldn't)
             }
@@ -148,11 +152,11 @@ export async function runTests() {
         Logger.log(`\n--- Test: ${test.description} ---`);
         try {
             // 1. Setup state for this specific test
-            await test.setup();
+            const setupData = await test.setup(); // e.g., { boardData }
             Logger.log("   Setup complete.");
 
             // 2. Execute the action
-            await test.action();
+            await test.action(setupData);
             Logger.log("   Action complete.");
 
             // 3. Get the actual resulting state
