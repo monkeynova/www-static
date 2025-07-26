@@ -1,0 +1,116 @@
+# Robo Factory - Design Document
+
+## 1. Overview
+
+Robo Factory is a single-player, browser-based puzzle game. The player programs a robot using a limited hand of instruction cards to navigate a factory floor. The goal is to visit a series of designated "repair stations" (flags) in order to win. The factory floor contains various obstacles and elements like conveyor belts, walls, and holes that affect the robot's movement.
+
+The game is turn-based, with a distinct programming phase and an execution phase. It is built with vanilla JavaScript using ES modules, emphasizing a separation of concerns between game logic (Model), user interface (View), and the main game loop (Controller).
+
+## 2. Core Gameplay Mechanics
+
+### 2.1. Game Objective
+
+The primary objective is to guide the robot to touch every **Repair Station** tile on the board. The game is won when the last unique repair station is visited. The game is lost if the robot's health reaches zero.
+
+### 2.2. The Turn Cycle
+
+Each round consists of two main phases:
+
+1.  **Programming Phase:**
+    *   The player is dealt a hand of 7 instruction cards from their deck.
+    *   The player must choose 5 of these cards and place them into the 5 program slots.
+    *   This is done via a drag-and-drop interface.
+    *   Once all 5 slots are filled, the "Run Program" button becomes active.
+
+2.  **Execution Phase:**
+    *   When "Run Program" is clicked, the game takes over.
+    *   The 5 programmed cards are executed sequentially, one by one.
+    *   After each card's action is resolved, board elements (like conveyor belts) are activated.
+    *   This sequence (Card Action -> Board Effects) repeats for all 5 cards or until the game ends.
+    *   After the execution phase, the 5 used cards are moved to a discard pile, and the player draws 5 new cards from their deck to replenish their hand to 7.
+
+### 2.3. The Robot
+
+The robot is the player's avatar on the board. Its state is defined by:
+*   **Position:** A row and column on the grid.
+*   **Orientation:** North, East, South, or West.
+*   **Health:** Starts at a maximum (10) and decreases when encountering hazards. The game ends if health reaches 0.
+*   **Visited Stations:** A record of the unique repair stations it has touched.
+*   **Last Visited Station:** The robot's respawn point if it falls into a hole.
+
+### 2.4. The Cards
+
+The player's actions are dictated by cards. The deck contains a fixed set of cards with different effects:
+*   **Move 1 / Move 2:** Moves the robot forward 1 or 2 tiles in its current direction. A "Move 2" is blocked if either of the two single-tile moves is blocked by a wall.
+*   **Back 1:** Moves the robot backward 1 tile without changing its orientation.
+*   **Turn L / Turn R:** Rotates the robot 90 degrees left or right.
+*   **U-Turn:** Rotates the robot 180 degrees.
+
+Card management follows standard deck-builder rules: when the draw pile is empty, the discard pile is shuffled to become the new draw pile.
+
+### 2.5. The Board
+
+The game board is a grid of tiles with various properties.
+
+*   **Tiles:**
+    *   **Plain:** Standard empty space.
+    *   **Repair Station:** The target tiles. Visiting one for the first time contributes to the win condition and sets the robot's respawn point. Indicated by a 🔧 symbol.
+    *   **Conveyor Belt:** Automatically moves the robot one tile in the indicated direction.
+        *   **Normal (1x):** Moves the robot one tile.
+        *   **Express (2x):** Can move the robot up to two tiles. The movement is phased: the 2x belt moves the robot one tile, then the conveyor on the *new* tile activates to move it a second tile.
+    *   **Hole:** If the robot ends its movement on a hole, it takes damage and respawns at the last visited repair station. If no station has been visited, this is likely a game-ending event.
+*   **Walls:** Impassable barriers that block robot movement. They exist on the edges of tiles.
+
+## 3. Technical Architecture & Design
+
+The application is architected with a clear separation of concerns, using modern JavaScript (ES Modules).
+
+### 3.1. Module Breakdown
+
+*   **`main.js`:** The main entry point. It initializes all other modules, defines the board layout, and starts the game.
+*   **`config.js`:** A central place for game constants (e.g., `MAX_HEALTH`, `HAND_SIZE`, `TILE_SIZE`, deck composition).
+*   **`robot.js`:** (Model) Defines the `Robot` class, managing its state (position, health, etc.) and state-changing methods (`move`, `turn`, `takeDamage`).
+*   **`board.js`:** (Model) Contains functions for parsing the board definition and querying tile properties (e.g., `getTileData`, `hasWall`).
+*   **`cards.js`:** (Model) Manages the card deck, hand, and discard pile. Handles shuffling, drawing, and discarding logic.
+*   **`gameLoop.js`:** (Controller) Orchestrates the execution phase of the game. It processes the programmed cards and triggers board effects in the correct sequence.
+*   **`ui.js`:** (View) Responsible for all DOM manipulation and canvas rendering. It listens for events to update the visual representation of the game state and captures user input (drag-and-drop, button clicks).
+*   **`eventEmitter.js`:** A simple pub/sub system that allows the Model and Controller to broadcast events (e.g., `robotMoved`, `gameOver`) without being directly coupled to the `ui.js` module.
+*   **`logger.js`:** A utility for logging game events to the console and maintaining a log history for debugging.
+*   **`testRunner.js`:** A simple framework for running unit and integration tests for game logic, particularly for complex interactions like conveyor belts and wall collisions.
+
+### 3.2. Event-Driven Architecture
+
+The core of the decoupling strategy is the event emitter.
+*   When game state changes in the Model (e.g., `robot.setPosition()`), an event is emitted (e.g., `emit('robotMoved', ...)`)
+*   The `ui.js` module subscribes to these events and updates the visuals accordingly.
+This prevents the game logic from needing any knowledge of the DOM or how it's structured.
+
+### 3.3. State Management
+
+Game state is decentralized into the primary model objects:
+*   **Robot State:** Held within the `Robot` instance created in `main.js`.
+*   **Board State:** The (mostly static) board data is parsed and held in an object created by `board.js`.
+*   **Card State:** The deck, hand, and discard piles are managed as arrays within the `cards.js` module.
+
+## 4. Future Work & Potential Enhancements
+
+*   **More Board Elements:**
+    *   **Lasers:** Stationary lasers that fire at the end of each card execution, damaging robots in their path.
+    *   **Pushers:** Walls that activate on specific turns to push robots one tile.
+    *   **Rotating Gears:** Tiles that rotate the robot standing on them.
+*   **More Card Types:**
+    *   **"Again":** Repeats the previous card's action.
+    *   **"Power Down":** Robot skips the next card but regains some health.
+    *   **Conditional Cards:** "If-Then" logic (e.g., "If on a blue tile, move 2").
+*   **Improved UI/UX:**
+    *   Add sound effects for movement, collisions, and card plays.
+    *   Smoother animations and visual feedback for game events.
+    *   A more polished and visually appealing theme.
+*   **Gameplay Enhancements:**
+    *   **Multiplayer:** Allow multiple robots to be on the board at once, either cooperatively or competitively.
+    *   **Campaign/Levels:** Create a series of different boards with increasing difficulty.
+    *   **Scoring System:** Award points based on speed, efficiency, or remaining health.
+*   **Technical Improvements:**
+    *   **State Persistence:** Save and load game state using `localStorage`.
+    *   **Refactor `gameLoop.js`:** Further break down the `runProgramExecution` function to better separate card actions from board actions.
+    *   **Expand Test Coverage:** Add more tests for edge cases and new features.
