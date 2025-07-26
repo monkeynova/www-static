@@ -1,0 +1,17 @@
+{
+  "name": "robo_factory",
+  "version": "1.0.0",
+  "description": "A robot programming puzzle game.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "test": "node run-tests.js"
+  },
+  "keywords": [
+    "game",
+    "puzzle",
+    "robot"
+  ],
+  "author": "",
+  "license": "ISC"
+}

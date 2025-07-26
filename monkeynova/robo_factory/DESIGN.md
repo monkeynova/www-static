@@ -76,7 +76,7 @@ The application is architected with a clear separation of concerns, using modern
 *   **`ui.js`:** (View) Responsible for all DOM manipulation and canvas rendering. It listens for events to update the visual representation of the game state and captures user input (drag-and-drop, button clicks).
 *   **`eventEmitter.js`:** A simple pub/sub system that allows the Model and Controller to broadcast events (e.g., `robotMoved`, `gameOver`) without being directly coupled to the `ui.js` module.
 *   **`logger.js`:** A utility for logging game events to the console and maintaining a log history for debugging.
-*   **`testRunner.js`:** A simple framework for running unit and integration tests for game logic, particularly for complex interactions like conveyor belts and wall collisions.
+*   **`testRunner.js`:** A simple framework for running unit and integration tests for game logic. Tests can be executed via a button in the browser for quick validation or from the command line via `npm test` for automated and iterative development.
 
 ### 3.2. Event-Driven Architecture
 
