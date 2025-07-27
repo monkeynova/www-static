@@ -109,13 +109,22 @@ const debugCloseButton = document.getElementById('debug-close-button');
 const debugLogOutput = document.getElementById('debug-log-output');
 const boardContainer = document.getElementById('board-container');
 const boardCanvas = document.getElementById('board-canvas');
+const boardScrollArea = document.getElementById('board-scroll-area');
 const runTestsButton = document.getElementById('run-tests-button');
+const zoomInButton = document.getElementById('zoom-in-button');
+const zoomOutButton = document.getElementById('zoom-out-button');
+const zoomLevelDisplay = document.getElementById('zoom-level');
+
 
 // --- Canvas / Rendering State ---
 let ctx = null; // Canvas 2D context
 let robotElement = null; // Reference to the robot DOM element
 let draggedCardElement = null; // Track dragged DOM element during drag event
 let wallStripePattern = null; // Store the created pattern
+let zoomLevel = 1.0; // NEW: Zoom level state
+const ZOOM_INCREMENT = 0.1;
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 2.0;
 
 /**
  * Initializes the entire game UI (canvas, static board, indicators, robot element).
@@ -129,6 +138,7 @@ export function initializeUI(boardData) {
     renderBoard(boardData);                 // Draw static board
     createFlagIndicatorsUI(boardData.repairStations); // Create flag DOM elements
     createRobotElement();                   // Create robot DOM element
+    applyZoom();                            // NEW: Apply initial zoom
     Logger.log("UI Initialization complete.");
     return true;
 }
@@ -400,7 +410,7 @@ function updateHandUI(handCardsData) {
 /** Clears program slots and shows numbers. */
 function resetProgramSlotsUI() {
     programSlots.forEach((slot, index) => {
-        slot.innerHTML = `${index + 1}`; // Restore number
+        slot.innerHTML = `${index + 1}`;
         slot.className = 'program-slot drop-zone'; // Reset classes, keep drop-zone
     });
     // Logger.log("Program slots UI reset.");
@@ -480,6 +490,15 @@ function updateButtonStateUI(isEnabled) {
 }
 
 // --- UI Helpers ---
+
+/** NEW: Applies the current zoom level to the board container */
+function applyZoom() {
+    if (boardContainer && zoomLevelDisplay) {
+        boardContainer.style.transform = `scale(${zoomLevel})`;
+        boardContainer.style.transformOrigin = 'top left';
+        zoomLevelDisplay.textContent = `${Math.round(zoomLevel * 100)}%`;
+    }
+}
 
 // --- Drag and Drop Handlers ---
 
@@ -680,6 +699,33 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
     } else {
         Logger.warn("Run Tests button not found.");
     }
+
+    // NEW: Attach Zoom Listeners
+    if (zoomInButton) {
+        zoomInButton.addEventListener('click', () => {
+            zoomLevel = Math.min(MAX_ZOOM, zoomLevel + ZOOM_INCREMENT);
+            applyZoom();
+        });
+    }
+    if (zoomOutButton) {
+        zoomOutButton.addEventListener('click', () => {
+            zoomLevel = Math.max(MIN_ZOOM, zoomLevel - ZOOM_INCREMENT);
+            applyZoom();
+        });
+    }
+    if (boardScrollArea) {
+        boardScrollArea.addEventListener('wheel', (event) => {
+            // Only zoom if Ctrl key is held down
+            if (event.ctrlKey) {
+                event.preventDefault(); // Prevent page from scrolling
+                const scrollAmount = event.deltaY < 0 ? ZOOM_INCREMENT : -ZOOM_INCREMENT;
+                zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel + scrollAmount));
+                applyZoom();
+            }
+            // If Ctrl is not held, do nothing and allow default scroll behavior
+        }, { passive: false }); // passive:false is needed for preventDefault
+    }
+
 
     subscribeToModelEvents(); // Setup model listeners
 
