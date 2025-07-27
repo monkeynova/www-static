@@ -245,10 +245,6 @@ export async function runProgramExecution(boardData, robot) {
             Logger.error(`Cannot find card data for ${instanceId}! Skipping card.`);
             continue;
         }
-        if (!ALLOWED_CARD_TYPES.has(cardData.type)) {
-            Logger.error(`Invalid card type '${cardData.type}' for instance ${instanceId}! Skipping card.`);
-            continue;
-        }
 
         Logger.log(`\nExecuting Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         let cardMoved = false;

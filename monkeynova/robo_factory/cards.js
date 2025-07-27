@@ -1,5 +1,5 @@
 // cards.js
-import { HAND_SIZE, FULL_DECK_DEFINITION } from './config.js';
+import { HAND_SIZE, FULL_DECK_DEFINITION, ALLOWED_CARD_TYPES } from './config.js';
 import { emit } from './eventEmitter.js'; // Import emit
 import * as Logger from './logger.js';
 
@@ -32,6 +32,13 @@ function emitCounts() {
  * @returns {object[]} The initial hand card data (still useful for initial UI setup).
  */
 export function initDeckAndHand() {
+    // Validate all cards in the FULL_DECK_DEFINITION at initialization
+    for (const cardDef of FULL_DECK_DEFINITION) {
+        if (!ALLOWED_CARD_TYPES.has(cardDef.type)) {
+            throw new Error(`Invalid card type '${cardDef.type}' found in FULL_DECK_DEFINITION. Must be one of ${Array.from(ALLOWED_CARD_TYPES).join(', ')}.`);
+        }
+    }
+
     currentDeck = [...FULL_DECK_DEFINITION];
     shuffle(currentDeck);
     handCards = [];
@@ -70,9 +77,6 @@ export function draw(count) {
 
         if (currentDeck.length > 0) {
             const cardData = currentDeck.pop();
-            if (!ALLOWED_CARD_TYPES.has(cardData.type)) {
-                throw new Error(`Invalid card type drawn: ${cardData.type}. Must be one of ${Array.from(ALLOWED_CARD_TYPES).join(', ')}.`);
-            }
             const instanceId = `card-instance-${cardInstanceCounter++}`;
             const cardInstance = { ...cardData, instanceId: instanceId };
 
