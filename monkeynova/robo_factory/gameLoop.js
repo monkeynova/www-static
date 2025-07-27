@@ -28,18 +28,20 @@ export async function applyBoardEffects(boardData, robot) {
     let movedInPhase2 = false;
 
     // --- Phase 1: Check 2x Conveyor ---
-    Logger.log("      Phase 1: Checking 2x Conveyor");
     let tileDataPhase1 = Board.getTileData(currentR, currentC, boardData);
+    Logger.log("      Phase 1: Checking 2x Conveyor ${tileDataPhase1}");
 
     // Check if the robot STARTS this phase on a 2x conveyor
     if (tileDataPhase1 && tileDataPhase1.primaryType === 'conveyor' && tileDataPhase1.speed === 2) {
         // Calculate the potential move
         let dr = 0, dc = 0;
         let exitSide = '';
-        if (tileDataPhase1.classes.includes('up'))    { dr = -1; exitSide = 'north'; }
-        else if (tileDataPhase1.classes.includes('down'))  { dr = 1;  exitSide = 'south'; }
-        else if (tileDataPhase1.classes.includes('left'))  { dc = -1; exitSide = 'west'; }
-        else if (tileDataPhase1.classes.includes('right')) { dc = 1;  exitSide = 'east'; }
+        switch (tileDataPhase1.direction) {
+            case 'north': dr = -1; exitSide = 'north'; break;
+            case 'south': dr = 1;  exitSide = 'south'; break;
+            case 'west':  dc = -1; exitSide = 'west';  break;
+            case 'east':  dc = 1;  exitSide = 'east';  break;
+        }
 
         if (dr !== 0 || dc !== 0) { // Check if direction was found
             const nextR = currentR + dr;
@@ -84,10 +86,12 @@ export async function applyBoardEffects(boardData, robot) {
         // Calculate the potential move
         let dr = 0, dc = 0;
         let exitSide = '';
-        if (tileDataPhase2.classes.includes('up'))    { dr = -1; exitSide = 'north'; }
-        else if (tileDataPhase2.classes.includes('down'))  { dr = 1;  exitSide = 'south'; }
-        else if (tileDataPhase2.classes.includes('left'))  { dc = -1; exitSide = 'west'; }
-        else if (tileDataPhase2.classes.includes('right')) { dc = 1;  exitSide = 'east'; }
+        switch (tileDataPhase2.direction) {
+            case 'north': dr = -1; exitSide = 'north'; break;
+            case 'south': dr = 1;  exitSide = 'south'; break;
+            case 'west':  dc = -1; exitSide = 'west';  break;
+            case 'east':  dc = 1;  exitSide = 'east';  break;
+        }
 
         if (dr !== 0 || dc !== 0) { // Check if direction was found
             const nextR = currentR + dr;

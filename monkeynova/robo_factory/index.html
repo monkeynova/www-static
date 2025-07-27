@@ -38,8 +38,30 @@
         .conveyor {
             background-color: #aaddff; /* Light blue for conveyors */
             border: 1px solid #88ccf1;
+            position: relative; /* Needed for ::after positioning */
+            overflow: hidden; /* Hide overflow of arrow */
         }
-        
+        .conveyor::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 12px solid rgba(0,0,0,0.3); /* Darker arrow */
+            transform: translate(-50%, -50%); /* Center the arrow */
+            transform-origin: center center;
+            transition: transform 0.1s linear; /* Smooth rotation */
+        }
+
+        /* Conveyor Directional Arrows */
+        .conveyor-north::after { transform: translate(-50%, -50%) rotate(-90deg); }
+        .conveyor-east::after  { transform: translate(-50%, -50%) rotate(0deg);   }
+        .conveyor-south::after { transform: translate(-50%, -50%) rotate(90deg);  }
+        .conveyor-west::after  { transform: translate(-50%, -50%) rotate(180deg); }
+
         /* NEW: Repair Station Tile */
         .repair-station {
             background-color: #90ee90; /* Light green for repair stations */

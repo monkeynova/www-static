@@ -28,8 +28,8 @@ const testScenarios = [
             const testBoardDef = [
                 // Row 0
                 [
-                    { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north', 'west'] },
-                    { classes: ['conveyor', 'right'], walls: ['north'] },
+                    { classes: ['conveyor', 'conveyor-east', 'speed-2x'], walls: ['north', 'west'] },
+                    { classes: ['conveyor', 'conveyor-east'], walls: ['north'] },
                     { classes: ['plain'], walls: ['north'] },
                     { classes: ['plain'], walls: ['north', 'east'] }
                 ],
@@ -67,7 +67,7 @@ const testScenarios = [
          async () => {
             // Setup: Robot on 1x conveyor (0,0)->Right, next tile 1x conveyor (0,1)->Right
             const testBoardDef = [
-                [ { classes: ['conveyor', 'right'], walls: ['north', 'west'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['conveyor', 'conveyor-east'], walls: ['north', 'west'] }, { classes: ['conveyor', 'conveyor-east'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
@@ -90,7 +90,7 @@ const testScenarios = [
          async () => {
             // Setup: Robot on 2x conveyor (0,0)->Right, wall blocking exit from (0,1)
             const testBoardDef = [
-                [ { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north', 'west'] }, { classes: ['plain', 'right'], walls: ['north', 'east'] } ], // Wall east of (0,1)
+                [ { classes: ['conveyor', 'conveyor-east', 'speed-2x'], walls: ['north', 'west'] }, { classes: ['plain', 'right'], walls: ['north', 'east'] } ], // Wall east of (0,1)
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
@@ -236,7 +236,7 @@ const testScenarios = [
             const testBoardDef = [
                 // Row 0
                 [
-                    { classes: ['conveyor', 'right'], walls: ['north', 'west'] }, // (0,0)
+                    { classes: ['conveyor', 'conveyor-east'], walls: ['north', 'west'] }, // (0,0)
                     { classes: ['gear-cw'], walls: ['north'] },                 // (0,1)
                     { classes: ['plain'], walls: ['north', 'east'] }            // (0,2)
                 ],

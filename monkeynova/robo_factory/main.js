@@ -46,8 +46,8 @@ function createDemonstrationBoard(rows, cols) {
     const riverCol = chasmStartCol - 1;
     const expressRiverCol = chasmStartCol - 2;
     for (let r = 1; r < rows - 1; r++) {
-        board[r][riverCol].classes = ['conveyor', 'down'];
-        board[r][expressRiverCol].classes = ['conveyor', 'down', 'speed-2x'];
+        board[r][riverCol].classes = ['conveyor', 'conveyor-south'];
+        board[r][expressRiverCol].classes = ['conveyor', 'conveyor-south', 'speed-2x'];
     }
 
     // 4. Create a walled maze in the top-right quadrant
@@ -71,13 +71,13 @@ function createDemonstrationBoard(rows, cols) {
     const whirlSize = 5;
     for (let i = 0; i < whirlSize; i++) {
         // Top row (right)
-        board[whirlStart.r][whirlStart.c + i].classes = ['conveyor', 'right'];
+        board[whirlStart.r][whirlStart.c + i].classes = ['conveyor', 'conveyor-east'];
         // Bottom row (left)
-        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].classes = ['conveyor', 'left'];
+        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].classes = ['conveyor', 'conveyor-west'];
         // Left col (down)
-        board[whirlStart.r + i][whirlStart.c].classes = ['conveyor', 'down'];
+        board[whirlStart.r + i][whirlStart.c].classes = ['conveyor', 'conveyor-south'];
         // Right col (up)
-        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].classes = ['conveyor', 'up'];
+        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].classes = ['conveyor', 'conveyor-north'];
     }
 
     // 6. Place repair stations strategically

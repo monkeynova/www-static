@@ -83,6 +83,11 @@ class Robot {
      * @returns {string} The new orientation.
      */
     turn(direction) {
+        if (direction !== 'left' && direction !== 'right') {
+            Logger.error(`Invalid turn direction: ${direction}. Must be 'left' or 'right'.`);
+            return this.orientation; // Return current orientation, do not turn
+        }
+
         const currentIndex = orientations.indexOf(this.orientation);
         let newIndex;
         if (direction === 'left') {

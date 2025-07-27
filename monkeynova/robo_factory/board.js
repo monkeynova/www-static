@@ -33,6 +33,13 @@ export function parseBoardObjectDefinition(boardDefinition) {
             const primaryType = definedClasses[0] || 'plain';
 
             const speed = definedClasses.includes('speed-2x') ? 2 : 1;
+            let direction = null;
+            if (primaryType === 'conveyor') {
+                const directionClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
+                if (directionClass) {
+                    direction = directionClass.split('-')[1]; // Extract 'north', 'east', etc.
+                }
+            }
 
             const tileData = {
                 classes: ['tile', ...definedClasses], // Combine base 'tile' with defined classes
@@ -40,7 +47,8 @@ export function parseBoardObjectDefinition(boardDefinition) {
                 row: r,
                 col: c,
                 primaryType: primaryType,
-                speed: speed
+                speed: speed,
+                direction: direction // NEW: Store conveyor direction
             };
             rowTiles.push(tileData);
 
