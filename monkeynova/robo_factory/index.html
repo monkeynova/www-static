@@ -51,6 +51,12 @@
             color: #333;
         }
 
+        /* NEW: Gear Tile Styles */
+        .gear-cw, .gear-ccw {
+            background-color: #d8bfd8; /* Light purple for gears */
+            border: 1px solid #b09ab0;
+        }
+
         #board-scroll-area {
             flex-grow: 1; /* Allow it to take up remaining space */
             overflow: auto; /* Add scrollbars ONLY if needed */
@@ -140,6 +146,7 @@
             --tile-conveyor-color: #aaddff;
             --tile-repair-color: #90ee90;
             --tile-hole-color: #222;
+            --tile-gear-color: #d8bfd8; /* NEW */
             --wall-solid-color: #663300; /* Fallback/alternative */
         }
 

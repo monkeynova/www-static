@@ -122,7 +122,7 @@ export async function applyBoardEffects(boardData, robot) {
     // --- Get Final State After Conveyors ---
     // Ensure robotState reflects the final position after both phases
     robotState = robot.getRobotState();
-    const finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
+    let finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
     if (!finalTileData) {
          Logger.error("   Robot is on an invalid tile location after conveyor phase!");
          // Decide how to handle this - maybe force game over or reset?
@@ -130,11 +130,28 @@ export async function applyBoardEffects(boardData, robot) {
          return { gameEnded: false, boardMoved, fellInHole: false };
     }
 
-    // --- 2. Laser Firing --- (No changes needed here)
+    // --- NEW: 2. Gear Rotation ---
+    if (finalTileData.classes.includes('gear-cw')) {
+        Logger.log(`   On clockwise gear. Turning right.`);
+        robot.turn('right');
+        await sleep(350); // Wait for turn animation
+        robotState = robot.getRobotState(); // Update state after turn
+    } else if (finalTileData.classes.includes('gear-ccw')) {
+        Logger.log(`   On counter-clockwise gear. Turning left.`);
+        robot.turn('left');
+        await sleep(350);
+        robotState = robot.getRobotState(); // Update state after turn
+    }
+    // --- End Gear Rotation ---
+
+
+    // --- 3. Laser Firing --- (No changes needed here)
     // ... (Laser logic uses the final robotState) ...
     // Make sure laser logic correctly checks for gameEnded state
 
-    // --- 3. Repair Station --- (Logic updated to use finalTileData)
+    // --- 4. Repair Station --- (Logic updated to use finalTileData)
+    // Re-fetch tile data in case a gear turn happened on a repair station tile (unlikely but possible)
+    finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
     if (!gameEnded && finalTileData.classes.includes('repair-station')) { // Check gameEnded
         const stationKey = `${robotState.row}-${robotState.col}`;
         robot.setLastVisitedStation(stationKey);

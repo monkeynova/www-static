@@ -85,6 +85,12 @@ function createDemonstrationBoard(rows, cols) {
     board[mazeStartRow + 1][mazeEndCol - 1].classes = ['repair-station']; // In the maze
     board[rows - 5][cols - 5].classes = ['repair-station']; // Across the chasm
 
+    // 7. Add some gears
+    board[whirlStart.r - 2][whirlStart.c + 2].classes = ['gear-cw'];
+    board[whirlStart.r + whirlSize + 1][whirlStart.c + 2].classes = ['gear-ccw'];
+    board[4][riverCol - 2].classes = ['gear-cw'];
+    board[5][riverCol - 2].classes = ['gear-cw'];
+
     return board;
 }
 

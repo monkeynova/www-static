@@ -204,6 +204,7 @@ export function renderBoard(boardData) {
     const conveyorColor = styles.getPropertyValue('--tile-conveyor-color').trim() || '#aaddff';
     const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
     const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
+    const gearColor = styles.getPropertyValue('--tile-gear-color').trim() || '#d8bfd8';
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
     // Use pattern if available, otherwise fallback color
     const wallFill = wallStripePattern || styles.getPropertyValue('--wall-solid-color').trim() || '#630';
@@ -223,6 +224,7 @@ export function renderBoard(boardData) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
                 case 'hole': ctx.fillStyle = holeColor; break;
                 case 'conveyor': ctx.fillStyle = conveyorColor; break;
+                case 'gear-cw': case 'gear-ccw': ctx.fillStyle = gearColor; break;
                 case 'plain': default: ctx.fillStyle = plainColor; break;
             }
             ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
@@ -240,6 +242,10 @@ export function renderBoard(boardData) {
 
             if (tileData.classes.includes('repair-station')) {
                 ctx.fillText('🔧', centerX, centerY);
+            } else if (tileData.classes.includes('gear-cw')) {
+                symbol = Config.TILE_SYMBOLS['gear-cw'] || '↻';
+            } else if (tileData.classes.includes('gear-ccw')) {
+                symbol = Config.TILE_SYMBOLS['gear-ccw'] || '↺';
             } else if (tileData.classes.includes('conveyor')) {
                 if (tileData.classes.includes('right')) {
                     symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor right speed-2x'] || '⇒') : (Config.TILE_SYMBOLS['conveyor right'] || '→');

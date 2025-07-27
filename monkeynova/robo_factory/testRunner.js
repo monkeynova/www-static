@@ -182,10 +182,55 @@ const testScenarios = [
             return posMatch && orientMatch;
         }
     ),
+
+    // --- NEW: Gear Tests ---
+    defineTest(
+        "Gears: Clockwise gear rotates robot right",
+        async () => {
+            const testBoardDef = [
+                [ { classes: ['gear-cw'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 0, 'north'); // Start facing North
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+        },
+        { robot: { row: 0, col: 0, orientation: 'east' } }, // Expected: Robot faces East
+        (actual, expected) => {
+            const pass = actual.orientation === expected.robot.orientation;
+            if (!pass) Logger.error(`   FAIL: Orientation mismatch. Expected ${expected.robot.orientation}, Got ${actual.orientation}`);
+            return pass;
+        }
+    ),
+
+    defineTest(
+        "Gears: Counter-clockwise gear rotates robot left",
+        async () => {
+            const testBoardDef = [
+                [ { classes: ['gear-ccw'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 0, 'north'); // Start facing North
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+        },
+        { robot: { row: 0, col: 0, orientation: 'west' } }, // Expected: Robot faces West
+        (actual, expected) => {
+            const pass = actual.orientation === expected.robot.orientation;
+            if (!pass) Logger.error(`   FAIL: Orientation mismatch. Expected ${expected.robot.orientation}, Got ${actual.orientation}`);
+            return pass;
+        }
+    ),
 ];
 
 /** Runs all defined test scenarios */
-export async function runTests() {
+export async function runAllTests() {
     Logger.log("===== STARTING AUTOMATED TESTS =====");
     let passed = 0;
     let failed = 0;

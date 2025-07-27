@@ -23,6 +23,8 @@ export const TILE_SYMBOLS = {
     'conveyor left speed-2x': '⇐',
     'conveyor up speed-2x': '⇑',
     'conveyor down speed-2x': '⇓',
+    'gear-cw': '↻',
+    'gear-ccw': '↺',
 };
 
 // Card definitions (can also live in cards.js)

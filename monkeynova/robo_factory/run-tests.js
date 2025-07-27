@@ -1,12 +1,12 @@
 // run-tests.js
-import { runTests } from './testRunner.js';
+import { runAllTests } from './testRunner.js';
 
 // This file is the command-line entry point for running tests.
 // It imports the same test runner used by the browser and executes it.
 
 (async () => {
     try {
-        await runTests();
+        await runAllTests();
         // Exit with success code
         process.exit(0);
     } catch (error) {
