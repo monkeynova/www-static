@@ -227,6 +227,47 @@ const testScenarios = [
             return pass;
         }
     ),
+
+    defineTest(
+        "Conveyor -> Gear: Robot is pushed onto a CW gear and rotates",
+        async () => {
+            // Setup: Robot on conveyor at (0,0) facing North. Conveyor pushes it East to (0,1).
+            // Tile (0,1) is a clockwise gear.
+            const testBoardDef = [
+                // Row 0
+                [
+                    { classes: ['conveyor', 'right'], walls: ['north', 'west'] }, // (0,0)
+                    { classes: ['gear-cw'], walls: ['north'] },                 // (0,1)
+                    { classes: ['plain'], walls: ['north', 'east'] }            // (0,2)
+                ],
+                // Row 1
+                [
+                    { classes: ['plain'], walls: ['south', 'west'] },
+                    { classes: ['plain'], walls: ['south'] },
+                    { classes: ['plain'], walls: ['south', 'east'] }
+                ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 0, 'north'); // Initial orientation is North
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Action: Apply board effects, which should move the robot then rotate it.
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+        },
+        {
+            // Expected: Robot moves to (0,1) and rotates from North to East.
+            robot: { row: 0, col: 1, orientation: 'east' }
+        },
+        (actualState, expectedState) => {
+            // Assert: Check final position and orientation
+            const posMatch = actualState.row === expectedState.robot.row && actualState.col === expectedState.robot.col;
+            const orientMatch = actualState.orientation === expectedState.robot.orientation;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expectedState.robot.row},${expectedState.robot.col}), Got (${actualState.row},${actualState.col})`);
+            if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${expectedState.robot.orientation}, Got ${actualState.orientation}`);
+            return posMatch && orientMatch;
+        }
+    ),
 ];
 
 /** Runs all defined test scenarios */
