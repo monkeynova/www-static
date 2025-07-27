@@ -90,7 +90,7 @@ const testScenarios = [
          async () => {
             // Setup: Robot on 2x conveyor (0,0)->Right, wall blocking exit from (0,1)
             const testBoardDef = [
-                [ { classes: ['conveyor-east', 'speed-2x'], walls: ['north', 'west'] }, { classes: ['plain', 'right'], walls: ['north', 'east'] } ], // Wall east of (0,1)
+                [ { classes: ['conveyor-east', 'speed-2x'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ], // Wall east of (0,1)
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);

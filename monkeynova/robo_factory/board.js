@@ -1,6 +1,20 @@
 // board.js
 import * as Logger from './logger.js';
 
+// Define all allowed tile classes for validation
+const ALLOWED_TILE_CLASSES = new Set([
+    'plain',
+    'repair-station',
+    'hole',
+    'conveyor-north',
+    'conveyor-east',
+    'conveyor-south',
+    'conveyor-west',
+    'speed-2x',
+    'gear-cw',
+    'gear-ccw',
+]);
+
 /**
  * Parses the board layout defined as an array of objects.
  * @param {object[][]} boardDefinition - 2D array of tile objects {type, walls}.
@@ -29,6 +43,12 @@ export function parseBoardObjectDefinition(boardDefinition) {
             }
 
             const definedClasses = tileDef.classes;
+            // Validate all defined classes
+            for (const cls of definedClasses) {
+                if (!ALLOWED_TILE_CLASSES.has(cls)) {
+                    throw new Error(`Invalid or unknown tile class '${cls}' at (${r}, ${c}).`);
+                }
+            }
             const walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
             let primaryType = definedClasses[0] || 'plain';
             const conveyorClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
