@@ -8,38 +8,93 @@ import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
 
-// Each object: { type: 'char', walls: ['north'?, 'south'?, 'east'?, 'west'?] }
-const boardDataDefinition = [
-    // Row 0
-    [ { classes: ['repair-station'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
-    // Row 1
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 2 (Outer Conveyor <-, Wall)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: [] }, { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 3 (Inner Conveyor -> 2x SPEED, Wall)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'right', 'speed-2x'], walls: ['north'] }, { classes: ['conveyor', 'down'], walls: ['north'] },  { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 4 (Outer ^, Inner ^, Holes, Inner v, Outer ^)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },    { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 5 (Outer ^, Inner ^, Holes, Inner v, Outer ^)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },    { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 6 (Outer ^, Inner ^, Holes, Inner v, Outer ^)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },    { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 7 (Outer ^, Inner ^, Holes, Inner v, Outer ^)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },    { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['hole'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 8 (Inner Conveyor <- 2x SPEED, Wall)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'down'], walls: [] },  { classes: ['conveyor', 'up'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left', 'speed-2x'], walls: ['south'] }, { classes: ['conveyor', 'left'], walls: ['south'] }, { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 9 (Outer Conveyor ->, Wall)
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['conveyor', 'right'], walls: [] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'right'], walls: ['north'] }, { classes: ['conveyor', 'up'], walls: [] },   { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 10
-    [ { classes: ['plain'], walls: ['west'] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: [] },          { classes: ['plain'], walls: ['east'] } ],
-    // Row 11
-    [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['repair-station'], walls: ['south', 'east'] } ]
-  ];
-      
+/**
+ * Generates a large, feature-rich board.
+ * @param {number} rows - The number of rows for the board.
+ * @param {number} cols - The number of columns for the board.
+ * @returns {object[][]} A 2D array of tile definition objects.
+ */
+function createDemonstrationBoard(rows, cols) {
+    const board = [];
+    // 1. Create a base board with border walls
+    for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+            const tile = { classes: ['plain'], walls: [] };
+            if (r === 0) tile.walls.push('north');
+            if (r === rows - 1) tile.walls.push('south');
+            if (c === 0) tile.walls.push('west');
+            if (c === cols - 1) tile.walls.push('east');
+            row.push(tile);
+        }
+        board.push(row);
+    }
+
+    // 2. Carve a central chasm of holes
+    const chasmStartCol = Math.floor(cols / 2) - 2;
+    const chasmEndCol = chasmStartCol + 3;
+    for (let r = 1; r < rows - 1; r++) {
+        for (let c = chasmStartCol; c <= chasmEndCol; c++) {
+            // Create a few bridges
+            if (r % 7 !== 0 || c === chasmStartCol || c === chasmEndCol) {
+                 board[r][c].classes = ['hole'];
+            }
+        }
+    }
+
+    // 3. Add a conveyor "river" next to the chasm
+    const riverCol = chasmStartCol - 1;
+    const expressRiverCol = chasmStartCol - 2;
+    for (let r = 1; r < rows - 1; r++) {
+        board[r][riverCol].classes = ['conveyor', 'down'];
+        board[r][expressRiverCol].classes = ['conveyor', 'down', 'speed-2x'];
+    }
+
+    // 4. Create a walled maze in the top-right quadrant
+    const mazeStartRow = 2, mazeEndRow = 8;
+    const mazeStartCol = cols - 9, mazeEndCol = cols - 2;
+    for (let r = mazeStartRow; r <= mazeEndRow; r++) {
+        for (let c = mazeStartCol; c <= mazeEndCol; c++) {
+            if (r % 2 === 0 && c < mazeEndCol -1) {
+                board[r][c].walls.push('south');
+                board[r+1][c].walls.push('north');
+            }
+            if (c % 2 !== 0 && r < mazeEndRow && r > mazeStartRow) {
+                 board[r][c].walls.push('west');
+                 board[r][c-1].walls.push('east');
+            }
+        }
+    }
+
+    // 5. Add a conveyor whirlpool in the bottom-left
+    const whirlStart = { r: rows - 8, c: 2 };
+    const whirlSize = 5;
+    for (let i = 0; i < whirlSize; i++) {
+        // Top row (right)
+        board[whirlStart.r][whirlStart.c + i].classes = ['conveyor', 'right'];
+        // Bottom row (left)
+        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].classes = ['conveyor', 'left'];
+        // Left col (down)
+        board[whirlStart.r + i][whirlStart.c].classes = ['conveyor', 'down'];
+        // Right col (up)
+        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].classes = ['conveyor', 'up'];
+    }
+
+    // 6. Place repair stations strategically
+    board[1][1].classes = ['repair-station']; // Start
+    board[mazeStartRow + 1][mazeEndCol - 1].classes = ['repair-station']; // In the maze
+    board[rows - 5][cols - 5].classes = ['repair-station']; // Across the chasm
+
+    return board;
+}
+
+
+// Generate a larger board
+const boardDataDefinition = createDemonstrationBoard(30, 40);
+
 // --- Define starting position ---
-// Could potentially find the first 'R' in the layout
-const startRobotRow = 0;
-const startRobotCol = 0;
+const startRobotRow = 1;
+const startRobotCol = 1;
 const startRobotOrientation = 'east';
 
 // --- Initialize Game on DOM Load ---
