@@ -92,6 +92,14 @@ Game state is decentralized into the primary model objects:
 *   **Board State:** The (mostly static) board data is parsed and held in an object created by `board.js`.
 *   **Card State:** The deck, hand, and discard piles are managed as arrays within the `cards.js` module.
 
+### 3.4. Coding Principles & Data Consistency
+
+To maintain a clean, predictable, and maintainable codebase, the following principles are adopted:
+
+*   **Principle of Least Astonishment / Single Source of Truth:** For any given operation or concept, there should ideally be one, and only one, clear way to represent or perform it across the codebase. This minimizes ambiguity and reduces the cognitive load for developers. For example, if a conveyor moves "right", it should consistently be referred to as "right" in all related code (board definitions, game logic, tests), rather than interchangeably using "east" or other synonyms.
+
+*   **Data Validation for String-based Enums:** When string literals are used to represent a fixed set of predefined values (acting as an "enum"), robust validation mechanisms should be in place. This ensures that only expected values are processed, preventing subtle bugs caused by typos or unexpected input. For instance, if robot orientations are "north", "east", "south", "west", any function accepting an orientation string should validate it against this allowed set. This validation can occur at data parsing, module boundaries, or critical logic points.
+
 ## 4. Future Work & Potential Enhancements
 
 *   **More Board Elements:**
