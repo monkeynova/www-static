@@ -4,6 +4,7 @@ import * as Board from './board.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
+import { ALLOWED_CARD_TYPES } from './config.js'; // NEW: Import for card type validation
 
 // Simple sleep utility
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -242,6 +243,10 @@ export async function runProgramExecution(boardData, robot) {
         const cardData = Cards.getCardData(instanceId);
         if (!cardData) {
             Logger.error(`Cannot find card data for ${instanceId}! Skipping card.`);
+            continue;
+        }
+        if (!ALLOWED_CARD_TYPES.has(cardData.type)) {
+            Logger.error(`Invalid card type '${cardData.type}' for instance ${instanceId}! Skipping card.`);
             continue;
         }
 

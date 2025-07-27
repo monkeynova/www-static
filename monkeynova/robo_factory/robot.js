@@ -24,6 +24,9 @@ class Robot {
      * @param {string} startOrientation
      */
     constructor(startRow, startCol, startOrientation) {
+        if (!orientations.includes(startOrientation)) {
+            throw new Error(`Invalid initial robot orientation: ${startOrientation}. Must be one of ${orientations.join(', ')}.`);
+        }
         this.row = startRow;
         this.col = startCol;
         this.orientation = startOrientation;

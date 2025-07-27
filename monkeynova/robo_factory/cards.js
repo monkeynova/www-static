@@ -70,6 +70,9 @@ export function draw(count) {
 
         if (currentDeck.length > 0) {
             const cardData = currentDeck.pop();
+            if (!ALLOWED_CARD_TYPES.has(cardData.type)) {
+                throw new Error(`Invalid card type drawn: ${cardData.type}. Must be one of ${Array.from(ALLOWED_CARD_TYPES).join(', ')}.`);
+            }
             const instanceId = `card-instance-${cardInstanceCounter++}`;
             const cardInstance = { ...cardData, instanceId: instanceId };
 

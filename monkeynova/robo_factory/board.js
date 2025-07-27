@@ -1,5 +1,6 @@
 // board.js
 import * as Logger from './logger.js';
+import { ALLOWED_WALL_SIDES } from './config.js'; // Import for validation
 
 // Define all allowed tile classes for validation
 const ALLOWED_TILE_CLASSES = new Set([
@@ -112,6 +113,9 @@ export function getTileData(r, c, boardData) {
  * @returns {boolean} True if a wall exists on that side.
  */
 export function hasWall(r, c, side, boardData) {
+    if (!ALLOWED_WALL_SIDES.includes(side)) {
+        throw new Error(`Invalid wall side provided: ${side}. Must be one of ${ALLOWED_WALL_SIDES.join(', ')}.`);
+    }
     const tileData = getTileData(r, c, boardData);
     if (!tileData || !tileData.walls) {
         // If tile doesn't exist or has no wall data, assume no wall for safety? Or throw error?

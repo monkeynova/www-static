@@ -9,6 +9,16 @@ export const TILE_SIZE = 50; // Define tile size in pixels
 // export const GRID_COLS = 16; // Derived from layout in main.js now
 
 export const orientations = ['north', 'east', 'south', 'west'];
+export const ALLOWED_WALL_SIDES = ['north', 'east', 'south', 'west'];
+
+export const ALLOWED_CARD_TYPES = new Set([
+    'move1',
+    'move2',
+    'back1',
+    'turnL',
+    'turnR',
+    'uturn',
+]);
 
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
