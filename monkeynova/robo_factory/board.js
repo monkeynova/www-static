@@ -30,7 +30,11 @@ export function parseBoardObjectDefinition(boardDefinition) {
 
             const definedClasses = tileDef.classes;
             const walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
-            const primaryType = definedClasses[0] || 'plain';
+            let primaryType = definedClasses[0] || 'plain';
+            const conveyorClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
+            if (conveyorClass) {
+                primaryType = 'conveyor';
+            }
 
             const speed = definedClasses.includes('speed-2x') ? 2 : 1;
             let direction = null;

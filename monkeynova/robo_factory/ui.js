@@ -246,7 +246,7 @@ export function renderBoard(boardData) {
                 symbol = Config.TILE_SYMBOLS['gear-cw'] || '↻';
             } else if (tileData.classes.includes('gear-ccw')) {
                 symbol = Config.TILE_SYMBOLS['gear-ccw'] || '↺';
-            } else if (tileData.classes.includes('conveyor')) {
+            } else if (tileData.primaryType === 'conveyor') {
                 if (tileData.classes.includes('conveyor-east')) {
                     symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor-east-speed-2x'] || '⇒') : (Config.TILE_SYMBOLS['conveyor-east'] || '→');
                 } else if (tileData.classes.includes('conveyor-west')) {
