@@ -1,5 +1,5 @@
 // robot.js
-import { orientations, MAX_HEALTH } from './config.js'; // Keep config import
+import { orientations, MAX_HEALTH, TURN_LEFT, TURN_RIGHT } from './config.js'; // Keep config import
 import * as Logger from './logger.js';
 // Board import needed for calculateMoveTarget's parameter type hint, but not logic here
 import * as Board from './board.js';
@@ -86,16 +86,16 @@ class Robot {
      * @returns {string} The new orientation.
      */
     turn(direction) {
-        if (direction !== 'left' && direction !== 'right') {
-            Logger.error(`Invalid turn direction: ${direction}. Must be 'left' or 'right'.`);
+        if (direction !== TURN_LEFT && direction !== TURN_RIGHT) {
+            Logger.error(`Invalid turn direction: ${direction}. Must be '${TURN_LEFT}' or '${TURN_RIGHT}'.`);
             return this.orientation; // Return current orientation, do not turn
         }
 
         const currentIndex = orientations.indexOf(this.orientation);
         let newIndex;
-        if (direction === 'left') {
+        if (direction === TURN_LEFT) {
             newIndex = (currentIndex - 1 + orientations.length) % orientations.length;
-        } else { // 'right'
+        } else { // TURN_RIGHT
             newIndex = (currentIndex + 1) % orientations.length;
         }
         this.orientation = orientations[newIndex];

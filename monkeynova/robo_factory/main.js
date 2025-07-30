@@ -1,6 +1,7 @@
 // main.js
 import * as Config from './config.js';
 import * as Board from './board.js';
+import { ALLOWED_TILE_CLASSES } from './board.js'; // Import for validation
 import Robot from './robot.js';
 import * as Cards from './cards.js';
 import * as UI from './ui.js';
@@ -108,6 +109,18 @@ document.addEventListener('DOMContentLoaded', () => {
     Logger.log("DOM Loaded. Initializing Robot Factory...");
 
     try {
+        // Validate TILE_SYMBOLS against ALLOWED_TILE_CLASSES
+        for (const key in Config.TILE_SYMBOLS) {
+            // Skip 'repair-station' as it's a primary type, not a class for symbol lookup
+            if (key === 'repair-station') continue;
+
+            // For conveyor symbols, check the base class (e.g., 'conveyor-east' without '-speed-2x')
+            const baseClass = key.replace('-speed-2x', '');
+            if (!ALLOWED_TILE_CLASSES.has(baseClass)) {
+                throw new Error(`Invalid TILE_SYMBOLS key: '${key}'. It does not correspond to an allowed tile class.`);
+            }
+        }
+
         // 1. Process Board Data
         const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
 

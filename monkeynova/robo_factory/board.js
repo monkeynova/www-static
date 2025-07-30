@@ -3,7 +3,7 @@ import * as Logger from './logger.js';
 import { ALLOWED_WALL_SIDES } from './config.js'; // Import for validation
 
 // Define all allowed tile classes for validation
-const ALLOWED_TILE_CLASSES = new Set([
+export const ALLOWED_TILE_CLASSES = new Set([
     'plain',
     'repair-station',
     'hole',

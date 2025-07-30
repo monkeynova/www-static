@@ -4,7 +4,7 @@ import * as Board from './board.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
-import { ALLOWED_CARD_TYPES } from './config.js'; // NEW: Import for card type validation
+import { ALLOWED_CARD_TYPES, TURN_LEFT, TURN_RIGHT } from './config.js'; // NEW: Import for card type validation and turn directions
 
 // Simple sleep utility
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -251,9 +251,10 @@ export async function runProgramExecution(boardData, robot) {
         let robotState = robot.getRobotState(); // Get state before action
 
         // --- 1. Execute Card Action ---
-        if (cardData.type === 'turnL' || cardData.type === 'turnR') {
-            const direction = cardData.type === 'turnL' ? 'left' : 'right';
-            const newOrientation = robot.turn(direction); // Update state
+        if (cardData.type === 'turnL') {
+            robot.turn(TURN_LEFT); // Update state
+        } else if (cardData.type === 'turnR') {
+            robot.turn(TURN_RIGHT); // Update state
         }
         // --- Handle U-Turn ---
         else if (cardData.type === 'uturn') {

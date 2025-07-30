@@ -1,5 +1,7 @@
 // logger.js
 
+import { ALLOWED_LOG_LEVELS } from './config.js';
+
 const logHistory = [];
 const MAX_LOG_ENTRIES = 200; // Limit history size to prevent memory issues
 
@@ -35,6 +37,10 @@ function formatArgs(args) {
  * @param {any[]} args - Arguments passed to the log function.
  */
 function addLogEntry(level, args) {
+    if (!ALLOWED_LOG_LEVELS.has(level)) {
+        originalConsole.error(`Attempted to log with unknown level: "${level}". Allowed levels are: ${Array.from(ALLOWED_LOG_LEVELS).join(', ')}.`);
+        return; // Do not process unknown log levels
+    }
     const message = formatArgs(args);
     const timestamp = new Date().toLocaleTimeString();
     const entry = `[${timestamp} ${level}] ${message}`;

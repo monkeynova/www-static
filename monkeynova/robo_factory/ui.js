@@ -247,15 +247,8 @@ export function renderBoard(boardData) {
             } else if (tileData.classes.includes('gear-ccw')) {
                 symbol = Config.TILE_SYMBOLS['gear-ccw'] || '↺';
             } else if (tileData.primaryType === 'conveyor') {
-                if (tileData.classes.includes('conveyor-east')) {
-                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor-east-speed-2x'] || '⇒') : (Config.TILE_SYMBOLS['conveyor-east'] || '→');
-                } else if (tileData.classes.includes('conveyor-west')) {
-                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor-west-speed-2x'] || '⇐') : (Config.TILE_SYMBOLS['conveyor-west'] || '←');
-                } else if (tileData.classes.includes('conveyor-north')) {
-                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor-north-speed-2x'] || '⇑') : (Config.TILE_SYMBOLS['conveyor-north'] || '↑');
-                } else if (tileData.classes.includes('conveyor-south')) {
-                    symbol = isSpeed2x ? (Config.TILE_SYMBOLS['conveyor-south-speed-2x'] || '⇓') : (Config.TILE_SYMBOLS['conveyor-south'] || '↓');
-                }
+                const symbolKey = `conveyor-${tileData.direction}${isSpeed2x ? '-speed-2x' : ''}`;
+                symbol = Config.TILE_SYMBOLS[symbolKey] || ''; // Fallback to empty string if symbol not found
            }
            if (symbol) {
                ctx.fillText(symbol, centerX, centerY);

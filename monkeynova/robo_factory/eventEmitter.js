@@ -1,4 +1,6 @@
 // eventEmitter.js
+import { ALLOWED_EVENT_NAMES } from './config.js';
+
 const listeners = {};
 
 /**
@@ -7,6 +9,10 @@ const listeners = {};
  * @param {Function} callback - Function to execute when event is emitted.
  */
 export function on(eventName, callback) {
+    if (!ALLOWED_EVENT_NAMES.has(eventName)) {
+        console.warn(`Attempted to subscribe to unknown event: "${eventName}". Allowed events are: ${Array.from(ALLOWED_EVENT_NAMES).join(', ')}.`);
+        return; // Do not subscribe to unknown events
+    }
     if (!listeners[eventName]) {
         listeners[eventName] = [];
     }
@@ -19,6 +25,10 @@ export function on(eventName, callback) {
  * @param {any} [data] - Optional data to pass to listeners.
  */
 export function emit(eventName, data) {
+    if (!ALLOWED_EVENT_NAMES.has(eventName)) {
+        console.warn(`Attempted to emit unknown event: "${eventName}". Allowed events are: ${Array.from(ALLOWED_EVENT_NAMES).join(', ')}.`);
+        return; // Do not emit unknown events
+    }
     if (listeners[eventName]) {
         listeners[eventName].forEach(callback => {
             try {

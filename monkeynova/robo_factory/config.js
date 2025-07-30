@@ -20,19 +20,39 @@ export const ALLOWED_CARD_TYPES = new Set([
     'uturn',
 ]);
 
+export const ALLOWED_EVENT_NAMES = new Set([
+    'robotMoved',
+    'robotTurned',
+    'healthChanged',
+    'flagVisited',
+    'gameOver',
+    'handUpdated',
+    'cardCountsUpdated',
+    'programExecutionFinished',
+]);
+
+export const ALLOWED_LOG_LEVELS = new Set([
+    'LOG',
+    'WARN',
+    'ERROR',
+]);
+
+export const TURN_LEFT = 'left';
+export const TURN_RIGHT = 'right';
+
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',
-    // Single Arrows
-    'conveyor right': '→',
-    'conveyor left': '←',
-    'conveyor up': '↑',
-    'conveyor down': '↓',
+    // Conveyor Arrows
+    'conveyor-east': '→',
+    'conveyor-west': '←',
+    'conveyor-north': '↑',
+    'conveyor-south': '↓',
     // Double Arrows (Using Unicode double arrows)
-    'conveyor right speed-2x': '⇒',
-    'conveyor left speed-2x': '⇐',
-    'conveyor up speed-2x': '⇑',
-    'conveyor down speed-2x': '⇓',
+    'conveyor-east-speed-2x': '⇒',
+    'conveyor-west-speed-2x': '⇐',
+    'conveyor-north-speed-2x': '⇑',
+    'conveyor-south-speed-2x': '⇓',
     'gear-cw': '↻',
     'gear-ccw': '↺',
 };
