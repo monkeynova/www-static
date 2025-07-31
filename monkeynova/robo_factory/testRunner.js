@@ -1,4 +1,10 @@
 // testRunner.js
+
+// This import is intentionally here to ensure main.js (the application entry point)
+// can be loaded without syntax errors or module resolution issues during tests.
+// It does not directly contribute to test logic but validates the main application bundle.
+import './main.js';
+
 import * as Board from './board.js';
 import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';

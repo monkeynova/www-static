@@ -105,85 +105,87 @@ const startRobotCol = 1;
 const startRobotOrientation = 'east';
 
 // --- Initialize Game on DOM Load ---
-document.addEventListener('DOMContentLoaded', () => {
-    Logger.log("DOM Loaded. Initializing Robot Factory...");
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        Logger.log("DOM Loaded. Initializing Robot Factory...");
 
-    try {
-        // Validate TILE_SYMBOLS against ALLOWED_TILE_CLASSES
-        for (const key in Config.TILE_SYMBOLS) {
-            // Skip 'repair-station' as it's a primary type, not a class for symbol lookup
-            if (key === 'repair-station') continue;
+        try {
+            // Validate TILE_SYMBOLS against ALLOWED_TILE_CLASSES
+            for (const key in Config.TILE_SYMBOLS) {
+                // Skip 'repair-station' as it's a primary type, not a class for symbol lookup
+                if (key === 'repair-station') continue;
 
-            // For conveyor symbols, check the base class (e.g., 'conveyor-east' without '-speed-2x')
-            const baseClass = key.replace('-speed-2x', '');
-            if (!ALLOWED_TILE_CLASSES.has(baseClass)) {
-                throw new Error(`Invalid TILE_SYMBOLS key: '${key}'. It does not correspond to an allowed tile class.`);
+                // For conveyor symbols, check the base class (e.g., 'conveyor-east' without '-speed-2x')
+                const baseClass = key.replace('-speed-2x', '');
+                if (!ALLOWED_TILE_CLASSES.has(baseClass)) {
+                    throw new Error(`Invalid TILE_SYMBOLS key: '${key}'. It does not correspond to an allowed tile class.`);
+                }
             }
+
+            // 1. Process Board Data
+            const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
+
+            // 2. Initialize Robot State
+            const robot = new Robot(startRobotRow, startRobotCol, startRobotOrientation);
+
+            // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
+            const initialRobotStateForCheck = robot.getRobotState();
+            const startTileData = Board.getTileData(initialRobotStateForCheck.row, initialRobotStateForCheck.col, boardData);
+            if (startTileData && startTileData.classes.includes('repair-station')) {
+                const key = `${initialRobotStateForCheck.row}-${initialRobotStateForCheck.col}`;
+                Logger.log(`Robot starts on station ${key}. Updating state.`);
+                robot.visitStation(key);
+                robot.setLastVisitedStation(key);
+                // UI update for this will happen via initial event emission later
+            }
+            // --- End Initial Station Check ---
+
+            // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
+            // This replaces initCanvas, renderBoard, createFlags, createRobot
+            if (!UI.initializeUI(boardData)) {
+                throw new Error("UI Initialization failed.");
+            }
+
+            // 5. Setup UI Listeners (Subscribes UI to future events)
+            // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
+            // and AFTER model init if listeners need initial state immediately (less common).
+            UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, robot));
+
+            // 6. Initialize Deck and Hand State
+            Cards.initDeckAndHand(); // Emits events
+
+            // 7. Trigger Initial Visual State Sync (Emit events NOW that UI is listening)
+            Logger.log("Emitting initial state events for UI sync...");
+            const initialRobotState = robot.getRobotState();
+
+            // Emit robot position and orientation
+            emit('robotMoved', { // Use 'robotMoved' as it updates position and orientation class
+                row: initialRobotState.row,
+                col: initialRobotState.col,
+                orientation: initialRobotState.orientation
+            });
+
+            // Emit initial health
+            emit('healthChanged', {
+                health: initialRobotState.health,
+                maxHealth: Config.MAX_HEALTH
+            });
+            // Emit starting flag visit status (if applicable)
+            if (initialRobotState.lastVisitedStationKey) {
+                emit('flagVisited', initialRobotState.lastVisitedStationKey);
+            }
+            // Emit initial counts explicitly after listeners are set up
+            emit('cardCountsUpdated', {
+                deck: Cards.getDeckSize(),
+                discard: Cards.getDiscardSize(),
+                hand: Cards.getHandSize()
+           });
+
+            Logger.log("Game Initialized Successfully.");
+
+        } catch (error) {
+            Logger.error("Error during game initialization:", error);
+            alert("Failed to initialize the game. Please check the console for errors.");
         }
-
-        // 1. Process Board Data
-        const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
-
-        // 2. Initialize Robot State
-        const robot = new Robot(startRobotRow, startRobotCol, startRobotOrientation);
-
-        // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
-        const initialRobotStateForCheck = robot.getRobotState();
-        const startTileData = Board.getTileData(initialRobotStateForCheck.row, initialRobotStateForCheck.col, boardData);
-        if (startTileData && startTileData.classes.includes('repair-station')) {
-            const key = `${initialRobotStateForCheck.row}-${initialRobotStateForCheck.col}`;
-            Logger.log(`Robot starts on station ${key}. Updating state.`);
-            robot.visitStation(key);
-            robot.setLastVisitedStation(key);
-            // UI update for this will happen via initial event emission later
-        }
-        // --- End Initial Station Check ---
-
-        // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
-        // This replaces initCanvas, renderBoard, createFlags, createRobot
-        if (!UI.initializeUI(boardData)) {
-            throw new Error("UI Initialization failed.");
-        }
-
-        // 5. Setup UI Listeners (Subscribes UI to future events)
-        // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
-        // and AFTER model init if listeners need initial state immediately (less common).
-        UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, robot));
-
-        // 6. Initialize Deck and Hand State
-        Cards.initDeckAndHand(); // Emits events
-
-        // 7. Trigger Initial Visual State Sync (Emit events NOW that UI is listening)
-        Logger.log("Emitting initial state events for UI sync...");
-        const initialRobotState = robot.getRobotState();
-
-        // Emit robot position and orientation
-        emit('robotMoved', { // Use 'robotMoved' as it updates position and orientation class
-            row: initialRobotState.row,
-            col: initialRobotState.col,
-            orientation: initialRobotState.orientation
-        });
-
-        // Emit initial health
-        emit('healthChanged', {
-            health: initialRobotState.health,
-            maxHealth: Config.MAX_HEALTH
-        });
-        // Emit starting flag visit status (if applicable)
-        if (initialRobotState.lastVisitedStationKey) {
-            emit('flagVisited', initialRobotState.lastVisitedStationKey);
-        }
-        // Emit initial counts explicitly after listeners are set up
-        emit('cardCountsUpdated', {
-            deck: Cards.getDeckSize(),
-            discard: Cards.getDiscardSize(),
-            hand: Cards.getHandSize()
-       });
-
-        Logger.log("Game Initialized Successfully.");
-
-    } catch (error) {
-        Logger.error("Error during game initialization:", error);
-        alert("Failed to initialize the game. Please check the console for errors.");
-    }
-});
+    });
+}

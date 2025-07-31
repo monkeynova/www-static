@@ -88,32 +88,65 @@ import * as Logger from './logger.js';
 import { getCardData, removeFromHandData, addToHandData } from './cards.js';
 import * as TestRunner from './testRunner.js'; // Import the test runner
 
-// --- DOM Element References ---
-const cardHandContainer = document.getElementById('card-hand');
-const programSlots = document.querySelectorAll('#program-slots .program-slot');
-const programSlotsContainer = document.getElementById('program-slots');
-const runProgramButton = document.getElementById('run-program');
-const flagStatusContainer = document.getElementById('flag-status');
-const healthValueEl = document.getElementById('health-value');
-const maxHealthValueEl = document.getElementById('max-health-value');
-const modal = document.getElementById('end-game-modal');
-const modalTitleEl = document.getElementById('modal-title');
-const modalMessageEl = document.getElementById('modal-message');
-const modalCloseButton = document.getElementById('modal-close-button');
-const debugTrigger = document.getElementById('debug-trigger');
-const debugModal = document.getElementById('debug-modal');
-const debugDeckCount = document.getElementById('debug-deck-count');
-const debugDiscardCount = document.getElementById('debug-discard-count');
-const debugHandCount = document.getElementById('debug-hand-count');
-const debugCloseButton = document.getElementById('debug-close-button');
-const debugLogOutput = document.getElementById('debug-log-output');
-const boardContainer = document.getElementById('board-container');
-const boardCanvas = document.getElementById('board-canvas');
-const boardScrollArea = document.getElementById('board-scroll-area');
-const runTestsButton = document.getElementById('run-tests-button');
-const zoomInButton = document.getElementById('zoom-in-button');
-const zoomOutButton = document.getElementById('zoom-out-button');
-const zoomLevelDisplay = document.getElementById('zoom-level');
+// --- DOM Element References (initialized in cacheDOMElements) ---
+let cardHandContainer = null;
+let programSlots = [];
+let programSlotsContainer = null;
+let runProgramButton = null;
+let flagStatusContainer = null;
+let healthValueEl = null;
+let maxHealthValueEl = null;
+let modal = null;
+let modalTitleEl = null;
+let modalMessageEl = null;
+let modalCloseButton = null;
+let debugTrigger = null;
+let debugModal = null;
+let debugDeckCount = null;
+let debugDiscardCount = null;
+let debugHandCount = null;
+let debugCloseButton = null;
+let debugLogOutput = null;
+let boardContainer = null;
+let boardCanvas = null;
+let boardScrollArea = null;
+let runTestsButton = null;
+let zoomInButton = null;
+let zoomOutButton = null;
+let zoomLevelDisplay = null;
+
+/**
+ * Caches references to all necessary DOM elements.
+ * This function should only be called when the DOM is fully loaded.
+ */
+function cacheDOMElements() {
+    cardHandContainer = document.getElementById('card-hand');
+    programSlots = document.querySelectorAll('#program-slots .program-slot');
+    programSlotsContainer = document.getElementById('program-slots');
+    runProgramButton = document.getElementById('run-program');
+    flagStatusContainer = document.getElementById('flag-status');
+    healthValueEl = document.getElementById('health-value');
+    maxHealthValueEl = document.getElementById('max-health-value');
+    modal = document.getElementById('end-game-modal');
+    modalTitleEl = document.getElementById('modal-title');
+    modalMessageEl = document.getElementById('modal-message');
+    modalCloseButton = document.getElementById('modal-close-button');
+    debugTrigger = document.getElementById('debug-trigger');
+    debugModal = document.getElementById('debug-modal');
+    debugDeckCount = document.getElementById('debug-deck-count');
+    debugDiscardCount = document.getElementById('debug-discard-count');
+    debugHandCount = document.getElementById('debug-hand-count');
+    debugCloseButton = document.getElementById('debug-close-button');
+    debugLogOutput = document.getElementById('debug-log-output');
+    boardContainer = document.getElementById('board-container');
+    boardCanvas = document.getElementById('board-canvas');
+    boardScrollArea = document.getElementById('board-scroll-area');
+    runTestsButton = document.getElementById('run-tests-button');
+    zoomInButton = document.getElementById('zoom-in-button');
+    zoomOutButton = document.getElementById('zoom-out-button');
+    zoomLevelDisplay = document.getElementById('zoom-level');
+    Logger.log("DOM elements cached.");
+}
 
 
 // --- Canvas / Rendering State ---
@@ -134,6 +167,7 @@ const MAX_ZOOM = 2.0;
  */
 export function initializeUI(boardData) {
     Logger.log("Initializing UI...");
+    cacheDOMElements(); // NEW: Cache DOM elements here
     if (!initCanvas(boardData)) return false; // Init canvas size/context
     renderBoard(boardData);                 // Draw static board
     createFlagIndicatorsUI(boardData.repairStations); // Create flag DOM elements
