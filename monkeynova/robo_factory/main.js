@@ -92,6 +92,26 @@ function createDemonstrationBoard(rows, cols) {
     board[4][riverCol - 2].classes = ['gear-cw'];
     board[5][riverCol - 2].classes = ['gear-cw'];
 
+    // 8. Add some lasers
+    // Basic laser firing east (on plain tile)
+    board[10][5].classes = ['plain', 'laser-east'];
+    board[10][5].walls.push('east');
+
+    // Laser firing north, blocked by a wall (on plain tile)
+    board[15][10].classes = ['plain', 'laser-north'];
+    board[15][10].walls.push('north');
+    board[14][10].walls.push('north'); // Wall on the next tile, blocking the beam
+
+    // Laser firing south, robot moves onto its path via conveyor (laser on a conveyor tile)
+    board[20][15].classes = ['conveyor-south', 'laser-south'];
+    board[20][15].walls.push('south');
+    board[19][15].classes = ['conveyor-south']; // Conveyor pushing robot onto this tile
+
+    // Laser firing west, robot moves past its path via conveyor (laser on a gear tile)
+    board[25][20].classes = ['gear-cw', 'laser-west'];
+    board[25][20].walls.push('west');
+    board[25][19].classes = ['conveyor-east']; // Conveyor pushing robot past laser
+
     return board;
 }
 

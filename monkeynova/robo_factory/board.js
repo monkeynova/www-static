@@ -1,6 +1,6 @@
 // board.js
 import * as Logger from './logger.js';
-import { ALLOWED_WALL_SIDES } from './config.js'; // Import for validation
+import { ALLOWED_WALL_SIDES, LASER_NORTH, LASER_EAST, LASER_SOUTH, LASER_WEST } from './config.js'; // Import for validation and laser constants
 
 // Define all allowed tile classes for validation
 export const ALLOWED_TILE_CLASSES = new Set([
@@ -14,6 +14,10 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'speed-2x',
     'gear-cw',
     'gear-ccw',
+    'laser-north',
+    'laser-east',
+    'laser-south',
+    'laser-west',
 ]);
 
 /**
@@ -51,20 +55,38 @@ export function parseBoardObjectDefinition(boardDefinition) {
                 }
             }
             const walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
-            let primaryType = definedClasses[0] || 'plain';
-            const conveyorClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
-            if (conveyorClass) {
-                primaryType = 'conveyor';
-            }
+            let primaryType = 'plain'; // Default primary type
+            let conveyorDirection = null;
+            let laserDirection = null;
 
-            const speed = definedClasses.includes('speed-2x') ? 2 : 1;
-            let direction = null;
-            if (primaryType === 'conveyor') {
-                const directionClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
-                if (directionClass) {
-                    direction = directionClass.split('-')[1]; // Extract 'north', 'east', etc.
+            // Determine primaryType based on non-modifier classes
+            if (definedClasses.includes('repair-station')) {
+                primaryType = 'repair-station';
+            } else if (definedClasses.includes('hole')) {
+                primaryType = 'hole';
+            } else if (definedClasses.includes('gear-cw')) {
+                primaryType = 'gear-cw';
+            } else if (definedClasses.includes('gear-ccw')) {
+                primaryType = 'gear-ccw';
+            } else { // If no other specific primary type, check for conveyor
+                const foundConveyorClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
+                if (foundConveyorClass) {
+                    primaryType = 'conveyor';
+                    conveyorDirection = foundConveyorClass.split('-')[1];
                 }
             }
+
+            // Extract laser direction if present (laser is a decoration, not a primary type)
+            const foundLaserClass = definedClasses.find(cls => cls.startsWith('laser-'));
+            if (foundLaserClass) {
+                laserDirection = foundLaserClass.split('-')[1];
+                // NEW: Validate laser attachment to a wall
+                if (!walls.includes(laserDirection)) { // e.g., laser-north needs 'north' wall
+                    throw new Error(`Laser at (${r}, ${c}) firing ${laserDirection} must be attached to a ${laserDirection} wall.`);
+                }
+            }
+
+            const speed = definedClasses.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
 
             const tileData = {
                 classes: ['tile', ...definedClasses], // Combine base 'tile' with defined classes
@@ -73,7 +95,8 @@ export function parseBoardObjectDefinition(boardDefinition) {
                 col: c,
                 primaryType: primaryType,
                 speed: speed,
-                direction: direction // NEW: Store conveyor direction
+                conveyorDirection: conveyorDirection, // Specific for conveyors
+                laserDirection: laserDirection // Specific for lasers
             };
             rowTiles.push(tileData);
 
@@ -131,4 +154,77 @@ export function hasWall(r, c, side, boardData) {
     // tile B (to its east) should have 'west' wall defined.
     // A more robust check could look at both adjacent tiles, but relies heavily
     // on the definition being perfectly symmetrical. Let's stick to the simpler check for now.
+}
+
+/**
+ * Calculates the path of a laser beam from a given start tile and direction.
+ * The path stops at the first wall or board boundary encountered.
+ * @param {number} startR - Starting row of the laser tile.
+ * @param {number} startC - Starting column of the laser tile.
+ * @param {'north' | 'south' | 'east' | 'west'} laserDirection - The direction the laser fires.
+ * @param {object} boardData - The parsed board data.
+ * @returns {Array<{row: number, col: number}>} An array of coordinates representing the laser path (excluding the laser tile itself).
+ */
+export function getLaserPath(startR, startC, laserDirection, boardData) {
+    Logger.log(`getLaserPath called for (${startR}, ${startC}) firing ${laserDirection}`);
+    const path = [];
+    let currentR = startR;
+    let currentC = startC;
+
+    let dr = 0, dc = 0;
+    let exitWallSide = ''; // Wall on the current tile that blocks the laser's exit
+    let entryWallSide = ''; // Wall on the next tile that blocks the laser's entry
+
+    switch (laserDirection) {
+        case 'north': dr = -1; exitWallSide = 'north'; entryWallSide = 'south'; break;
+        case 'south': dr = 1;  exitWallSide = 'south'; entryWallSide = 'north'; break;
+        case 'east':  dc = 1;  exitWallSide = 'east';  entryWallSide = 'west';  break;
+        case 'west':  dc = -1; exitWallSide = 'west';  entryWallSide = 'east';  break;
+        default:
+            Logger.warn(`Invalid laser direction: ${laserDirection}. Cannot calculate path.`);
+            return path; // Return empty path for invalid direction
+    }
+
+    // Start checking from the tile *adjacent* to the laser emitter
+    let nextR = startR + dr;
+    let nextC = startC + dc;
+
+    while (true) {
+        Logger.log(`  Checking next tile: (${nextR}, ${nextC})`);
+        // Check boundaries for the *next* tile
+        if (nextR < 0 || nextR >= boardData.rows || nextC < 0 || nextC >= boardData.cols) {
+            Logger.log(`  Path ends: Out of bounds at (${nextR}, ${nextC})`);
+            break; // Out of bounds, path ends
+        }
+
+        // Check for a wall on the *current* tile (from which the laser is exiting)
+        // This is the wall on the emitter tile for the first step, or the previous path tile for subsequent steps.
+        if (hasWall(currentR, currentC, exitWallSide, boardData)) {
+            // If the current tile (or emitter) has a wall blocking exit, the laser stops *before* entering nextR, nextC
+            // However, the laser *originates* from the wall on the emitter, so this check should only apply to subsequent tiles.
+            // For the emitter tile, we assume the laser successfully exits.
+            if (!(currentR === startR && currentC === startC)) { // Don't block on the emitter's own wall
+                Logger.log(`  Path ends: Wall on current tile (${currentR}, ${currentC}) blocking exit ${exitWallSide}`);
+                break; 
+            }
+        }
+
+        // Check for a wall on the *next* tile (which the laser is trying to enter)
+        if (hasWall(nextR, nextC, entryWallSide, boardData)) {
+            Logger.log(`  Path ends: Wall on next tile (${nextR}, ${nextC}) blocking entry ${entryWallSide}`);
+            path.push({ row: nextR, col: nextC }); // Include the tile with the blocking wall
+            break; // Laser hit a wall on the next tile's entry side
+        }
+
+        path.push({ row: nextR, col: nextC });
+        Logger.log(`  Added to path: (${nextR}, ${nextC}). Current path length: ${path.length}`);
+
+        // Move to the next tile for the next iteration
+        currentR = nextR;
+        currentC = nextC;
+        nextR += dr;
+        nextC += dc;
+    }
+    Logger.log(`getLaserPath returning path:`, path);
+    return path;
 }

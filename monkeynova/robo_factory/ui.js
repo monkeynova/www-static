@@ -87,6 +87,7 @@ import * as Logger from './logger.js';
 // Card imports remain if needed for drag/drop state updates
 import { getCardData, removeFromHandData, addToHandData } from './cards.js';
 import * as TestRunner from './testRunner.js'; // Import the test runner
+import { LASER_NORTH, LASER_EAST, LASER_SOUTH, LASER_WEST } from './config.js'; // NEW: Import laser constants
 
 // --- DOM Element References (initialized in cacheDOMElements) ---
 let cardHandContainer = null;
@@ -239,6 +240,7 @@ export function renderBoard(boardData) {
     const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
     const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
     const gearColor = styles.getPropertyValue('--tile-gear-color').trim() || '#d8bfd8';
+    const laserColor = styles.getPropertyValue('--tile-laser-color').trim() || '#ffcccc'; // NEW: Laser color
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
     // Use pattern if available, otherwise fallback color
     const wallFill = wallStripePattern || styles.getPropertyValue('--wall-solid-color').trim() || '#630';
@@ -275,20 +277,40 @@ export function renderBoard(boardData) {
             const isSpeed2x = tileData.classes.includes('speed-2x');
 
             if (tileData.classes.includes('repair-station')) {
-                ctx.fillText('🔧', centerX, centerY);
+                symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
             } else if (tileData.classes.includes('gear-cw')) {
                 symbol = Config.TILE_SYMBOLS['gear-cw'] || '↻';
             } else if (tileData.classes.includes('gear-ccw')) {
                 symbol = Config.TILE_SYMBOLS['gear-ccw'] || '↺';
             } else if (tileData.primaryType === 'conveyor') {
-                const symbolKey = `conveyor-${tileData.direction}${isSpeed2x ? '-speed-2x' : ''}`;
+                const symbolKey = `conveyor-${tileData.conveyorDirection}${isSpeed2x ? '-speed-2x' : ''}`;
                 symbol = Config.TILE_SYMBOLS[symbolKey] || ''; // Fallback to empty string if symbol not found
-           }
-           if (symbol) {
+            }
+
+            if (symbol) {
                ctx.fillText(symbol, centerX, centerY);
-           }
+            }
+
+            // NEW: Draw Laser Symbol and Beam (if present, on top of other tile visuals)
+            if (tileData.laserDirection) {
+                const laserSymbol = Config.TILE_SYMBOLS[tileData.laserDirection] || '';
+                if (laserSymbol) {
+                    ctx.fillStyle = '#FFFF00'; // Bright yellow for laser symbol
+                    ctx.font = '30px sans-serif'; // Larger font size
+                    ctx.fillText(laserSymbol, centerX, centerY);
+                    // No need to reset fillStyle here, it will be set for the next tile or grid lines
+                }
+
+                
+
+                
+            }
         }
     }
+
+    // Reset fillStyle and font for subsequent drawings (grid lines, walls)
+    ctx.fillStyle = '#333'; // Default symbol color
+    ctx.font = '24px sans-serif'; // Default font size
 
     ctx.strokeStyle = gridLineColor;
     ctx.lineWidth = 1;
@@ -337,6 +359,120 @@ export function renderBoard(boardData) {
         }
     }
     Logger.log("Board rendering complete.");
+
+    // --- Draw Laser Emitters (Draw AFTER walls for correct layering) ---
+    ctx.fillStyle = '#8B0000'; // Dark red for the emitter
+    const emitterSize = Config.TILE_SIZE / 4; // Size of the emitter square
+    // const styles = getComputedStyle(document.documentElement); // REMOVED: Already declared above
+    // const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3; // Get wall thickness - REMOVED: Already declared above
+
+    for (let r = 0; r < boardData.rows; r++) {
+        for (let c = 0; c < boardData.cols; c++) {
+            const tileData = Board.getTileData(r, c, boardData);
+            if (!tileData || !tileData.laserDirection) continue;
+
+            const x = c * Config.TILE_SIZE;
+            const y = r * Config.TILE_SIZE;
+            const centerX = x + Config.TILE_SIZE / 2;
+            const centerY = y + Config.TILE_SIZE / 2;
+
+            let emitterX = x, emitterY = y;
+
+            // Position the emitter just outside the tile boundary, on the side of the wall it's attached to.
+            switch (tileData.laserDirection) {
+                case 'north':
+                    emitterX = centerX - emitterSize / 2;
+                    emitterY = y - emitterSize; // Place above the tile
+                    break;
+                case 'south':
+                    emitterX = centerX - emitterSize / 2;
+                    emitterY = y + Config.TILE_SIZE; // Place below the tile
+                    break;
+                case 'east':
+                    emitterX = x + Config.TILE_SIZE; // Place to the right of the tile
+                    emitterY = centerY - emitterSize / 2;
+                    break;
+                case 'west':
+                    emitterX = x - emitterSize; // Place to the left of the tile
+                    emitterY = centerY - emitterSize / 2;
+                    break;
+            }
+            ctx.fillRect(emitterX, emitterY, emitterSize, emitterSize);
+        }
+    }
+
+    // --- Draw Laser Beams (Draw AFTER everything else for correct layering) ---
+    ctx.strokeStyle = 'red'; // Laser beam color
+    ctx.lineWidth = 2; // Laser beam thickness
+
+    for (let r = 0; r < boardData.rows; r++) {
+        for (let c = 0; c < boardData.cols; c++) {
+            const tileData = Board.getTileData(r, c, boardData);
+            if (!tileData || !tileData.laserDirection) continue;
+
+            const x = c * Config.TILE_SIZE;
+            const y = r * Config.TILE_SIZE;
+            const centerX = x + Config.TILE_SIZE / 2;
+            const centerY = y + Config.TILE_SIZE / 2;
+
+            const laserPath = Board.getLaserPath(r, c, tileData.laserDirection, boardData);
+            if (laserPath.length > 0) { // Only draw if there's a path
+                ctx.beginPath();
+
+                let startBeamX = centerX;
+                let startBeamY = centerY;
+
+                // Adjust starting point to be on the wall
+                switch (tileData.laserDirection) {
+                    case 'north':
+                        startBeamY = y + wallThickness;
+                        break;
+                    case 'south':
+                        startBeamY = y + Config.TILE_SIZE - wallThickness;
+                        break;
+                    case 'east':
+                        startBeamX = x + Config.TILE_SIZE - wallThickness;
+                        break;
+                    case 'west':
+                        startBeamX = x + wallThickness;
+                        break;
+                }
+
+                ctx.moveTo(startBeamX, startBeamY);
+                for (let i = 0; i < laserPath.length; i++) {
+                    const pathTile = laserPath[i];
+                    const pathTileX = pathTile.col * Config.TILE_SIZE;
+                    const pathTileY = pathTile.row * Config.TILE_SIZE;
+                    const pathTileCenterX = pathTileX + Config.TILE_SIZE / 2;
+                    const pathTileCenterY = pathTileY + Config.TILE_SIZE / 2;
+
+                    if (i === laserPath.length - 1) { // Last tile in the path
+                        let endBeamX = pathTileCenterX;
+                        let endBeamY = pathTileCenterY;
+
+                        switch (tileData.laserDirection) {
+                            case 'north':
+                                endBeamY = pathTileY + wallThickness;
+                                break;
+                            case 'south':
+                                endBeamY = pathTileY + Config.TILE_SIZE - wallThickness;
+                                break;
+                            case 'east':
+                                endBeamX = pathTileX + Config.TILE_SIZE - wallThickness;
+                                break;
+                            case 'west':
+                                endBeamX = pathTileX + wallThickness;
+                                break;
+                        }
+                        ctx.lineTo(endBeamX, endBeamY);
+                    } else {
+                        ctx.lineTo(pathTileCenterX, pathTileCenterY);
+                    }
+                }
+                ctx.stroke();
+            }
+        }
+    }
 }
 
 /** Creates the flag indicator DOM elements */

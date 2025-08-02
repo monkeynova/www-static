@@ -53,6 +53,7 @@ const testScenarios = [
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
         },
         {
             // Expected: Robot should end up 2 tiles over
@@ -82,6 +83,7 @@ const testScenarios = [
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves only 1 space
         (actual, expected) => {
@@ -105,6 +107,7 @@ const testScenarios = [
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves 1 space (phase 1), blocked in phase 2
         (actual, expected) => {
@@ -133,7 +136,7 @@ const testScenarios = [
             if (moveTarget.success) {
                 setupData.robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Simulate move if calc succeeded (it shouldn't)
             }
-            // Note: This only tests the calculation. Testing the full runProgramExecution is more complex.
+            return setupData.robot.getRobotState(); // Return robot state for assertion
         },
         { robot: { row: 0, col: 0, orientation: 'east' } }, // Expected: Robot doesn't move
         (actual, expected) => {
@@ -177,6 +180,7 @@ const testScenarios = [
             } else {
                 Logger.log("   Action: calculateMoveTarget correctly failed due to wall.");
             }
+            return setupData.robot.getRobotState(); // Return robot state for assertion
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Robot remains at (0,1) facing East
         (actualState, expectedState) => {
@@ -203,6 +207,7 @@ const testScenarios = [
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 0, orientation: 'east' } }, // Expected: Robot faces East
         (actual, expected) => {
@@ -225,6 +230,7 @@ const testScenarios = [
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 0, orientation: 'west' } }, // Expected: Robot faces West
         (actual, expected) => {
@@ -260,6 +266,7 @@ const testScenarios = [
         async (setupData) => {
             // Action: Apply board effects, which should move the robot then rotate it.
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
         },
         {
             // Expected: Robot moves to (0,1) and rotates from North to East.
@@ -274,6 +281,165 @@ const testScenarios = [
             return posMatch && orientMatch;
         }
     ),
+
+    // --- NEW: Laser Tests ---
+    defineTest(
+        "Laser: Robot takes damage from a stationary laser",
+        async () => {
+            // Setup: Robot at (0,1) facing East. Laser at (0,0) firing East.
+            const testBoardDef = [
+                [ { classes: ['plain', 'laser-east'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 1, 'east'); // Robot starts in laser path
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 } }, // Expected: Robot takes 1 damage
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Laser: Laser path is blocked by a wall",
+        async () => {
+            // Setup: Robot at (0,2). Laser at (0,0) firing East. Wall at (0,1) blocking laser.
+            const testBoardDef = [
+                [ { classes: ['plain', 'laser-east'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ], // Wall east of (0,0)
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 2, 'east'); // Robot starts behind the wall
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 2, orientation: 'east', health: Config.MAX_HEALTH } }, // Expected: Robot takes no damage
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Conveyor -> Laser: Robot is pushed past a laser path and does not take damage",
+        async () => {
+            // Setup: Robot at (0,0) on conveyor-east. Tile (0,2) has a laser-north. Robot moves to (0,1).
+            const testBoardDef = [
+                [ { classes: ['conveyor-east'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain', 'laser-north'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 0, 'east'); // Robot starts on conveyor
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH } }, // Expected: Robot moves to (0,1) but takes no damage
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const healthMatch = actual.health === expected.robot.health;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return posMatch && healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Validation: Laser without required wall throws error",
+        async () => {
+            // Setup: Board with a laser-east tile but NO east wall on that tile.
+            const testBoardDef = [
+                [ { classes: ['plain', 'laser-east'], walls: ['north', 'west'] } ] // Missing 'east' wall
+            ];
+            // Expect this to throw an error during parsing
+            return { testBoardDef };
+        },
+        async (setupData) => {
+            let errorThrown = false;
+            try {
+                Board.parseBoardObjectDefinition(setupData.testBoardDef);
+            } catch (e) {
+                Logger.log(`   Expected error caught: ${e.message}`);
+                errorThrown = true;
+            }
+            return { errorThrown };
+        },
+        { errorThrown: true },
+        (actual, expected) => {
+            const pass = actual.errorThrown === expected.errorThrown;
+            if (!pass) Logger.error(`   FAIL: Expected errorThrown to be ${expected.errorThrown}, but was ${actual.errorThrown}`);
+            return pass;
+        }
+    ),
+
+    defineTest(
+        "Laser on Conveyor: Robot takes damage from laser on conveyor tile",
+        async () => {
+            // Setup: Robot at (0,1) on conveyor-east with laser-east.
+            const testBoardDef = [
+                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['conveyor-east', 'laser-east'], walls: ['north', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 1, 'east'); // Robot starts on conveyor with laser
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Simulate one program card execution to trigger board effects
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 } }, // Expected: Robot stays at (0,1) and takes damage
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const healthMatch = actual.health === expected.robot.health;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return posMatch && healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Laser on Gear: Robot takes damage from laser on gear tile",
+        async () => {
+            // Setup: Robot at (0,1) on gear-cw with laser-north.
+            const testBoardDef = [
+                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['gear-cw', 'laser-north'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+            ];
+            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const robot = new Robot(0, 1, 'north'); // Robot starts on gear with laser
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Simulate one program card execution to trigger board effects
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 } }, // Expected: Robot stays at (0,1), rotates, and takes damage
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const orientMatch = actual.orientation === expected.robot.orientation;
+            const healthMatch = actual.health === expected.robot.health;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${expected.robot.orientation}, Got ${actual.orientation}`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return posMatch && orientMatch && healthMatch;
+        }
+    ),
 ];
 
 /** Runs all defined test scenarios */
@@ -283,20 +449,24 @@ export async function runAllTests() {
     let failed = 0;
 
     for (const test of testScenarios) {
-        Logger.log(`\n--- Test: ${test.description} ---`);
+        Logger.log(`
+--- Test: ${test.description} ---`);
         try {
             const setupData = await test.setup();
-            await test.action(setupData);
-            const actualState = setupData.robot.getRobotState();
+            const actual = await test.action(setupData);
+
+            if (actual && actual.health !== undefined) {
+                Logger.log(`   Health before assertion: ${actual.health}`);
+            }
 
             // 4. Assert the result
-            if (test.assert(actualState, test.expected)) {
+            if (test.assert(actual, test.expected)) {
                 Logger.log("   Result: PASS");
                 passed++;
             } else {
                 // Assertion function should log specific failure details
                 Logger.error("   Result: FAIL");
-                Logger.log("   Actual final state:", actualState);
+                Logger.log("   Actual final state:", actual);
                 Logger.log("   Expected final state:", test.expected);
                 failed++;
             }
@@ -306,7 +476,7 @@ export async function runAllTests() {
         }
     }
 
-    Logger.log("\n===== TESTS COMPLETE =====");
+    Logger.log("===== TESTS COMPLETE =====");
     Logger.log(`Passed: ${passed}, Failed: ${failed}`);
     Logger.log("==========================");
 

@@ -59,6 +59,7 @@ The game board is a grid of tiles with various properties.
         *   **Normal (1x):** Moves the robot one tile.
         *   **Express (2x):** Can move the robot up to two tiles. The movement is phased: the 2x belt moves the robot one tile, then the conveyor on the *new* tile activates to move it a second tile.
     *   **Hole:** If the robot ends its movement on a hole, it takes damage and respawns at the last visited repair station. If no station has been visited, this is likely a game-ending event.
+    *   **Lasers:** Stationary lasers attached to a wall that fire a beam perpendicularly away from the wall. The beam damages the first robot it encounters and is stopped by walls. Beams are always visible.
 *   **Walls:** Impassable barriers that block robot movement. They exist on the edges of tiles.
 
 ## 3. Technical Architecture & Design

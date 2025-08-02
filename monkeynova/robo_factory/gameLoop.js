@@ -4,7 +4,7 @@ import * as Board from './board.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
-import { ALLOWED_CARD_TYPES, TURN_LEFT, TURN_RIGHT } from './config.js'; // NEW: Import for card type validation and turn directions
+import { ALLOWED_CARD_TYPES, TURN_LEFT, TURN_RIGHT, LASER_NORTH, LASER_EAST, LASER_SOUTH, LASER_WEST } from './config.js'; // NEW: Import laser constants
 
 // Simple sleep utility
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
@@ -37,7 +37,7 @@ export async function applyBoardEffects(boardData, robot) {
         // Calculate the potential move
         let dr = 0, dc = 0;
         let exitSide = '';
-        switch (tileDataPhase1.direction) {
+        switch (tileDataPhase1.conveyorDirection) {
             case 'north': dr = -1; exitSide = 'north'; break;
             case 'south': dr = 1;  exitSide = 'south'; break;
             case 'west':  dc = -1; exitSide = 'west';  break;
@@ -87,7 +87,7 @@ export async function applyBoardEffects(boardData, robot) {
         // Calculate the potential move
         let dr = 0, dc = 0;
         let exitSide = '';
-        switch (tileDataPhase2.direction) {
+        switch (tileDataPhase2.conveyorDirection) {
             case 'north': dr = -1; exitSide = 'north'; break;
             case 'south': dr = 1;  exitSide = 'south'; break;
             case 'west':  dc = -1; exitSide = 'west';  break;
@@ -150,9 +150,46 @@ export async function applyBoardEffects(boardData, robot) {
     // --- End Gear Rotation ---
 
 
-    // --- 3. Laser Firing --- (No changes needed here)
-    // ... (Laser logic uses the final robotState) ...
-    // Make sure laser logic correctly checks for gameEnded state
+    // --- End Gear Rotation ---
+
+
+    // --- NEW: 3. Laser Firing ---
+    if (!gameEnded) { // Only fire lasers if game hasn't ended from previous effects
+        Logger.log("   Checking for laser fire...");
+        // Iterate through all tiles to find lasers
+        for (let r = 0; r < boardData.rows; r++) {
+            for (let c = 0; c < boardData.cols; c++) {
+                const tile = Board.getTileData(r, c, boardData);
+                if (tile && tile.laserDirection) {
+                    // Check if robot is on the laser emitter tile itself
+                    const robotOnEmitter = (robotState.row === r && robotState.col === c);
+
+                    const laserPath = Board.getLaserPath(r, c, tile.laserDirection, boardData);
+                    // Check if robot is on any tile in the laser's path
+                    const robotInLaserPath = laserPath.some(
+                        pathTile => pathTile.row === robotState.row && pathTile.col === robotState.col
+                    );
+
+                    if (robotOnEmitter || robotInLaserPath) {
+                        Logger.log(`   Robot hit by laser from (${r},${c}) firing ${tile.laserDirection}!`);
+                        Logger.log(`   Robot health BEFORE damage: ${robot.getRobotState().health}`);
+                        robot.takeDamage();
+                        Logger.log(`   Robot health AFTER damage: ${robot.getRobotState().health}`);
+                        await sleep(300); // Small delay for visual feedback of damage
+                        robotState = robot.getRobotState(); // Update robot state after damage
+                        if (robot.isDestroyed()) {
+                            Logger.error("   *** ROBOT DESTROYED by laser! ***");
+                            emit('gameOver', false);
+                            gameEnded = true;
+                            return { gameEnded, boardMoved, fellInHole }; // Exit early if game over
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // --- End Laser Firing ---
+
 
     // --- 4. Repair Station --- (Logic updated to use finalTileData)
     // Re-fetch tile data in case a gear turn happened on a repair station tile (unlikely but possible)
