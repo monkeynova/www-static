@@ -164,7 +164,7 @@ export async function applyBoardEffects(boardData, robot) {
                     // Check if robot is on the laser emitter tile itself
                     const robotOnEmitter = (robotState.row === r && robotState.col === c);
 
-                    const laserPath = Board.getLaserPath(r, c, tile.laserDirection, boardData);
+                    const laserPath = Board.getLaserPath(r, c, tile.laserDirection, boardData, robotState);
                     // Check if robot is on any tile in the laser's path
                     const robotInLaserPath = laserPath.some(
                         pathTile => pathTile.row === robotState.row && pathTile.col === robotState.col

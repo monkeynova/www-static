@@ -446,6 +446,7 @@ function drawLaserBeams(boardData, robotState) {
 
             // Pass robotState to getLaserPath for dynamic termination
             const laserPath = Board.getLaserPath(r, c, tileData.laserDirection, boardData, robotState);
+            Logger.log(`drawLaserBeams: Laser at (${r},${c}) received path: ${JSON.stringify(laserPath)}`);
             if (laserPath.length > 0) { // Only draw if there's a path
                 ctx.beginPath();
 
@@ -471,64 +472,80 @@ function drawLaserBeams(boardData, robotState) {
 
                 ctx.moveTo(startBeamX, startBeamY);
 
-                // Draw to the center of intermediate path tiles
-                for (let i = 0; i < laserPath.length - 1; i++) {
+                let currentBeamX = startBeamX;
+                let currentBeamY = startBeamY;
+
+                for (let i = 0; i < laserPath.length; i++) {
                     const pathTile = laserPath[i];
-                    const pathTileCenterX = pathTile.col * Config.TILE_SIZE + Config.TILE_SIZE / 2;
-                    const pathTileCenterY = pathTile.row * Config.TILE_SIZE + Config.TILE_SIZE / 2;
-                    ctx.lineTo(pathTileCenterX, pathTileCenterY);
-                }
+                    const pathTileX = pathTile.col * Config.TILE_SIZE;
+                    const pathTileY = pathTile.row * Config.TILE_SIZE;
 
-                // Calculate and draw the final segment to the wall or robot
-                const lastPathTile = laserPath[laserPath.length - 1];
-                const lastPathTileX = lastPathTile.col * Config.TILE_SIZE;
-                const lastPathTileY = lastPathTile.row * Config.TILE_SIZE;
-                const lastPathTileCenterX = lastPathTileX + Config.TILE_SIZE / 2;
-                const lastPathTileCenterY = lastPathTileY + Config.TILE_SIZE / 2;
+                    let targetBeamX = pathTileX + Config.TILE_SIZE / 2;
+                    let targetBeamY = pathTileY + Config.TILE_SIZE / 2;
 
-                let endBeamX = lastPathTileCenterX;
-                let endBeamY = lastPathTileCenterY;
+                    // Determine if this is the last segment (hitting a wall or robot)
+                    const isLastSegment = (i === laserPath.length - 1);
 
-                // Adjust end point to be on the wall or robot
-                if (robotState && lastPathTile.row === robotState.row && lastPathTile.col === robotState.col) {
-                    // If the last tile is the robot, draw to its edge
-                    const robotStyle = getComputedStyle(robotElement);
-                    const robotWidth = parseInt(robotStyle.width) || 35;
-                    const robotHeight = parseInt(robotStyle.height) || 35;
+                    if (isLastSegment) {
+                        if (robotState && pathTile.row === robotState.row && pathTile.col === robotState.col) {
+                            // If the last tile is the robot, draw to its edge
+                            const robotStyle = getComputedStyle(robotElement);
+                            const robotWidth = parseInt(robotStyle.width) || 35;
+                            const robotHeight = parseInt(robotStyle.height) || 35;
 
-                    switch (tileData.laserDirection) {
-                        case 'north':
-                            endBeamY = lastPathTileY + Config.TILE_SIZE - (Config.TILE_SIZE - robotHeight) / 2; // Bottom edge of robot
-                            break;
-                        case 'south':
-                            endBeamY = lastPathTileY + (Config.TILE_SIZE - robotHeight) / 2; // Top edge of robot
-                            break;
-                        case 'east':
-                            endBeamX = lastPathTileX + (Config.TILE_SIZE - robotWidth) / 2; // Left edge of robot
-                            break;
-                        case 'west':
-                            endBeamX = lastPathTileX + Config.TILE_SIZE - (Config.TILE_SIZE - robotWidth) / 2; // Right edge of robot
-                            break;
+                            switch (tileData.laserDirection) {
+                                case 'north':
+                                    targetBeamY = pathTileY + Config.TILE_SIZE - (Config.TILE_SIZE - robotHeight) / 2; // Bottom edge of robot
+                                    break;
+                                case 'south':
+                                    targetBeamY = pathTileY + (Config.TILE_SIZE - robotHeight) / 2; // Top edge of robot
+                                    break;
+                                case 'east':
+                                    targetBeamX = pathTileX + (Config.TILE_SIZE - robotWidth) / 2; // Left edge of robot
+                                    break;
+                                case 'west':
+                                    targetBeamX = pathTileX + Config.TILE_SIZE - (Config.TILE_SIZE - robotWidth) / 2; // Right edge of robot
+                                    break;
+                            }
+                            Logger.log(`  Beam ends at robot (${pathTile.row},${pathTile.col}). Calculated end: (${targetBeamX}, ${targetBeamY})`);
+                        } else { // Terminate on the wall
+                            switch (tileData.laserDirection) {
+                                case 'north':
+                                    targetBeamY = pathTileY; // Top edge of tile (wall)
+                                    break;
+                                case 'south':
+                                    targetBeamY = pathTileY + Config.TILE_SIZE; // Bottom edge of tile (wall)
+                                    break;
+                                case 'east':
+                                    targetBeamX = pathTileX + Config.TILE_SIZE; // Right edge of tile (wall)
+                                    break;
+                                case 'west':
+                                    targetBeamX = pathTileX; // Left edge of tile (wall)
+                                    break;
+                            }
+                            Logger.log(`  Beam ends at wall (${pathTile.row},${pathTile.col}). Calculated end: (${targetBeamX}, ${targetBeamY})`);
+                        }
+                    } else {
+                        // For intermediate tiles, draw to the edge of the current tile, towards the next
+                        switch (tileData.laserDirection) {
+                            case 'north':
+                                targetBeamY = pathTileY; // Top edge of current tile
+                                break;
+                            case 'south':
+                                targetBeamY = pathTileY + Config.TILE_SIZE; // Bottom edge of current tile
+                                break;
+                            case 'east':
+                                targetBeamX = pathTileX + Config.TILE_SIZE; // Right edge of current tile
+                                break;
+                            case 'west':
+                                targetBeamX = pathTileX; // Left edge of current tile
+                                break;
+                        }
                     }
-                    Logger.log(`  Beam ends at robot (${lastPathTile.row},${lastPathTile.col}). Calculated end: (${endBeamX}, ${endBeamY})`);
-                } else { // Terminate on the wall
-                    switch (tileData.laserDirection) {
-                        case 'north':
-                            endBeamY = lastPathTileY; // Top edge of tile (wall)
-                            break;
-                        case 'south':
-                            endBeamY = lastPathTileY + Config.TILE_SIZE; // Bottom edge of tile (wall)
-                            break;
-                        case 'east':
-                            endBeamX = lastPathTileX + Config.TILE_SIZE; // Right edge of tile (wall)
-                            break;
-                        case 'west':
-                            endBeamX = lastPathTileX; // Left edge of tile (wall)
-                            break;
-                    }
-                    Logger.log(`  Beam ends at wall (${lastPathTile.row},${lastPathTile.col}). Calculated end: (${endBeamX}, ${endBeamY})`);
+                    ctx.lineTo(targetBeamX, targetBeamY);
+                    currentBeamX = targetBeamX;
+                    currentBeamY = targetBeamY;
                 }
-                ctx.lineTo(endBeamX, endBeamY);
                 ctx.stroke();
             }
         }
@@ -1148,7 +1165,7 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
     }
 
 
-    subscribeToModelEvents(); // Setup model listeners
+    subscribeToModelEvents(boardData); // Setup model listeners
 
     // Initial check for button state after setup
     checkProgramReady();
