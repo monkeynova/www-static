@@ -182,7 +182,6 @@ export function hasWall(r, c, side, boardData) {
  * @returns {Array<{row: number, col: number}>} An array of coordinates representing the laser path (excluding the laser tile itself).
  */
 export function getLaserPath(startR, startC, laserDirection, boardData, robotState = null) {
-    Logger.log(`getLaserPath: Calculating path from (${startR},${startC}) firing ${laserDirection}. Robot state: ${robotState ? `(${robotState.row},${robotState.col})` : 'none'}`);
     const path = [];
     let currentR = startR;
     let currentC = startC;
@@ -203,7 +202,6 @@ export function getLaserPath(startR, startC, laserDirection, boardData, robotSta
 
     // If robot is on the laser emitter tile, the path is empty.
     if (robotState && startR === robotState.row && startC === robotState.col) {
-        Logger.log(`getLaserPath: Robot is on the laser emitter at (${startR},${startC}). Path is empty.`);
         return path; // Empty path
     }
 
@@ -220,7 +218,6 @@ export function getLaserPath(startR, startC, laserDirection, boardData, robotSta
         // Check for robot in the next tile
         if (robotState && nextR === robotState.row && nextC === robotState.col) {
             path.push({ row: nextR, col: nextC }); // Include the robot's tile
-            Logger.log(`getLaserPath: Robot detected at (${nextR},${nextC}). Path ends.`);
             break; // Laser hit the robot
         }
 
@@ -249,6 +246,5 @@ export function getLaserPath(startR, startC, laserDirection, boardData, robotSta
         nextC += dc;
     }
 
-    Logger.log(`getLaserPath: Final path for laser from (${startR},${startC}) firing ${laserDirection}: ${JSON.stringify(path)}`);
     return path;
 }

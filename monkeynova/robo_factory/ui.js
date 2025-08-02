@@ -446,7 +446,6 @@ function drawLaserBeams(boardData, robotState) {
 
             // Pass robotState to getLaserPath for dynamic termination
             const laserPath = Board.getLaserPath(r, c, tileData.laserDirection, boardData, robotState);
-            Logger.log(`drawLaserBeams: Laser at (${r},${c}) received path: ${JSON.stringify(laserPath)}`);
             if (laserPath.length > 0) { // Only draw if there's a path
                 ctx.beginPath();
 
