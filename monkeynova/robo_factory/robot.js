@@ -135,30 +135,44 @@ class Robot {
             case 'west':  dc = -moveDir; break;
         }
 
-        // Determine the wall side to check based on the ACTUAL delta (dr, dc)
-        let wallSideToCheck;
-        if (dr === -1) wallSideToCheck = 'north';
-        else if (dr === 1) wallSideToCheck = 'south';
-        else if (dc === -1) wallSideToCheck = 'west'; // Correctly identifies 'west' when dc is -1
-        else if (dc === 1) wallSideToCheck = 'east';
-        else return { targetRow: this.row, targetCol: this.col, success: false, blockedByWall: false }; // Should not happen if orientation is valid
+        // Determine the wall sides to check
+        let exitWallSide, entryWallSide;
+        if (dr === -1) { // Moving North
+            exitWallSide = 'north';
+            entryWallSide = 'south';
+        } else if (dr === 1) { // Moving South
+            exitWallSide = 'south';
+            entryWallSide = 'north';
+        } else if (dc === -1) { // Moving West
+            exitWallSide = 'west';
+            entryWallSide = 'east';
+        } else if (dc === 1) { // Moving East
+            exitWallSide = 'east';
+            entryWallSide = 'west';
+        } else {
+            return { targetRow: this.row, targetCol: this.col, success: false, blockedByWall: false }; // Should not happen
+        }
 
         // Use current instance position
         const targetRow = this.row + dr;
         const targetCol = this.col + dc;
 
-        // 1. Check Boundaries
+        // 1. Check Boundaries for the target tile
         const isInBounds = targetRow >= 0 && targetRow < boardData.rows &&
                            targetCol >= 0 && targetCol < boardData.cols;
         if (!isInBounds) {
             return { targetRow, targetCol, success: false, blockedByWall: false };
         }
 
-        // 2. Check Walls (using current instance position)
-        const isBlocked = Board.hasWall(this.row, this.col, wallSideToCheck, boardData);
-        if (isBlocked) {
-            Logger.log(`Move from (${this.row}, ${this.col}) towards ${wallSideToCheck} blocked by wall.`);
-            return { targetRow, targetCol, success: false, blockedByWall: true };
+        // 2. Check Walls
+        // Check for a wall on the current tile blocking exit
+        const blockedByCurrentTileWall = Board.hasWall(this.row, this.col, exitWallSide, boardData);
+        // Check for a wall on the target tile blocking entry
+        const blockedByTargetTileWall = Board.hasWall(targetRow, targetCol, entryWallSide, boardData);
+
+        if (blockedByCurrentTileWall || blockedByTargetTileWall) {
+            Logger.log(`Move from (${this.row}, ${this.col}) towards ${this.orientation} blocked by wall.`);
+            return { targetRow: this.row, targetCol: this.col, success: false, blockedByWall: true };
         }
 
         return { targetRow, targetCol, success: true, blockedByWall: false };

@@ -15,7 +15,7 @@ import { emit } from './eventEmitter.js';
  * @param {number} cols - The number of columns for the board.
  * @returns {object[][]} A 2D array of tile definition objects.
  */
-function createDemonstrationBoard(rows, cols) {
+export function createDemonstrationBoard(rows, cols) {
     const board = [];
     // 1. Create a base board with border walls
     for (let r = 0; r < rows; r++) {
@@ -95,21 +95,25 @@ function createDemonstrationBoard(rows, cols) {
     // 8. Add some lasers
     // Basic laser firing east (on plain tile)
     board[10][5].classes = ['plain', 'laser-east'];
-    board[10][5].walls.push('east');
+    board[10][5].walls.push('west'); // Changed from 'east' to 'west'
+
+    // NEW: Laser near start for testing (at 1,2 firing south, attached to its north wall)
+    board[1][2].classes = ['plain', 'laser-south'];
+    board[1][2].walls.push('north');
 
     // Laser firing north, blocked by a wall (on plain tile)
     board[15][10].classes = ['plain', 'laser-north'];
-    board[15][10].walls.push('north');
+    board[15][10].walls.push('south'); // Changed from 'north' to 'south'
     board[14][10].walls.push('north'); // Wall on the next tile, blocking the beam
 
     // Laser firing south, robot moves onto its path via conveyor (laser on a conveyor tile)
     board[20][15].classes = ['conveyor-south', 'laser-south'];
-    board[20][15].walls.push('south');
+    board[20][15].walls.push('north'); // Changed from 'south' to 'north'
     board[19][15].classes = ['conveyor-south']; // Conveyor pushing robot onto this tile
 
     // Laser firing west, robot moves past its path via conveyor (laser on a gear tile)
     board[25][20].classes = ['gear-cw', 'laser-west'];
-    board[25][20].walls.push('west');
+    board[25][20].walls.push('east'); // Changed from 'west' to 'east'
     board[25][19].classes = ['conveyor-east']; // Conveyor pushing robot past laser
 
     return board;
@@ -147,12 +151,13 @@ if (typeof document !== 'undefined') {
 
             // 2. Initialize Robot State
             const robot = new Robot(startRobotRow, startRobotCol, startRobotOrientation);
+            const initialRobotState = robot.getRobotState(); // Define initialRobotState here
 
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
-            const initialRobotStateForCheck = robot.getRobotState();
-            const startTileData = Board.getTileData(initialRobotStateForCheck.row, initialRobotStateForCheck.col, boardData);
+            // Use the newly defined initialRobotState
+            const startTileData = Board.getTileData(initialRobotState.row, initialRobotState.col, boardData);
             if (startTileData && startTileData.classes.includes('repair-station')) {
-                const key = `${initialRobotStateForCheck.row}-${initialRobotStateForCheck.col}`;
+                const key = `${initialRobotState.row}-${initialRobotState.col}`;
                 Logger.log(`Robot starts on station ${key}. Updating state.`);
                 robot.visitStation(key);
                 robot.setLastVisitedStation(key);
@@ -162,21 +167,21 @@ if (typeof document !== 'undefined') {
 
             // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
             // This replaces initCanvas, renderBoard, createFlags, createRobot
-            if (!UI.initializeUI(boardData)) {
+            if (!UI.initializeUI(boardData, initialRobotState)) {
                 throw new Error("UI Initialization failed.");
             }
 
             // 5. Setup UI Listeners (Subscribes UI to future events)
             // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
             // and AFTER model init if listeners need initial state immediately (less common).
-            UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, robot));
+            UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, robot), boardData, robot);
 
             // 6. Initialize Deck and Hand State
             Cards.initDeckAndHand(); // Emits events
 
             // 7. Trigger Initial Visual State Sync (Emit events NOW that UI is listening)
             Logger.log("Emitting initial state events for UI sync...");
-            const initialRobotState = robot.getRobotState();
+            // initialRobotState is already defined and used above
 
             // Emit robot position and orientation
             emit('robotMoved', { // Use 'robotMoved' as it updates position and orientation class

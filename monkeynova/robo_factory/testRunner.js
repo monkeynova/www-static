@@ -10,6 +10,7 @@ import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
 import * as Config from './config.js'; // May need for constants like MAX_HEALTH
+import { createDemonstrationBoard } from './main.js'; // NEW: Import createDemonstrationBoard
 
 /**
  * Defines a test scenario.
@@ -334,9 +335,9 @@ const testScenarios = [
     defineTest(
         "Conveyor -> Laser: Robot is pushed past a laser path and does not take damage",
         async () => {
-            // Setup: Robot at (0,0) on conveyor-east. Tile (0,2) has a laser-north. Robot moves to (0,1).
+            // Setup: Robot at (0,0) on conveyor-east. Tile (0,2) has a laser-north (attached to south wall).
             const testBoardDef = [
-                [ { classes: ['conveyor-east'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain', 'laser-north'], walls: ['north', 'east'] } ],
+                [ { classes: ['conveyor-east'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain', 'laser-north'], walls: ['north', 'east', 'south'] } ], // Added south wall
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
@@ -360,9 +361,9 @@ const testScenarios = [
     defineTest(
         "Validation: Laser without required wall throws error",
         async () => {
-            // Setup: Board with a laser-east tile but NO east wall on that tile.
+            // Setup: Board with a laser-east tile but NO west wall on that tile.
             const testBoardDef = [
-                [ { classes: ['plain', 'laser-east'], walls: ['north', 'west'] } ] // Missing 'east' wall
+                [ { classes: ['plain', 'laser-east'], walls: ['north', 'south'] } ] // Missing 'west' wall
             ];
             // Expect this to throw an error during parsing
             return { testBoardDef };
@@ -388,9 +389,10 @@ const testScenarios = [
     defineTest(
         "Laser on Conveyor: Robot takes damage from laser on conveyor tile",
         async () => {
-            // Setup: Robot at (0,1) on conveyor-east with laser-east.
+            // Setup: Robot at (0,1) on conveyor-east with laser-east (attached to west wall).
+            // Add an east wall to (0,1) to block conveyor movement.
             const testBoardDef = [
-                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['conveyor-east', 'laser-east'], walls: ['north', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['conveyor-east', 'laser-east'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
@@ -415,9 +417,9 @@ const testScenarios = [
     defineTest(
         "Laser on Gear: Robot takes damage from laser on gear tile",
         async () => {
-            // Setup: Robot at (0,1) on gear-cw with laser-north.
+            // Setup: Robot at (0,1) on gear-cw with laser-north (attached to south wall).
             const testBoardDef = [
-                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['gear-cw', 'laser-north'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['gear-cw', 'laser-north'], walls: ['north', 'south'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = Board.parseBoardObjectDefinition(testBoardDef);
@@ -440,6 +442,31 @@ const testScenarios = [
             return posMatch && orientMatch && healthMatch;
         }
     ),
+
+    // NEW: Test for main board definition parsing
+    defineTest(
+        "Main Board: createDemonstrationBoard parses successfully",
+        async () => {
+            const boardDef = createDemonstrationBoard(30, 40);
+            let parseError = null;
+            try {
+                Board.parseBoardObjectDefinition(boardDef);
+            } catch (e) {
+                parseError = e;
+            }
+            return { parseError };
+        },
+        async (setupData) => {
+            // No action needed, setup already performed parsing
+            return setupData;
+        },
+        { parseError: null }, // Expect no parsing error
+        (actual, expected) => {
+            const pass = actual.parseError === expected.parseError;
+            if (!pass) Logger.error(`   FAIL: Expected no parsing error, but got: ${actual.parseError ? actual.parseError.message : 'None'}`);
+            return pass;
+        }
+    )
 ];
 
 /** Runs all defined test scenarios */

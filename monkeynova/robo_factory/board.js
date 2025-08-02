@@ -80,9 +80,10 @@ export function parseBoardObjectDefinition(boardDefinition) {
             const foundLaserClass = definedClasses.find(cls => cls.startsWith('laser-'));
             if (foundLaserClass) {
                 laserDirection = foundLaserClass.split('-')[1];
-                // NEW: Validate laser attachment to a wall
-                if (!walls.includes(laserDirection)) { // e.g., laser-north needs 'north' wall
-                    throw new Error(`Laser at (${r}, ${c}) firing ${laserDirection} must be attached to a ${laserDirection} wall.`);
+                // NEW: Validate laser attachment to a wall (must be on the opposite side of firing direction)
+                const requiredWallSide = getOppositeWallSide(laserDirection);
+                if (!walls.includes(requiredWallSide)) {
+                    throw new Error(`Laser at (${r}, ${c}) firing ${laserDirection} must be attached to a ${requiredWallSide} wall.`);
                 }
             }
 
@@ -110,6 +111,21 @@ export function parseBoardObjectDefinition(boardDefinition) {
     // Note: Wall consistency (east wall of A matching west wall of B) is assumed
     // to be handled correctly in the definition for now.
     return { rows, cols, repairStations, tiles };
+}
+
+/**
+ * Helper function to get the opposite wall side for a given direction.
+ * @param {'north' | 'south' | 'east' | 'west'} direction
+ * @returns {'north' | 'south' | 'east' | 'west' | null}
+ */
+function getOppositeWallSide(direction) {
+    switch (direction) {
+        case 'north': return 'south';
+        case 'south': return 'north';
+        case 'east': return 'west';
+        case 'west': return 'east';
+        default: return null; // Should not happen with valid laser directions
+    }
 }
 
 /**
@@ -165,8 +181,7 @@ export function hasWall(r, c, side, boardData) {
  * @param {object} boardData - The parsed board data.
  * @returns {Array<{row: number, col: number}>} An array of coordinates representing the laser path (excluding the laser tile itself).
  */
-export function getLaserPath(startR, startC, laserDirection, boardData) {
-    Logger.log(`getLaserPath called for (${startR}, ${startC}) firing ${laserDirection}`);
+export function getLaserPath(startR, startC, laserDirection, boardData, robotState = null) {
     const path = [];
     let currentR = startR;
     let currentC = startC;
@@ -190,34 +205,34 @@ export function getLaserPath(startR, startC, laserDirection, boardData) {
     let nextC = startC + dc;
 
     while (true) {
-        Logger.log(`  Checking next tile: (${nextR}, ${nextC})`);
         // Check boundaries for the *next* tile
         if (nextR < 0 || nextR >= boardData.rows || nextC < 0 || nextC >= boardData.cols) {
-            Logger.log(`  Path ends: Out of bounds at (${nextR}, ${nextC})`);
             break; // Out of bounds, path ends
+        }
+
+        // Check for robot in the next tile
+        if (robotState && nextR === robotState.row && nextC === robotState.col) {
+            path.push({ row: nextR, col: nextC }); // Include the robot's tile
+            break; // Laser hit the robot
         }
 
         // Check for a wall on the *current* tile (from which the laser is exiting)
         // This is the wall on the emitter tile for the first step, or the previous path tile for subsequent steps.
         if (hasWall(currentR, currentC, exitWallSide, boardData)) {
             // If the current tile (or emitter) has a wall blocking exit, the laser stops *before* entering nextR, nextC
-            // However, the laser *originates* from the wall on the emitter, so this check should only apply to subsequent tiles.
             // For the emitter tile, we assume the laser successfully exits.
             if (!(currentR === startR && currentC === startC)) { // Don't block on the emitter's own wall
-                Logger.log(`  Path ends: Wall on current tile (${currentR}, ${currentC}) blocking exit ${exitWallSide}`);
                 break; 
             }
         }
 
         // Check for a wall on the *next* tile (which the laser is trying to enter)
         if (hasWall(nextR, nextC, entryWallSide, boardData)) {
-            Logger.log(`  Path ends: Wall on next tile (${nextR}, ${nextC}) blocking entry ${entryWallSide}`);
             path.push({ row: nextR, col: nextC }); // Include the tile with the blocking wall
             break; // Laser hit a wall on the next tile's entry side
         }
 
         path.push({ row: nextR, col: nextC });
-        Logger.log(`  Added to path: (${nextR}, ${nextC}). Current path length: ${path.length}`);
 
         // Move to the next tile for the next iteration
         currentR = nextR;
@@ -225,6 +240,6 @@ export function getLaserPath(startR, startC, laserDirection, boardData) {
         nextR += dr;
         nextC += dc;
     }
-    Logger.log(`getLaserPath returning path:`, path);
+
     return path;
 }
