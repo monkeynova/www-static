@@ -105,7 +105,7 @@ To maintain a clean, predictable, and maintainable codebase, the following princ
 
 *   **More Board Elements:**
     *   **Lasers:** Stationary lasers that fire at the end of each card execution, damaging robots in their path.
-    *   **Pushers:** Walls that activate on specific turns to push robots one tile.
+    *   **Push Panels:** Attached to walls, these panels activate on specific phases of play (e.g., 2/4 or 1/3/5) to push adjacent robots one tile away from the wall. They activate after conveyor belts and before gears.
     *   **Rotating Gears:** Tiles that rotate the robot standing on them.
 *   **More Card Types:**
     *   **"Again":** Repeats the previous card's action.
