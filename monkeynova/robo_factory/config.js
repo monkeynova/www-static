@@ -40,12 +40,6 @@ export const ALLOWED_LOG_LEVELS = new Set([
 export const TURN_LEFT = 'left';
 export const TURN_RIGHT = 'right';
 
-// NEW: Laser Directions
-export const LASER_NORTH = 'laser-north';
-export const LASER_EAST = 'laser-east';
-export const LASER_SOUTH = 'laser-south';
-export const LASER_WEST = 'laser-west';
-
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',
@@ -61,11 +55,6 @@ export const TILE_SYMBOLS = {
     'conveyor-south-speed-2x': '⇓',
     'gear-cw': '↻',
     'gear-ccw': '↺',
-    // NEW: Laser Symbols
-    [LASER_NORTH]: '▲', // Upward triangle
-    [LASER_EAST]: '►',  // Rightward triangle
-    [LASER_SOUTH]: '▼', // Downward triangle
-    [LASER_WEST]: '◄',   // Leftward triangle
 };
 
 // Card definitions (can also live in cards.js)

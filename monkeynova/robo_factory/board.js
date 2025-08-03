@@ -1,6 +1,6 @@
 // board.js
 import * as Logger from './logger.js';
-import { ALLOWED_WALL_SIDES, LASER_NORTH, LASER_EAST, LASER_SOUTH, LASER_WEST } from './config.js'; // Import for validation and laser constants
+import { ALLOWED_WALL_SIDES } from './config.js'; // Import for validation and laser constants
 
 // Define all allowed tile classes for validation
 export const ALLOWED_TILE_CLASSES = new Set([

@@ -4,7 +4,7 @@ import * as Board from './board.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
-import { ALLOWED_CARD_TYPES, TURN_LEFT, TURN_RIGHT, LASER_NORTH, LASER_EAST, LASER_SOUTH, LASER_WEST } from './config.js'; // NEW: Import laser constants
+import { TURN_LEFT, TURN_RIGHT } from './config.js'; // NEW: Import laser constants
 
 // Simple sleep utility
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
