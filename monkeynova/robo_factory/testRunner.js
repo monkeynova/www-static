@@ -5,7 +5,7 @@
 // It does not directly contribute to test logic but validates the main application bundle.
 import './main.js';
 
-import * as Board from './board.js';
+import { Board } from './board.js';
 import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
@@ -48,7 +48,7 @@ const testScenarios = [
                     { classes: ['plain'], walls: ['south', 'east'] }
                 ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
             return { boardData, robot };
         },
@@ -78,7 +78,7 @@ const testScenarios = [
                 [ { classes: ['conveyor-east'], walls: ['north', 'west'] }, { classes: ['conveyor-east'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
             return { boardData, robot };
         },
@@ -102,7 +102,7 @@ const testScenarios = [
                 [ { classes: ['conveyor-east', 'speed-2x'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ], // Wall east of (0,1)
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
             return { boardData, robot };
         },
@@ -127,7 +127,7 @@ const testScenarios = [
                 [ { classes: ['plain'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ], // Wall east of (0,0)
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
             return { boardData, robot };
         },
@@ -165,7 +165,7 @@ const testScenarios = [
                     { classes: ['plain'], walls: ['south', 'east'] }
                 ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             // Start robot at (0,1) facing East. Moving Back 1 would try to go West into the wall.
             const robot = new Robot(0, 1, 'east');
             return { boardData, robot };
@@ -202,7 +202,7 @@ const testScenarios = [
                 [ { classes: ['gear-cw'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'north'); // Start facing North
             return { boardData, robot };
         },
@@ -225,7 +225,7 @@ const testScenarios = [
                 [ { classes: ['gear-ccw'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'north'); // Start facing North
             return { boardData, robot };
         },
@@ -260,7 +260,7 @@ const testScenarios = [
                     { classes: ['plain'], walls: ['south', 'east'] }
                 ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'north'); // Initial orientation is North
             return { boardData, robot };
         },
@@ -292,7 +292,7 @@ const testScenarios = [
                 [ { classes: ['plain', 'laser-east'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'east'); // Robot starts in laser path
             return { boardData, robot };
         },
@@ -313,10 +313,10 @@ const testScenarios = [
         async () => {
             // Setup: Robot at (0,2). Laser at (0,0) firing East. Wall at (0,1) blocking laser.
             const testBoardDef = [
-                [ { classes: ['plain', 'laser-east'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ], // Wall east of (0,0)
+                [ { classes: ['plain', 'laser-east'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: [ 'north', 'east'] } ], // Wall west of (0,1)
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 2, 'east'); // Robot starts behind the wall
             return { boardData, robot };
         },
@@ -340,7 +340,7 @@ const testScenarios = [
                 [ { classes: ['conveyor-east'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain', 'laser-north'], walls: ['north', 'east', 'south'] } ], // Added south wall
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east'); // Robot starts on conveyor
             return { boardData, robot };
         },
@@ -371,7 +371,7 @@ const testScenarios = [
         async (setupData) => {
             let errorThrown = false;
             try {
-                Board.parseBoardObjectDefinition(setupData.testBoardDef);
+                new Board(setupData.testBoardDef);
             } catch (e) {
                 Logger.log(`   Expected error caught: ${e.message}`);
                 errorThrown = true;
@@ -395,7 +395,7 @@ const testScenarios = [
                 [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['conveyor-east', 'laser-east'], walls: ['north', 'west', 'east'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'east'); // Robot starts on conveyor with laser
             return { boardData, robot };
         },
@@ -422,7 +422,7 @@ const testScenarios = [
                 [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['gear-cw', 'laser-north'], walls: ['north', 'south'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
-            const boardData = Board.parseBoardObjectDefinition(testBoardDef);
+            const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'north'); // Robot starts on gear with laser
             return { boardData, robot };
         },
@@ -450,7 +450,7 @@ const testScenarios = [
             const boardDef = createDemonstrationBoard(30, 40);
             let parseError = null;
             try {
-                Board.parseBoardObjectDefinition(boardDef);
+                new Board(boardDef);
             } catch (e) {
                 parseError = e;
             }

@@ -1,7 +1,6 @@
 // main.js
 import * as Config from './config.js';
-import * as Board from './board.js';
-import { ALLOWED_TILE_CLASSES } from './board.js'; // Import for validation
+import { Board, ALLOWED_TILE_CLASSES } from './board.js'; // Import for validation
 import Robot from './robot.js';
 import * as Cards from './cards.js';
 import * as UI from './ui.js';
@@ -147,7 +146,7 @@ if (typeof document !== 'undefined') {
             }
 
             // 1. Process Board Data
-            const boardData = Board.parseBoardObjectDefinition(boardDataDefinition);
+            const board = new Board(boardDataDefinition);
 
             // 2. Initialize Robot State
             const robot = new Robot(startRobotRow, startRobotCol, startRobotOrientation);
@@ -155,7 +154,7 @@ if (typeof document !== 'undefined') {
 
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
             // Use the newly defined initialRobotState
-            const startTileData = Board.getTileData(initialRobotState.row, initialRobotState.col, boardData);
+            const startTileData = board.getTileData(initialRobotState.row, initialRobotState.col);
             if (startTileData && startTileData.classes.includes('repair-station')) {
                 const key = `${initialRobotState.row}-${initialRobotState.col}`;
                 Logger.log(`Robot starts on station ${key}. Updating state.`);
@@ -167,14 +166,14 @@ if (typeof document !== 'undefined') {
 
             // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
             // This replaces initCanvas, renderBoard, createFlags, createRobot
-            if (!UI.initializeUI(boardData, initialRobotState)) {
+            if (!UI.initializeUI(board, initialRobotState)) {
                 throw new Error("UI Initialization failed.");
             }
 
             // 5. Setup UI Listeners (Subscribes UI to future events)
             // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
             // and AFTER model init if listeners need initial state immediately (less common).
-            UI.setupUIListeners(() => GameLoop.runProgramExecution(boardData, robot), boardData, robot);
+            UI.setupUIListeners(() => GameLoop.runProgramExecution(board, robot), board, robot);
 
             // 6. Initialize Deck and Hand State
             Cards.initDeckAndHand(); // Emits events

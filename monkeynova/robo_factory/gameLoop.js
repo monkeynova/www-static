@@ -1,6 +1,6 @@
 // gameLoop.js
 import * as Config from './config.js';
-import * as Board from './board.js';
+import { Board } from './board.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
@@ -29,7 +29,7 @@ export async function applyBoardEffects(boardData, robot) {
     let movedInPhase2 = false;
 
     // --- Phase 1: Check 2x Conveyor ---
-    let tileDataPhase1 = Board.getTileData(currentR, currentC, boardData);
+    let tileDataPhase1 = boardData.getTileData(currentR, currentC);
     Logger.log("      Phase 1: Checking 2x Conveyor ${tileDataPhase1}");
 
     // Check if the robot STARTS this phase on a 2x conveyor
@@ -49,9 +49,9 @@ export async function applyBoardEffects(boardData, robot) {
             const nextC = currentC + dc;
 
             // Check boundaries and walls for this single step
-            const targetTileData = Board.getTileData(nextR, nextC, boardData);
-            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, boardData) ||
-                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), boardData));
+            const targetTileData = boardData.getTileData(nextR, nextC);
+            const blockedByWall = boardData.hasWall(currentR, currentC, exitSide) ||
+                                  (targetTileData && boardData.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
 
             if (targetTileData && !blockedByWall) {
                 // If move is valid, update position for Phase 2
@@ -80,7 +80,7 @@ export async function applyBoardEffects(boardData, robot) {
 
     // --- Phase 2: Check All Conveyors ---
     Logger.log("      Phase 2: Checking All Conveyors");
-    let tileDataPhase2 = Board.getTileData(currentR, currentC, boardData);
+    let tileDataPhase2 = boardData.getTileData(currentR, currentC);
 
     // Check if the robot is NOW on ANY conveyor
     if (tileDataPhase2 && tileDataPhase2.primaryType === 'conveyor') {
@@ -99,9 +99,9 @@ export async function applyBoardEffects(boardData, robot) {
             const nextC = currentC + dc;
 
             // Check boundaries and walls for this single step
-            const targetTileData = Board.getTileData(nextR, nextC, boardData);
-            const blockedByWall = Board.hasWall(currentR, currentC, exitSide, boardData) ||
-                                  (targetTileData && Board.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east')), boardData));
+            const targetTileData = boardData.getTileData(nextR, nextC);
+            const blockedByWall = boardData.hasWall(currentR, currentC, exitSide) ||
+                                  (targetTileData && boardData.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
 
             if (targetTileData && !blockedByWall) {
                 // If move is valid, update position for subsequent phases
@@ -127,7 +127,7 @@ export async function applyBoardEffects(boardData, robot) {
     // --- Get Final State After Conveyors ---
     // Ensure robotState reflects the final position after both phases
     robotState = robot.getRobotState();
-    let finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
+    let finalTileData = boardData.getTileData(robotState.row, robotState.col);
     if (!finalTileData) {
          Logger.error("   Robot is on an invalid tile location after conveyor phase!");
          // Decide how to handle this - maybe force game over or reset?
@@ -159,12 +159,12 @@ export async function applyBoardEffects(boardData, robot) {
         // Iterate through all tiles to find lasers
         for (let r = 0; r < boardData.rows; r++) {
             for (let c = 0; c < boardData.cols; c++) {
-                const tile = Board.getTileData(r, c, boardData);
+                const tile = boardData.getTileData(r, c);
                 if (tile && tile.laserDirection) {
                     // Check if robot is on the laser emitter tile itself
                     const robotOnEmitter = (robotState.row === r && robotState.col === c);
 
-                    const laserPath = Board.getLaserPath(r, c, tile.laserDirection, boardData, robotState);
+                    const laserPath = boardData.getLaserPath(r, c, tile.laserDirection, robotState);
                     // Check if robot is on any tile in the laser's path
                     const robotInLaserPath = laserPath.some(
                         pathTile => pathTile.row === robotState.row && pathTile.col === robotState.col
@@ -193,7 +193,7 @@ export async function applyBoardEffects(boardData, robot) {
 
     // --- 4. Repair Station --- (Logic updated to use finalTileData)
     // Re-fetch tile data in case a gear turn happened on a repair station tile (unlikely but possible)
-    finalTileData = Board.getTileData(robotState.row, robotState.col, boardData);
+    finalTileData = boardData.getTileData(robotState.row, robotState.col);
     if (!gameEnded && finalTileData.classes.includes('repair-station')) { // Check gameEnded
         const stationKey = `${robotState.row}-${robotState.col}`;
         robot.setLastVisitedStation(stationKey);
@@ -231,7 +231,7 @@ export async function applyBoardEffects(boardData, robot) {
             if (lastKey) {
                 Logger.log(`   Returning to last visited station: ${lastKey}`);
                 const [lastR, lastC] = lastKey.split('-').map(Number);
-                if (Board.getTileData(lastR, lastC, boardData)) {
+                if (boardData.getTileData(lastR, lastC)) {
                     robot.setPosition(lastR, lastC);
                     await sleep(600);
                     // Update robotState again after reset? Might not be necessary if phase ends here.
@@ -283,7 +283,8 @@ export async function runProgramExecution(boardData, robot) {
             continue;
         }
 
-        Logger.log(`\nExecuting Card ${i + 1}: ${cardData.text} (${cardData.type})`);
+        Logger.log(`
+Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         let cardMoved = false;
         let robotState = robot.getRobotState(); // Get state before action
 

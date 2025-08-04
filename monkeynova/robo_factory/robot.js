@@ -1,8 +1,9 @@
 // robot.js
 import { orientations, MAX_HEALTH, TURN_LEFT, TURN_RIGHT } from './config.js'; // Keep config import
+import { Board } from './board.js';
 import * as Logger from './logger.js';
 // Board import needed for calculateMoveTarget's parameter type hint, but not logic here
-import * as Board from './board.js';
+
 import { emit } from './eventEmitter.js';
 
 /**
@@ -166,9 +167,9 @@ class Robot {
 
         // 2. Check Walls
         // Check for a wall on the current tile blocking exit
-        const blockedByCurrentTileWall = Board.hasWall(this.row, this.col, exitWallSide, boardData);
+        const blockedByCurrentTileWall = boardData.hasWall(this.row, this.col, exitWallSide);
         // Check for a wall on the target tile blocking entry
-        const blockedByTargetTileWall = Board.hasWall(targetRow, targetCol, entryWallSide, boardData);
+        const blockedByTargetTileWall = boardData.hasWall(targetRow, targetCol, entryWallSide);
 
         if (blockedByCurrentTileWall || blockedByTargetTileWall) {
             Logger.log(`Move from (${this.row}, ${this.col}) towards ${this.orientation} blocked by wall.`);
