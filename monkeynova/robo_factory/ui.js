@@ -14,13 +14,13 @@
  *    'handUpdated', 'gameOver') via the eventEmitter.
  *  - Updates: The DOM (HTML elements) and Canvas based on data received from events.
  *  - Captures: User input (button clicks, drag-and-drop).
- *  - Triggers: Controller actions (e.g., calling `runProgramExecution` from gameLoop.js)
+ *  - Triggers: Controller actions (e.g., calling `runProgramExecution` from gameLoop.js`)
  *    or specific Model updates related to input (e.g., calling `Cards.addToHandData`
  *    after a drop event) in response to user input.
  *
  * RESPONSIBILITIES:
  *  - Creating/Updating DOM elements (robot div, cards in hand, status text, modals).
- *  - Rendering graphics onto the Canvas (board tiles, walls, grid, lasers).
+ *  - Rendering graphics onto the Canvas (board tiles, walls, lasers).
  *  - Setting up UI-specific event listeners (buttons, drag/drop targets).
  *  - Subscribing to relevant events from the eventEmitter to know *when* to update.
  *  - Displaying data provided via events.
@@ -33,7 +33,7 @@
  *  - DO NOT directly modify the game state stored in other modules (e.g.,
  *    do not change `Robot.state.health` directly). State changes should happen
  *    within the Model modules, triggered by the Controller or Model logic itself.
- *  - DO NOT directly call functions in `gameLoop.js` or Model modules *except*
+ *  - DO NOT directly call functions in `gameLoop.js` or Model modules *except* 
  *    when forwarding a direct user input action (like the 'Run Program' button
  *    click calling `runProgramExecution`, or a drop event calling card state updates).
  *
@@ -81,7 +81,7 @@
  */
 
 import * as Config from './config.js';
-import * as Board from './board.js'; // Need this for tile/wall data
+import { Board } from './board.js'; // Need this for tile/wall data
 import { on } from './eventEmitter.js';
 import * as Logger from './logger.js';
 // Card imports remain if needed for drag/drop state updates
@@ -252,7 +252,7 @@ function drawLaserBeams(boardData, robotState) {
 
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
-            const tileData = Board.getTileData(r, c, boardData);
+            const tileData = boardData.getTileData(r, c);
             if (!tileData || !tileData.laserDirection) continue;
 
             const x = c * Config.TILE_SIZE;
@@ -261,7 +261,7 @@ function drawLaserBeams(boardData, robotState) {
             const centerY = y + Config.TILE_SIZE / 2;
 
             // Pass robotState to getLaserPath for dynamic termination
-            const laserPath = Board.getLaserPath(r, c, tileData.laserDirection, boardData, robotState);
+            const laserPath = boardData.getLaserPath(r, c, tileData.laserDirection, robotState);
             if (laserPath.length > 0) { // Only draw if there's a path
                 ctx.beginPath();
 
@@ -391,7 +391,7 @@ function renderStaticBoardElements(boardData) {
     // --- Draw Tiles ---
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
-            const tileData = Board.getTileData(r, c, boardData);
+            const tileData = boardData.getTileData(r, c);
             if (!tileData) continue;
 
             const x = c * Config.TILE_SIZE;
@@ -493,7 +493,7 @@ function renderStaticBoardElements(boardData) {
     ctx.fillStyle = wallFill;
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
-             const tileData = Board.getTileData(r, c, boardData);
+             const tileData = boardData.getTileData(r, c);
              if (!tileData || !tileData.walls) continue;
 
              const x = c * Config.TILE_SIZE;
@@ -525,7 +525,7 @@ function renderStaticBoardElements(boardData) {
 
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
-            const tileData = Board.getTileData(r, c, boardData);
+            const tileData = boardData.getTileData(r, c);
             if (!tileData || !tileData.laserDirection) continue;
 
             const x = c * Config.TILE_SIZE;
