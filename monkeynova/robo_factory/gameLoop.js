@@ -32,39 +32,17 @@ export async function applyBoardEffects(boardData, robot) {
     let tileDataPhase1 = boardData.getTileData(currentR, currentC);
     Logger.log("      Phase 1: Checking 2x Conveyor ${tileDataPhase1}");
 
-    // Check if the robot STARTS this phase on a 2x conveyor
-    if (tileDataPhase1 && tileDataPhase1.primaryType === 'conveyor' && tileDataPhase1.speed === 2) {
-        // Calculate the potential move
-        let dr = 0, dc = 0;
-        let exitSide = '';
-        switch (tileDataPhase1.conveyorDirection) {
-            case 'north': dr = -1; exitSide = 'north'; break;
-            case 'south': dr = 1;  exitSide = 'south'; break;
-            case 'west':  dc = -1; exitSide = 'west';  break;
-            case 'east':  dc = 1;  exitSide = 'east';  break;
-        }
-
-        if (dr !== 0 || dc !== 0) { // Check if direction was found
-            const nextR = currentR + dr;
-            const nextC = currentC + dc;
-
-            // Check boundaries and walls for this single step
-            const targetTileData = boardData.getTileData(nextR, nextC);
-            const blockedByWall = boardData.hasWall(currentR, currentC, exitSide) ||
-                                  (targetTileData && boardData.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
-
-            if (targetTileData && !blockedByWall) {
-                // If move is valid, update position for Phase 2
-                Logger.log(`      2x Conveyor moving from (${currentR},${currentC}) to (${nextR},${nextC})`);
-                currentR = nextR; // Update temporary position for next phase
-                currentC = nextC;
-                movedInPhase1 = true;
-                boardMoved = true;
-            } else {
-                Logger.log(`      2x Conveyor at (${robotState.row},${robotState.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
-            }
-        }
+    const conveyor2xResult = tileDataPhase1.tryApplySpeed2xConveyor(robotState, boardData);
+    if (conveyor2xResult.moved) {
+        Logger.log(`      2x Conveyor moving from (${currentR},${currentC}) to (${conveyor2xResult.newR},${conveyor2xResult.newC})`);
+        currentR = conveyor2xResult.newR;
+        currentC = conveyor2xResult.newC;
+        movedInPhase1 = true;
+        boardMoved = true;
+    } else if (tileDataPhase1 && tileDataPhase1.primaryType === 'conveyor' && tileDataPhase1.speed === 2) {
+        Logger.log(`      2x Conveyor at (${robotState.row},${robotState.col}) blocked.`);
     }
+
     // Update robot state AFTER phase 1 check if needed
     if (movedInPhase1) {
         robot.setPosition(currentR, currentC); // This emits 'robotMoved'
@@ -82,38 +60,15 @@ export async function applyBoardEffects(boardData, robot) {
     Logger.log("      Phase 2: Checking All Conveyors");
     let tileDataPhase2 = boardData.getTileData(currentR, currentC);
 
-    // Check if the robot is NOW on ANY conveyor
-    if (tileDataPhase2 && tileDataPhase2.primaryType === 'conveyor') {
-        // Calculate the potential move
-        let dr = 0, dc = 0;
-        let exitSide = '';
-        switch (tileDataPhase2.conveyorDirection) {
-            case 'north': dr = -1; exitSide = 'north'; break;
-            case 'south': dr = 1;  exitSide = 'south'; break;
-            case 'west':  dc = -1; exitSide = 'west';  break;
-            case 'east':  dc = 1;  exitSide = 'east';  break;
-        }
-
-        if (dr !== 0 || dc !== 0) { // Check if direction was found
-            const nextR = currentR + dr;
-            const nextC = currentC + dc;
-
-            // Check boundaries and walls for this single step
-            const targetTileData = boardData.getTileData(nextR, nextC);
-            const blockedByWall = boardData.hasWall(currentR, currentC, exitSide) ||
-                                  (targetTileData && boardData.hasWall(nextR, nextC, dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
-
-            if (targetTileData && !blockedByWall) {
-                // If move is valid, update position for subsequent phases
-                Logger.log(`      1x/2x Conveyor moving from (${currentR},${currentC}) to (${nextR},${nextC})`);
-                currentR = nextR; // Update temporary position
-                currentC = nextC;
-                movedInPhase2 = true;
-                boardMoved = true;
-            } else {
-                Logger.log(`      1x/2x Conveyor at (${robotState.row},${robotState.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
-            }
-        }
+    const conveyorResult = tileDataPhase2.tryApplyConveyor(robotState, boardData);
+    if (conveyorResult.moved) {
+        Logger.log(`      1x/2x Conveyor moving from (${currentR},${currentC}) to (${conveyorResult.newR},${conveyorResult.newC})`);
+        currentR = conveyorResult.newR;
+        currentC = conveyorResult.newC;
+        movedInPhase2 = true;
+        boardMoved = true;
+    } else if (tileDataPhase2 && tileDataPhase2.primaryType === 'conveyor') {
+        Logger.log(`      1x/2x Conveyor at (${robotState.row},${robotState.col}) blocked.`);
     }
     // Update robot state AFTER phase 2 check if needed
     if (movedInPhase2) {

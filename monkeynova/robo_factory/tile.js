@@ -104,4 +104,70 @@ export class Tile {
         }
         return this.walls.includes(side);
     }
+
+    /**
+     * Attempts to apply a 2x speed conveyor movement from this tile.
+     * @param {object} robotState - The current state of the robot (row, col, orientation).
+     * @param {Board} board - The board instance for boundary/wall checks.
+     * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
+     */
+    tryApplySpeed2xConveyor(robotState, board) {
+        if (this.primaryType === 'conveyor' && this.speed === 2) {
+            let dr = 0, dc = 0;
+            let exitSide = '';
+            switch (this.conveyorDirection) {
+                case 'north': dr = -1; exitSide = 'north'; break;
+                case 'south': dr = 1;  exitSide = 'south'; break;
+                case 'west':  dc = -1; exitSide = 'west';  break;
+                case 'east':  dc = 1;  exitSide = 'east';  break;
+            }
+
+            if (dr !== 0 || dc !== 0) {
+                const nextR = this.row + dr;
+                const nextC = this.col + dc;
+
+                const targetTileData = board.getTileData(nextR, nextC);
+                const blockedByWall = this.hasWall(exitSide) ||
+                                      (targetTileData && targetTileData.hasWall(dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
+
+                if (targetTileData && !blockedByWall) {
+                    return { moved: true, newR: nextR, newC: nextC };
+                }
+            }
+        }
+        return { moved: false };
+    }
+
+    /**
+     * Attempts to apply a 1x or 2x speed conveyor movement from this tile.
+     * @param {object} robotState - The current state of the robot (row, col, orientation).
+     * @param {Board} board - The board instance for boundary/wall checks.
+     * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
+     */
+    tryApplyConveyor(robotState, board) {
+        if (this.primaryType === 'conveyor') {
+            let dr = 0, dc = 0;
+            let exitSide = '';
+            switch (this.conveyorDirection) {
+                case 'north': dr = -1; exitSide = 'north'; break;
+                case 'south': dr = 1;  exitSide = 'south'; break;
+                case 'west':  dc = -1; exitSide = 'west';  break;
+                case 'east':  dc = 1;  exitSide = 'east';  break;
+            }
+
+            if (dr !== 0 || dc !== 0) {
+                const nextR = this.row + dr;
+                const nextC = this.col + dc;
+
+                const targetTileData = board.getTileData(nextR, nextC);
+                const blockedByWall = this.hasWall(exitSide) ||
+                                      (targetTileData && targetTileData.hasWall(dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
+
+                if (targetTileData && !blockedByWall) {
+                    return { moved: true, newR: nextR, newC: nextC };
+                }
+            }
+        }
+        return { moved: false };
+    }
 }
