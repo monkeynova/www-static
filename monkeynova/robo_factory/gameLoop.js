@@ -29,13 +29,10 @@ export async function applyBoardEffects(boardData, robot) {
 
     const conveyor2xResult = tileData.tryApplySpeed2xConveyor(robotState, boardData);
     if (conveyor2xResult.moved) {
-        Logger.log(`      2x Conveyor moving from (${robotState.row},${robotState.col}) to (${conveyor2xResult.newR},${conveyor2xResult.newC})`);
         robot.setPosition(conveyor2xResult.newR, conveyor2xResult.newC);
         boardMoved = true;
         await sleep(150); // Short delay after phase 1 movement
         robotState = robot.getRobotState(); // Get updated state
-    } else if (tileData && tileData.primaryType === 'conveyor' && tileData.speed === 2) {
-        Logger.log(`      2x Conveyor at (${robotState.row},${robotState.col}) blocked.`);
     }
 
     // Phase 2: Check All Conveyors
@@ -44,13 +41,10 @@ export async function applyBoardEffects(boardData, robot) {
 
     const conveyorResult = tileData.tryApplyConveyor(robotState, boardData);
     if (conveyorResult.moved) {
-        Logger.log(`      1x/2x Conveyor moving from (${robotState.row},${robotState.col}) to (${conveyorResult.newR},${conveyorResult.newC})`);
         robot.setPosition(conveyorResult.newR, conveyorResult.newC);
         boardMoved = true;
         await sleep(150); // Short delay after phase 2 movement
         robotState = robot.getRobotState(); // Get final updated state
-    } else if (tileData && tileData.primaryType === 'conveyor') {
-        Logger.log(`      1x/2x Conveyor at (${robotState.row},${robotState.col}) blocked.`);
     }
     // --- End Conveyor Movement ---
 

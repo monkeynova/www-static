@@ -1,6 +1,7 @@
 // tile.js
 import { ALLOWED_TILE_CLASSES } from './board.js'; // Assuming ALLOWED_TILE_CLASSES remains in board.js for now
 import { ALLOWED_WALL_SIDES } from './config.js'; // For validation
+import * as Logger from './logger.js';
 
 /**
  * Helper function to get the opposite wall side for a given direction.
@@ -131,7 +132,10 @@ export class Tile {
                                       (targetTileData && targetTileData.hasWall(dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
 
                 if (targetTileData && !blockedByWall) {
+                    Logger.log(`      2x Conveyor moving from (${this.row},${this.col}) to (${nextR},${nextC})`);
                     return { moved: true, newR: nextR, newC: nextC };
+                } else {
+                    Logger.log(`      2x Conveyor at (${this.row},${this.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
                 }
             }
         }
@@ -164,7 +168,10 @@ export class Tile {
                                       (targetTileData && targetTileData.hasWall(dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
 
                 if (targetTileData && !blockedByWall) {
+                    Logger.log(`      1x/2x Conveyor moving from (${this.row},${this.col}) to (${nextR},${nextC})`);
                     return { moved: true, newR: nextR, newC: nextC };
+                } else {
+                    Logger.log(`      1x/2x Conveyor at (${this.row},${this.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
                 }
             }
         }
