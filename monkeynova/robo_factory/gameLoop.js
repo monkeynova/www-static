@@ -116,59 +116,26 @@ export async function applyBoardEffects(boardData, robot) {
     // --- End Laser Firing ---
 
 
-    // --- 4. Repair Station --- (Logic updated to use finalTileData)
-    // Re-fetch tile data in case a gear turn happened on a repair station tile (unlikely but possible)
-    finalTileData = boardData.getTileData(robotState.row, robotState.col);
-    if (!gameEnded && finalTileData.classes.includes('repair-station')) { // Check gameEnded
-        const stationKey = `${robotState.row}-${robotState.col}`;
-        robot.setLastVisitedStation(stationKey);
+    // --- 4. Repair Station ---
+    const repairStationResult = finalTileData.tryApplyRepairStation(robot, boardData);
+    if (repairStationResult.gameEnded) {
+        gameEnded = true;
+    }
 
-        if (!robot.hasVisitedStation(stationKey)) {
-            Logger.log(`   Visiting NEW repair station at (${robotState.row}, ${robotState.col})!`);
-            robot.visitStation(stationKey);
-            emit('flagVisited', stationKey);
-            const visitCount = robot.getVisitedStationCount()
-
-            Logger.log(`   Visited ${visitCount} / ${boardData.repairStations.length} stations.`);
-            if (visitCount === boardData.repairStations.length && boardData.repairStations.length > 0) {
-                Logger.log("   *** WIN CONDITION MET! ***");
-                emit('gameOver', true);
-                gameEnded = true; // Set gameEnded flag
-            }
-        } else {
-            Logger.log(`   Already visited repair station at (${robotState.row}, ${robotState.col}).`);
+    // --- 4. Hole ---
+    if (!gameEnded) { // Only check for hole if game hasn't ended from repair station
+        const holeResult = await finalTileData.tryApplyHole(robot, boardData);
+        if (holeResult.gameEnded) {
+            gameEnded = true;
         }
-    } // End Repair Station
-
-    // --- 4. Hole --- (Logic updated to use finalTileData)
-    if (!gameEnded && finalTileData.classes.includes('hole')) { // Check gameEnded
-        Logger.log(`   Robot landed on a hole at (${robotState.row}, ${robotState.col})!`);
-        fellInHole = true;
-        robot.takeDamage(); // Update state (emits healthChanged)
-
-        if (robot.isDestroyed()) {
-            Logger.error("   *** ROBOT DESTROYED by falling in hole! ***");
-            emit('gameOver', false);
-            gameEnded = true; // Set gameEnded flag
-        } else {
-            // Return to last station if not destroyed
-            const lastKey = robotState.lastVisitedStationKey;
-            if (lastKey) {
-                Logger.log(`   Returning to last visited station: ${lastKey}`);
-                const [lastR, lastC] = lastKey.split('-').map(Number);
-                if (boardData.getTileData(lastR, lastC)) {
-                    robot.setPosition(lastR, lastC);
-                    await sleep(600);
-                    // Update robotState again after reset? Might not be necessary if phase ends here.
-                    // robotState = robot.getRobotState();
-                } else {
-                    Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
-                }
-            } else {
-                Logger.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
+        if (holeResult.fellInHole) {
+            fellInHole = true;
+            // Delay for robot return to station is handled in Tile.tryApplyHole
+            if (!gameEnded) { // Only sleep if game didn't end
+                await sleep(600); // Wait for robot to return to station
             }
         }
-    } // End Hole
+    }
 
     return { gameEnded, boardMoved, fellInHole }; // Return final status
 }

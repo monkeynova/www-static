@@ -2,6 +2,8 @@
 import { ALLOWED_TILE_CLASSES } from './board.js'; // Assuming ALLOWED_TILE_CLASSES remains in board.js for now
 import { ALLOWED_WALL_SIDES } from './config.js'; // For validation
 import * as Logger from './logger.js';
+import * as Config from './config.js';
+import { emit } from './eventEmitter.js';
 
 /**
  * Helper function to get the opposite wall side for a given direction.
@@ -176,5 +178,73 @@ export class Tile {
             }
         }
         return { moved: false };
+    }
+
+    /**
+     * Attempts to apply repair station effects if the tile is a repair station.
+     * @param {Robot} robot - The robot instance.
+     * @param {Board} board - The board instance.
+     * @returns {{gameEnded: boolean}} - Indicates if the game ended (win condition).
+     */
+    tryApplyRepairStation(robot, board) {
+        let gameEnded = false;
+        if (this.classes.includes('repair-station')) {
+            const stationKey = `${this.row}-${this.col}`;
+            robot.setLastVisitedStation(stationKey);
+
+            if (!robot.hasVisitedStation(stationKey)) {
+                Logger.log(`   Visiting NEW repair station at (${this.row}, ${this.col})!`);
+                robot.visitStation(stationKey);
+                emit('flagVisited', stationKey);
+                const visitCount = robot.getVisitedStationCount();
+
+                Logger.log(`   Visited ${visitCount} / ${board.repairStations.length} stations.`);
+                if (visitCount === board.repairStations.length && board.repairStations.length > 0) {
+                    Logger.log("   *** WIN CONDITION MET! ***");
+                    emit('gameOver', true);
+                    gameEnded = true;
+                }
+            } else {
+                Logger.log(`   Already visited repair station at (${this.row}, ${this.col}).`);
+            }
+        }
+        return { gameEnded };
+    }
+
+    /**
+     * Attempts to apply hole effects if the tile is a hole.
+     * @param {Robot} robot - The robot instance.
+     * @param {Board} board - The board instance.
+     * @returns {{gameEnded: boolean, fellInHole: boolean}} - Indicates if the game ended or robot fell in a hole.
+     */
+    async tryApplyHole(robot, board) {
+        let gameEnded = false;
+        let fellInHole = false;
+        if (this.classes.includes('hole')) {
+            Logger.log(`   Robot landed on a hole at (${this.row}, ${this.col})!`);
+            fellInHole = true;
+            robot.takeDamage();
+
+            if (robot.isDestroyed()) {
+                Logger.error("   *** ROBOT DESTROYED by falling in hole! ***");
+                emit('gameOver', false);
+                gameEnded = true;
+            } else {
+                const lastKey = robot.getRobotState().lastVisitedStationKey;
+                if (lastKey) {
+                    Logger.log(`   Returning to last visited station: ${lastKey}`);
+                    const [lastR, lastC] = lastKey.split('-').map(Number);
+                    if (board.getTileData(lastR, lastC)) {
+                        robot.setPosition(lastR, lastC);
+                        // No await sleep here, as it's handled by gameLoop after this function returns
+                    } else {
+                        Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
+                    }
+                } else {
+                    Logger.error("   Fell in hole, but no last visited repair station recorded! Cannot return.");
+                }
+            }
+        }
+        return { gameEnded, fellInHole };
     }
 }
