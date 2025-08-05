@@ -1,6 +1,7 @@
 // board.js
 import * as Logger from './logger.js';
 import { ALLOWED_WALL_SIDES } from './config.js'; // Import for validation and laser constants
+import { Tile, getOppositeWallSide } from './tile.js';
 
 // Define all allowed tile classes for validation
 export const ALLOWED_TILE_CLASSES = new Set([
@@ -19,21 +20,6 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'laser-south',
     'laser-west',
 ]);
-
-/**
- * Helper function to get the opposite wall side for a given direction.
- * @param {'north' | 'south' | 'east' | 'west'} direction
- * @returns {'north' | 'south' | 'east' | 'west' | null}
- */
-function getOppositeWallSide(direction) {
-    switch (direction) {
-        case 'north': return 'south';
-        case 'south': return 'north';
-        case 'east': return 'west';
-        case 'west': return 'east';
-        default: return null; // Should not happen with valid laser directions
-    }
-}
 
 export class Board {
     /**
@@ -58,65 +44,10 @@ export class Board {
             const rowTiles = [];
             for (let c = 0; c < this.cols; c++) {
                 const tileDef = boardDefinition[r][c];
-                if (!tileDef || !Array.isArray(tileDef.classes)) { // Check for classes array
-                    throw new Error(`Invalid tile definition at (${r}, ${c})`);
-                }
-
-                const definedClasses = tileDef.classes;
-                // Validate all defined classes
-                for (const cls of definedClasses) {
-                    if (!ALLOWED_TILE_CLASSES.has(cls)) {
-                        throw new Error(`Invalid or unknown tile class '${cls}' at (${r}, ${c}).`);
-                    }
-                }
-                const walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
-                let primaryType = 'plain'; // Default primary type
-                let conveyorDirection = null;
-                let laserDirection = null;
-
-                // Determine primaryType based on non-modifier classes
-                if (definedClasses.includes('repair-station')) {
-                    primaryType = 'repair-station';
-                } else if (definedClasses.includes('hole')) {
-                    primaryType = 'hole';
-                } else if (definedClasses.includes('gear-cw')) {
-                    primaryType = 'gear-cw';
-                } else if (definedClasses.includes('gear-ccw')) {
-                    primaryType = 'gear-ccw';
-                } else { // If no other specific primary type, check for conveyor
-                    const foundConveyorClass = definedClasses.find(cls => cls.startsWith('conveyor-'));
-                    if (foundConveyorClass) {
-                        primaryType = 'conveyor';
-                        conveyorDirection = foundConveyorClass.split('-')[1];
-                    }
-                }
-
-                // Extract laser direction if present (laser is a decoration, not a primary type)
-                const foundLaserClass = definedClasses.find(cls => cls.startsWith('laser-'));
-                if (foundLaserClass) {
-                    laserDirection = foundLaserClass.split('-')[1];
-                    // NEW: Validate laser attachment to a wall (must be on the opposite side of firing direction)
-                    const requiredWallSide = getOppositeWallSide(laserDirection);
-                    if (!walls.includes(requiredWallSide)) {
-                        throw new Error(`Laser at (${r}, ${c}) firing ${laserDirection} must be attached to a ${requiredWallSide} wall.`);
-                    }
-                }
-
-                const speed = definedClasses.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
-
-                const tileData = {
-                    classes: ['tile', ...definedClasses], // Combine base 'tile' with defined classes
-                    walls: walls,
-                    row: r,
-                    col: c,
-                    primaryType: primaryType,
-                    speed: speed,
-                    conveyorDirection: conveyorDirection, // Specific for conveyors
-                    laserDirection: laserDirection // Specific for lasers
-                };
+                const tileData = new Tile(tileDef, r, c);
                 rowTiles.push(tileData);
 
-                if (definedClasses.includes('repair-station')) {
+                if (tileData.classes.includes('repair-station')) {
                     this.repairStations.push({ row: r, col: c });
                 }
             }
@@ -161,7 +92,7 @@ export class Board {
         }
 
         // Direct check on the specified tile's wall array
-        return tileData.walls.includes(side);
+        return tileData.hasWall(side);
 
         // Note: This assumes the definition is consistent. E.g., if tile A has 'east' wall,
         // tile B (to its east) should have 'west' wall defined.
@@ -214,7 +145,7 @@ export class Board {
 
             // Check for a wall on the *current* tile (from which the laser is exiting)
             // This is the wall on the emitter tile for the first step, or the previous path tile for subsequent steps.
-            if (this.hasWall(currentR, currentC, exitWallSide)) {
+            if (this.getTileData(currentR, currentC).hasWall(exitWallSide)) {
                 // If the current tile (or emitter) has a wall blocking exit, the laser stops *before* entering nextR, nextC
                 // For the emitter tile, we assume the laser successfully exits.
                 if (!(currentR === startR && currentC === startC)) { // Don't block on the emitter's own wall
@@ -223,7 +154,7 @@ export class Board {
             }
 
             // Check for a wall on the *next* tile (which the laser is trying to enter)
-            if (this.hasWall(nextR, nextC, entryWallSide)) {
+            if (this.getTileData(nextR, nextC).hasWall(entryWallSide)) {
                 // Laser hit a wall on the next tile's entry side, so it stops *before* entering this tile.
                 break; // Laser stops here, do not include this tile in path
             }
