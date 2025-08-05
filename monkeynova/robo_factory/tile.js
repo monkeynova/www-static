@@ -62,6 +62,8 @@ export class Tile {
 
         // Validate all defined classes
         for (const cls of tileDef.classes) {
+            // Skip validation for push- classes as they are decorators and not primary tile types
+            if (cls.startsWith('push-')) continue;
             if (!ALLOWED_TILE_CLASSES.has(cls)) {
                 throw new Error(`Invalid or unknown tile class '${cls}' at (${r}, ${c}).`);
             }
@@ -77,19 +79,16 @@ export class Tile {
         } else if (this.classes.includes('gear-ccw')) {
             this.primaryType = 'gear-ccw';
         } else {
-            const foundPushClass = this.classes.find(cls => cls.startsWith('push-'));
-            if (foundPushClass) {
-                this.primaryType = 'push-panel';
+            const foundConveyorClass = this.classes.find(cls => cls.startsWith('conveyor-'));
+            if (foundConveyorClass) {
+                this.primaryType = 'conveyor';
+                this.conveyorDirection = foundConveyorClass.split('-')[1];
             } else {
-                const foundConveyorClass = this.classes.find(cls => cls.startsWith('conveyor-'));
-                if (foundConveyorClass) {
-                    this.primaryType = 'conveyor';
-                    this.conveyorDirection = foundConveyorClass.split('-')[1];
-                } else {
-                    this.primaryType = 'plain'; // Default primary type
-                }
+                this.primaryType = 'plain'; // Default primary type
             }
         }
+
+        this.hasPushPanel = this.classes.some(cls => cls.startsWith('push-'));
 
         // Extract laser direction if present
         const foundLaserClass = this.classes.find(cls => cls.startsWith('laser-'));
@@ -265,10 +264,11 @@ export class Tile {
      * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
      */
     tryPushPanel(robotState, board) {
-        if (this.primaryType === 'push-panel') { // Assuming 'push-panel' as primaryType
+        if (this.hasPushPanel) { // Check the new decorator property
             let dr = 0, dc = 0;
             let exitSide = '';
-            switch (this.classes.find(cls => cls.startsWith('push-')).split('-')[1]) { // Extract direction from class
+            const pushDirection = this.classes.find(cls => cls.startsWith('push-')).split('-')[1];
+            switch (pushDirection) {
                 case 'north': dr = -1; exitSide = 'north'; break;
                 case 'south': dr = 1;  exitSide = 'south'; break;
                 case 'west':  dc = -1; exitSide = 'west';  break;
