@@ -119,7 +119,103 @@ const testScenarios = [
     ),
 
     // --- Add More Test Scenarios Here ---
-    // e.g., Wall blocking movement, Hole interaction, Repair station visit, Turns
+
+    defineTest(
+        "Push Panel: Basic push north",
+        async () => {
+            const testBoardDef = [
+                [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] }],
+                [{ classes: ['plain'], walls: ['west'] }, { classes: ['push-north'], walls: [] }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1)
+                [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(1, 1, 'north'); // Robot starts on push panel
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'north' } }, // Expected: Moves to (0,1)
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            return posMatch;
+        }
+    ),
+
+    defineTest(
+        "Push Panel: Blocked by wall",
+        async () => {
+            const testBoardDef = [
+                [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] }],
+                [{ classes: ['push-east'], walls: [] }, { classes: ['plain'], walls: ['west', 'east'] }] // Push east panel at (1,0), Tile (1,1) has a west wall
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(1, 0, 'east'); // Robot starts on push panel
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 1, col: 0, orientation: 'east' } }, // Expected: Stays at (1,0)
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            return posMatch;
+        }
+    ),
+
+    defineTest(
+        "Push Panel: Pushes into hole",
+        async () => {
+            const testBoardDef = [
+                [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['hole'], walls: [] }, { classes: ['plain'], walls: ['north', 'east'] }], // Hole at (0,1)
+                [{ classes: ['plain'], walls: ['west'] }, { classes: ['push-north'], walls: [] }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1)
+                [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(1, 1, 'north'); // Robot starts on push panel
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'north', health: Config.MAX_HEALTH - 1 } }, // Expected: Moves to (0,1) and takes damage
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const healthMatch = actual.health === expected.robot.health;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return posMatch && healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Conveyor -> Push Panel: Robot moved by conveyor onto push panel, then pushed",
+        async () => {
+            const testBoardDef = [
+                [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] }],
+                [{ classes: ['conveyor-east'], walls: ['west'] }, { classes: ['push-east'], walls: [] }, { classes: ['plain'], walls: ['east'] }], // Conveyor at (1,0), Push panel at (1,1)
+                [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(1, 0, 'east'); // Robot starts on conveyor
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 1, col: 2, orientation: 'east' } }, // Expected: Moves from (1,0) to (1,1) by conveyor, then to (1,2) by push panel
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            return posMatch;
+        }
+    ),
     defineTest(
         "Movement: Move 1 forward hits wall",
         async () => {

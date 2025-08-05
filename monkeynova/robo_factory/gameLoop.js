@@ -21,6 +21,7 @@ export async function applyBoardEffects(boardData, robot) {
     let boardMoved = false; // Track if ANY movement happened this phase
     let gameEnded = false;
     let fellInHole = false; // Make sure this is declared
+    let finalTileData = boardData.getTileData(robotState.row, robotState.col); // Declare and initialize here
 
     // --- 1. Conveyor Movement ---
     // Phase 1: Check 2x Conveyor
@@ -48,19 +49,24 @@ export async function applyBoardEffects(boardData, robot) {
     }
     // --- End Conveyor Movement ---
 
-
-    // --- Get Final State After Conveyors ---
-    // Ensure robotState reflects the final position after both phases
-    robotState = robot.getRobotState();
-    let finalTileData = boardData.getTileData(robotState.row, robotState.col);
-    if (!finalTileData) {
-         Logger.error("   Robot is on an invalid tile location after conveyor phase!");
-         // Decide how to handle this - maybe force game over or reset?
-         // For now, prevent further actions in this phase.
-         return { gameEnded: false, boardMoved, fellInHole: false };
+    // --- NEW: 2. Push Panel Movement ---
+    Logger.log("      Phase 3: Checking Push Panels");
+    finalTileData = boardData.getTileData(robotState.row, robotState.col); // Re-fetch after conveyor movement
+    const pushPanelResult = finalTileData.tryPushPanel(robotState, boardData);
+    if (pushPanelResult.moved) {
+        robot.setPosition(pushPanelResult.newR, pushPanelResult.newC);
+        boardMoved = true;
+        await sleep(150); // Short delay after push panel movement
+        robotState = robot.getRobotState(); // Get updated state
     }
 
-    // --- NEW: 2. Gear Rotation ---
+    // --- Get Final State After Push Panels ---
+    // Ensure robotState reflects the final position after push panels
+    robotState = robot.getRobotState();
+    // No need to re-assign finalTileData here, it's updated by robotState
+
+    // --- NEW: 3. Gear Rotation ---
+    finalTileData = boardData.getTileData(robotState.row, robotState.col); // Re-fetch after potential movement
     if (finalTileData.classes.includes('gear-cw')) {
         Logger.log(`   On clockwise gear. Turning right.`);
         robot.turn('right');
@@ -218,36 +224,29 @@ Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
                     }
                     if (moveCount > 1) break; // Stop Move 2 if first step fails
                 }
-            } // End loop for move steps
-        } // End movement card logic
-
-        // Delay after card action completes
-        await sleep(cardMoved ? 200 : 500);
-
-        // --- 2. Execute Board Actions ---
-        const boardResult = await applyBoardEffects(boardData, robot);
-
-        // If board effects ended the game, stop processing cards
-        if (boardResult.gameEnded) {
-            // Discard cards used *up to this point*
-            Cards.discard(usedCardInstanceIds);
-            emit('programExecutionFinished'); // EMIT EVENT
-            Logger.log("Game ended during board effects phase.");
-            return; // Exit the runProgramExecution function
+            }
         }
 
-        // Optional delay between full card+board steps
+        await sleep(cardMoved ? 200 : 500);
+
+        const boardResult = await applyBoardEffects(boardData, robot);
+
+        if (boardResult.gameEnded) {
+            Cards.discard(usedCardInstanceIds);
+            emit('programExecutionFinished');
+            Logger.log("Game ended during board effects phase.");
+            return;
+        }
+
         if (!boardResult.boardMoved && !boardResult.fellInHole) {
              await sleep(100);
         }
 
-    } // --- End Card Execution Loop ---
+    }
 
-    // --- Post-Execution Cleanup (if game didn't end mid-turn) ---
     Logger.log("\n--- Program Finished ---");
-    Cards.discard(usedCardInstanceIds); // Discard all used cards
-    emit('programExecutionFinished'); // EMIT EVENT
-    // Draw new cards (this will emit 'handUpdated' and 'cardCountsUpdated')
+    Cards.discard(usedCardInstanceIds);
+    emit('programExecutionFinished');
     Cards.draw(Config.PROGRAM_SIZE);
 
-} // End runProgramExecution
+}

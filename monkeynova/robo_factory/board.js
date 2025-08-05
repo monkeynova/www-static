@@ -19,6 +19,10 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'laser-east',
     'laser-south',
     'laser-west',
+    'push-north',
+    'push-east',
+    'push-south',
+    'push-west',
 ]);
 
 export class Board {

@@ -77,12 +77,17 @@ export class Tile {
         } else if (this.classes.includes('gear-ccw')) {
             this.primaryType = 'gear-ccw';
         } else {
-            const foundConveyorClass = this.classes.find(cls => cls.startsWith('conveyor-'));
-            if (foundConveyorClass) {
-                this.primaryType = 'conveyor';
-                this.conveyorDirection = foundConveyorClass.split('-')[1];
+            const foundPushClass = this.classes.find(cls => cls.startsWith('push-'));
+            if (foundPushClass) {
+                this.primaryType = 'push-panel';
             } else {
-                this.primaryType = 'plain'; // Default primary type
+                const foundConveyorClass = this.classes.find(cls => cls.startsWith('conveyor-'));
+                if (foundConveyorClass) {
+                    this.primaryType = 'conveyor';
+                    this.conveyorDirection = foundConveyorClass.split('-')[1];
+                } else {
+                    this.primaryType = 'plain'; // Default primary type
+                }
             }
         }
 
@@ -251,5 +256,41 @@ export class Tile {
             }
         }
         return { gameEnded, fellInHole };
+    }
+
+    /**
+     * Attempts to apply push panel movement from this tile.
+     * @param {object} robotState - The current state of the robot (row, col, orientation).
+     * @param {Board} board - The board instance for boundary/wall checks.
+     * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
+     */
+    tryPushPanel(robotState, board) {
+        if (this.primaryType === 'push-panel') { // Assuming 'push-panel' as primaryType
+            let dr = 0, dc = 0;
+            let exitSide = '';
+            switch (this.classes.find(cls => cls.startsWith('push-')).split('-')[1]) { // Extract direction from class
+                case 'north': dr = -1; exitSide = 'north'; break;
+                case 'south': dr = 1;  exitSide = 'south'; break;
+                case 'west':  dc = -1; exitSide = 'west';  break;
+                case 'east':  dc = 1;  exitSide = 'east';  break;
+            }
+
+            if (dr !== 0 || dc !== 0) {
+                const nextR = this.row + dr;
+                const nextC = this.col + dc;
+
+                const targetTileData = board.getTileData(nextR, nextC);
+                const blockedByWall = this.hasWall(exitSide) ||
+                                      (targetTileData && targetTileData.hasWall(dr === 1 ? 'north' : (dr === -1 ? 'south' : (dc === 1 ? 'west' : 'east'))));
+
+                if (targetTileData && !blockedByWall) {
+                    Logger.log(`      Push Panel moving from (${this.row},${this.col}) to (${nextR},${nextC})`);
+                    return { moved: true, newR: nextR, newC: nextC };
+                } else {
+                    Logger.log(`      Push Panel at (${this.row},${this.col}) blocked (Wall: ${blockedByWall}, Boundary: ${!targetTileData}).`);
+                }
+            }
+        }
+        return { moved: false };
     }
 }
