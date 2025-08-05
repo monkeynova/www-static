@@ -22,6 +22,11 @@ export function getOppositeWallSide(direction) {
 }
 
 export class Tile {
+    /**
+     * Represents a single tile on the game board, encapsulating its properties
+     * like classes, walls, primary type, and methods for interacting with a robot
+     * (e.g., conveyor movement, repair station, hole effects).
+     */
     /** @type {string[]} */
     classes;
     /** @type {string[]} */

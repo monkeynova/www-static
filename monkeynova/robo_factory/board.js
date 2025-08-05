@@ -23,6 +23,11 @@ export const ALLOWED_TILE_CLASSES = new Set([
 
 export class Board {
     /**
+     * Represents the game board, managing a 2D grid of Tile objects.
+     * It handles the overall structure of the board, including dimensions,
+     * and provides methods for accessing tile data and calculating laser paths.
+     */
+    /**
      * Creates a new Board instance from a board definition.
      * @param {object[][]} boardDefinition - 2D array of tile objects {type, walls}.
      */
