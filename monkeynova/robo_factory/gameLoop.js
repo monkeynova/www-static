@@ -13,9 +13,10 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
  * Applies effects of the tile the robot is currently on.
  * @param {object} boardData - The parsed board data.
  * @param {Robot} robot - The robot instance.
+ * @param {number} currentProgramStep - The current step number of the program execution.
  * @returns {Promise<object>} { gameEnded, boardMoved, fellInHole }
  */
-export async function applyBoardEffects(boardData, robot) {
+export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     Logger.log("   Checking board actions...");
     let robotState = robot.getRobotState(); // Initial state for the phase
     let boardMoved = false; // Track if ANY movement happened this phase
@@ -52,7 +53,7 @@ export async function applyBoardEffects(boardData, robot) {
     // --- NEW: 2. Push Panel Movement ---
     Logger.log("      Phase 3: Checking Push Panels");
     finalTileData = boardData.getTileData(robotState.row, robotState.col); // Re-fetch after conveyor movement
-    const pushPanelResult = finalTileData.tryPushPanel(robotState, boardData);
+    const pushPanelResult = finalTileData.tryPushPanel(robotState, boardData, currentProgramStep);
     if (pushPanelResult.moved) {
         robot.setPosition(pushPanelResult.newR, pushPanelResult.newC);
         boardMoved = true;
@@ -217,7 +218,7 @@ Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
 
         await sleep(cardMoved ? 200 : 500);
 
-        const boardResult = await applyBoardEffects(boardData, robot);
+        const boardResult = await applyBoardEffects(boardData, robot, i + 1);
 
         if (boardResult.gameEnded) {
             Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId

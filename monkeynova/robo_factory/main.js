@@ -92,9 +92,9 @@ export function createDemonstrationBoard(rows, cols) {
     board[5][riverCol - 2].classes = ['gear-cw'];
 
     // 8. Add some push panels (decorators)
-    board[1][5].classes.push('push-east'); board[1][5].walls.push('west'); // Plain tile with push-east, needs west wall
+    board[1][5].classes.push('push-east', 'push-steps-1-3-5'); board[1][5].walls.push('west'); // Plain tile with push-east, needs west wall, fires on steps 1,3,5
     board[rows - 3][cols - 10].classes.push('push-north'); board[rows - 3][cols - 10].walls.push('south'); // Near bottom-right, push north, needs south wall
-    board[whirlStart.r][whirlStart.c + 1].classes.push('push-south'); board[whirlStart.r][whirlStart.c + 1].walls.push('north'); // On a conveyor, push south, needs north wall
+    board[whirlStart.r][whirlStart.c + 1].classes.push('push-south', 'push-steps-2-4'); board[whirlStart.r][whirlStart.c + 1].walls.push('north'); // On a conveyor, push south, needs north wall, fires on steps 2,4
     board[whirlStart.r - 2][whirlStart.c + 2].classes.push('push-west'); board[whirlStart.r - 2][whirlStart.c + 2].walls.push('east'); // On a gear, push west, needs east wall
 
     // 9. Add some lasers

@@ -43,6 +43,8 @@ export class Tile {
     conveyorDirection;
     /** @type {string | null} */
     laserDirection;
+    /** @type {Set<number>} */
+    pushPanelFireSteps; // NEW: Steps on which this push panel fires
 
     /**
      * Creates a new Tile instance from a raw tile definition.
@@ -60,10 +62,26 @@ export class Tile {
         this.classes = ['tile', ...tileDef.classes]; // Combine base 'tile' with defined classes
         this.walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
 
+        // Initialize pushPanelFireSteps
+        this.pushPanelFireSteps = new Set();
+        const pushStepsClass = this.classes.find(cls => cls.startsWith('push-steps-'));
+        if (pushStepsClass) {
+            const stepsStr = pushStepsClass.substring('push-steps-'.length);
+            stepsStr.split('-').forEach(step => {
+                const stepNum = parseInt(step, 10);
+                if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= Config.PROGRAM_SIZE) {
+                    this.pushPanelFireSteps.add(stepNum);
+                } else {
+                    Logger.warn(`Invalid push step '${step}' in class '${pushStepsClass}' at (${r}, ${c}). Ignoring.`);
+                }
+            });
+        }
+
         // Validate all defined classes
         for (const cls of tileDef.classes) {
-            // Skip validation for push- classes as they are decorators and not primary tile types
+            // Skip validation for push- and push-steps- classes as they are decorators and not primary tile types
             if (cls.startsWith('push-')) continue;
+            if (cls.startsWith('push-steps-')) continue;
             if (!ALLOWED_TILE_CLASSES.has(cls)) {
                 throw new Error(`Invalid or unknown tile class '${cls}' at (${r}, ${c}).`);
             }
@@ -271,10 +289,16 @@ export class Tile {
      * Attempts to apply push panel movement from this tile.
      * @param {object} robotState - The current state of the robot (row, col, orientation).
      * @param {Board} board - The board instance for boundary/wall checks.
+     * @param {number} currentProgramStep - The current step number of the program execution.
      * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
      */
-    tryPushPanel(robotState, board) {
+    tryPushPanel(robotState, board, currentProgramStep) {
         if (this.hasPushPanel) { // Check the new decorator property
+            // If pushPanelFireSteps is defined, only fire on specified steps
+            if (this.pushPanelFireSteps.size > 0 && !this.pushPanelFireSteps.has(currentProgramStep)) {
+                Logger.log(`      Push Panel at (${this.row},${this.col}) configured to fire only on steps [${Array.from(this.pushPanelFireSteps).join(', ')}], skipping step ${currentProgramStep}.`);
+                return { moved: false };
+            }
             let dr = 0, dc = 0;
             let exitSide = '';
             const pushDirection = this.classes.find(cls => cls.startsWith('push-')).split('-')[1];

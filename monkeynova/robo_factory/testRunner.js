@@ -206,7 +206,7 @@ const testScenarios = [
             return { boardData, robot };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1); // Pass a dummy step, as this test doesn't rely on steps
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves from (1,0) to (1,1) by conveyor, then to (0,1) by push panel
@@ -216,6 +216,58 @@ const testScenarios = [
             return posMatch;
         }
     ),
+
+    defineTest(
+        "Push Panel: Does not fire on off-step",
+        async () => {
+            const testBoardDef = [
+                [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] }],
+                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain', 'push-north', 'push-steps-2-4'], walls: ['south'] }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1), fires on steps 2 and 4
+                [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(1, 1, 'north'); // Robot starts on push panel
+
+            // Program: Turn L (step 1), Turn R (step 2), Move 1 (step 3)
+            const programCards = [
+                { type: 'turnL', text: 'Turn L', instanceId: 'card-1' },
+                { type: 'turnR', text: 'Turn R', instanceId: 'card-2' },
+                { type: 'move1', text: 'Move 1', instanceId: 'card-3' },
+                { type: 'move1', text: 'Move 1', instanceId: 'card-4' },
+                { type: 'move1', text: 'Move 1', instanceId: 'card-5' },
+            ];
+            robot.setProgram(programCards);
+
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Only run the first step of the program
+            const robot = setupData.robot;
+            const boardData = setupData.boardData;
+            const programCards = robot.getProgram();
+
+            const cardData = programCards[0]; // First card (step 1)
+            Logger.log(`
+Executing Card 1: ${cardData.type} (${cardData.text})
+`);
+
+            // Execute Card Action (Turn L - no movement)
+            if (cardData.type === 'turnL') {
+                robot.turn(Config.TURN_LEFT);
+            }
+
+            await GameLoop.applyBoardEffects(boardData, robot, 1); // Pass step 1
+
+            return robot.getRobotState();
+        },
+        { robot: { row: 1, col: 1, orientation: 'west' } }, // Expected: Robot stays at (1,1), turns west, because push panel doesn't fire on step 1
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            return posMatch;
+        }
+    ),
+
     defineTest(
         "Movement: Move 1 forward hits wall",
         async () => {
