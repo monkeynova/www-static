@@ -84,6 +84,7 @@ import * as Config from './config.js';
 import { Board } from './board.js'; // Need this for tile/wall data
 import { on } from './eventEmitter.js';
 import * as Logger from './logger.js';
+import { getOppositeWallSide } from './tile.js'; // NEW: Import getOppositeWallSide
 // Card imports remain if needed for drag/drop state updates
 import { getCardData, removeFromHandData, addToHandData } from './cards.js';
 import * as TestRunner from './testRunner.js'; // Import the test runner
@@ -462,18 +463,74 @@ function renderStaticBoardElements(boardData) {
                 }
             }
 
-            // NEW: Draw Push Panel Symbol (if present, on top of other tile visuals)
+            // NEW: Draw Push Panel Visual (if present, on top of other tile visuals)
             if (tileData.hasPushPanel) {
                 const pushDirectionClass = tileData.classes.find(cls => cls.startsWith('push-'));
                 if (pushDirectionClass) {
                     const pushDirection = pushDirectionClass.split('-')[1];
-                    const pushSymbol = Config.TILE_SYMBOLS[`push-${pushDirection}`] || '';
-                    if (pushSymbol) {
-                        ctx.fillStyle = '#8B4513'; // SaddleBrown for push panel symbol
-                        ctx.font = '28px sans-serif'; // Slightly smaller than laser, but prominent
+                    const attachmentWallSide = getOppositeWallSide(pushDirection);
 
-                        // Position in the center of the tile
-                        ctx.fillText(pushSymbol, centerX, centerY);
+                    const panelSize = Config.TILE_SIZE * 0.25; // 25% of tile size
+
+                    let panelX, panelY, panelW, panelH;
+
+                    // Determine panel position and dimensions based on attachment wall
+                    switch (attachmentWallSide) {
+                        case 'north':
+                            panelX = x; panelY = y; panelW = Config.TILE_SIZE; panelH = panelSize;
+                            break;
+                        case 'south':
+                            panelX = x; panelY = y + Config.TILE_SIZE - panelSize; panelW = Config.TILE_SIZE; panelH = panelSize;
+                            break;
+                        case 'west':
+                            panelX = x; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
+                            break;
+                        case 'east':
+                            panelX = x + Config.TILE_SIZE - panelSize; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
+                            break;
+                    }
+
+                    // Draw the base panel (a simple rectangle for now)
+                    ctx.fillStyle = Config.PUSH_PANEL_BASE_COLOR;
+                    ctx.fillRect(panelX, panelY, panelW, panelH);
+
+                    // Draw stripes and numbers
+                    ctx.font = `${Math.floor(panelSize * 0.8)}px Arial`; // Adjust font size based on panel thickness
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    for (let i = 0; i < Config.PROGRAM_SIZE; i++) {
+                        const step = i + 1;
+                        const isActiveStep = tileData.pushPanelFireSteps.has(step);
+
+                        let stripeX, stripeY, stripeW, stripeH;
+                        let textX, textY;
+
+                        if (attachmentWallSide === 'north' || attachmentWallSide === 'south') {
+                            // Horizontal stripes
+                            stripeW = Config.TILE_SIZE / Config.PROGRAM_SIZE;
+                            stripeH = panelSize;
+                            stripeX = panelX + (i * stripeW);
+                            stripeY = panelY;
+                            textX = stripeX + stripeW / 2;
+                            textY = panelY + panelSize / 2;
+                        } else {
+                            // Vertical stripes
+                            stripeW = panelSize;
+                            stripeH = Config.TILE_SIZE / Config.PROGRAM_SIZE;
+                            stripeX = panelX;
+                            stripeY = panelY + (i * stripeH);
+                            textX = panelX + panelSize / 2;
+                            textY = stripeY + stripeH / 2;
+                        }
+
+                        ctx.fillStyle = isActiveStep ? Config.PUSH_PANEL_ACTIVE_COLOR : Config.PUSH_PANEL_BASE_COLOR;
+                        ctx.fillRect(stripeX, stripeY, stripeW, stripeH);
+
+                        if (isActiveStep) {
+                            ctx.fillStyle = Config.PUSH_PANEL_BASE_COLOR;
+                            ctx.fillText(step.toString(), textX, textY);
+                        }
                     }
                 }
             }
