@@ -1,6 +1,6 @@
 // board.js
 import * as Logger from './logger.js';
-import { ALLOWED_WALL_SIDES } from './config.js'; // Import for validation and laser constants
+import { ALLOWED_WALL_SIDES, TILE_SYMBOLS } from './config.js'; // Import for validation and laser constants
 import { Tile, getOppositeWallSide } from './tile.js';
 
 // Define all allowed tile classes for validation
@@ -43,6 +43,21 @@ export class Board {
         this.cols = boardDefinition[0].length;
         this.repairStations = [];
         this.tiles = []; // Store processed data for each tile
+
+        // Validate TILE_SYMBOLS against ALLOWED_TILE_CLASSES
+        for (const key in TILE_SYMBOLS) {
+            // Skip 'repair-station' as it's a primary type, not a class for symbol lookup
+            if (key === 'repair-station') continue;
+
+            // For conveyor symbols, check the base class (e.g., 'conveyor-east' without '-speed-2x')
+            const baseClass = key.replace('-speed-2x', '');
+            // For push- classes, check the base class (e.g., 'push-north' without direction)
+            const pushBaseClass = key.startsWith('push-') ? 'push-' : baseClass;
+
+            if (!ALLOWED_TILE_CLASSES.has(pushBaseClass) && !ALLOWED_TILE_CLASSES.has(baseClass)) {
+                throw new Error(`Invalid TILE_SYMBOLS key: '${key}'. It does not correspond to an allowed tile class.`);
+            }
+        }
 
         Logger.log(`Parsing ${this.rows}x${this.cols} object board definition...`);
 
