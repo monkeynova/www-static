@@ -102,6 +102,16 @@ export class Tile {
             this.laserDirection = null;
         }
 
+        // Validate push panel attachment to a wall
+        const foundPushClass = this.classes.find(cls => cls.startsWith('push-'));
+        if (foundPushClass) {
+            const pushDirection = foundPushClass.split('-')[1];
+            const requiredWallSide = getOppositeWallSide(pushDirection);
+            if (!this.walls.includes(requiredWallSide)) {
+                throw new Error(`Push panel at (${r}, ${c}) pushing ${pushDirection} must be attached to a ${requiredWallSide} wall.`);
+            }
+        }
+
         this.speed = this.classes.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
     }
 
