@@ -159,32 +159,21 @@ export async function runProgramExecution(boardData, robot) {
     }
     Logger.log("--- Starting Program Execution ---");
 
-    // TODO: UI method?
-    const programmedCardElements = document.querySelectorAll('#program-slots .program-slot .card');
-    if (programmedCardElements.length !== Config.PROGRAM_SIZE) {
+    const programCards = robot.getProgram(); // Get program from robot
+
+    if (programCards.length !== Config.PROGRAM_SIZE) {
         Logger.error("Program is not full!");
         emit('programExecutionFinished'); // EMIT EVENT
         return;
     }
 
-    const usedCardInstanceIds = []; // Track IDs of cards used this turn
-
     // --- Card Execution Loop ---
-    for (let i = 0; i < programmedCardElements.length; i++) {
-        const cardElement = programmedCardElements[i];
-        const instanceId = cardElement.id;
-        usedCardInstanceIds.push(instanceId); // Add to list for discarding later
-
-        const cardData = Cards.getCardData(instanceId);
-        if (!cardData) {
-            Logger.error(`Cannot find card data for ${instanceId}! Skipping card.`);
-            continue;
-        }
+    for (let i = 0; i < programCards.length; i++) {
+        const cardData = programCards[i]; // Get card data directly
 
         Logger.log(`
 Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         let cardMoved = false;
-        let robotState = robot.getRobotState(); // Get state before action
 
         // --- 1. Execute Card Action ---
         if (cardData.type === 'turnL') {
@@ -195,7 +184,6 @@ Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         // --- Handle U-Turn ---
         else if (cardData.type === 'uturn') {
             robot.uTurn(); // Update state & emit event
-            // UI update is handled by event listener
         }
         else { // Movement cards (move1, move2, back1)
             let steps = 0;
@@ -232,7 +220,7 @@ Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
         const boardResult = await applyBoardEffects(boardData, robot);
 
         if (boardResult.gameEnded) {
-            Cards.discard(usedCardInstanceIds);
+            Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
             emit('programExecutionFinished');
             Logger.log("Game ended during board effects phase.");
             return;
@@ -245,8 +233,9 @@ Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
     }
 
     Logger.log("\n--- Program Finished ---");
-    Cards.discard(usedCardInstanceIds);
+    Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
     emit('programExecutionFinished');
     Cards.draw(Config.PROGRAM_SIZE);
 
 }
+

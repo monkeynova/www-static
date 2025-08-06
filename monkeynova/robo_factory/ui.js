@@ -895,7 +895,7 @@ function checkProgramReady() {
  * Sets up all static UI event listeners.
  * @param {Function} runProgramCallback - Function to call when Run button is clicked.
  */
-export function setupUIListeners(runProgramCallback, boardData) { // Pass boardData
+export function setupUIListeners(runProgramCallback, boardData, robot) { // Pass robotData
     // Attach drop listeners to static containers
     const dropZones = [cardHandContainer, ...programSlots];
     dropZones.forEach(zone => {
@@ -909,9 +909,25 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
     runProgramButton.addEventListener('click', async () => {
         Logger.log("Run Program button clicked.");
         updateButtonStateUI(false); // Disable button immediately
+
+        // 1. Extract program cards from UI
+        const programCards = [];
+        programSlots.forEach(slot => {
+            const cardElement = slot.querySelector('.card');
+            if (cardElement) {
+                const cardData = getCardData(cardElement.id); // Assuming getCardData can retrieve by instanceId
+                if (cardData) {
+                    programCards.push(cardData);
+                }
+            }
+        });
+
+        // 2. Set the program on the robot
+        robot.setProgram(programCards);
+
         try {
-            // Directly call the provided callback, which now has boardData baked in
-            await runProgramCallback();
+            // 3. Call the game loop execution
+            await runProgramCallback(); // This will now read from robot.getProgram()
         } catch (err) {
             Logger.error("Error during program execution:", err);
             // Optionally re-enable button on error? Or rely on programExecutionFinished event?
@@ -995,7 +1011,7 @@ export function setupUIListeners(runProgramCallback, boardData) { // Pass boardD
     }
 
 
-    subscribeToModelEvents(boardData); // Setup model listeners
+    subscribeToModelEvents(boardData, robot); // Setup model listeners
 
     // Initial check for button state after setup
     checkProgramReady();

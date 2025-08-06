@@ -17,6 +17,7 @@ class Robot {
     health;
     lastVisitedStationKey;
     visitedRepairStations;
+    program; // NEW: Array to store the program cards
 
     /**
      * Initializes a new Robot instance.
@@ -34,7 +35,25 @@ class Robot {
         this.health = MAX_HEALTH;
         this.lastVisitedStationKey = null;
         this.visitedRepairStations = new Set();
+        this.program = []; // Initialize program as an empty array
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
+    }
+
+    /**
+     * Sets the program cards for the robot to execute.
+     * @param {object[]} cards - An array of card data objects.
+     */
+    setProgram(cards) {
+        this.program = cards;
+        Logger.log(`Robot program set with ${cards.length} cards.`);
+    }
+
+    /**
+     * Gets the currently set program cards.
+     * @returns {object[]} An array of card data objects.
+     */
+    getProgram() {
+        return this.program;
     }
 
     /**
