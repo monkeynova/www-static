@@ -459,7 +459,22 @@ function renderStaticBoardElements(boardData) {
                             break;
                     }
                     ctx.fillText(laserSymbol, symbolX, symbolY);
-                    // No need to reset fillStyle here, it will be set for the next tile or grid lines
+                }
+            }
+
+            // NEW: Draw Push Panel Symbol (if present, on top of other tile visuals)
+            if (tileData.hasPushPanel) {
+                const pushDirectionClass = tileData.classes.find(cls => cls.startsWith('push-'));
+                if (pushDirectionClass) {
+                    const pushDirection = pushDirectionClass.split('-')[1];
+                    const pushSymbol = Config.TILE_SYMBOLS[`push-${pushDirection}`] || '';
+                    if (pushSymbol) {
+                        ctx.fillStyle = '#8B4513'; // SaddleBrown for push panel symbol
+                        ctx.font = '28px sans-serif'; // Slightly smaller than laser, but prominent
+
+                        // Position in the center of the tile
+                        ctx.fillText(pushSymbol, centerX, centerY);
+                    }
                 }
             }
         }

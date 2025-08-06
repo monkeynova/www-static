@@ -91,7 +91,13 @@ export function createDemonstrationBoard(rows, cols) {
     board[4][riverCol - 2].classes = ['gear-cw'];
     board[5][riverCol - 2].classes = ['gear-cw'];
 
-    // 8. Add some lasers
+    // 8. Add some push panels (decorators)
+    board[1][5].classes.push('push-east'); // Plain tile with push-east
+    board[rows - 3][cols - 10].classes.push('push-north'); // Near bottom-right, push north
+    board[whirlStart.r][whirlStart.c + 1].classes.push('push-south'); // On a conveyor, push south
+    board[whirlStart.r - 2][whirlStart.c + 2].classes.push('push-west'); // On a gear, push west
+
+    // 9. Add some lasers
     // Basic laser firing east (on plain tile)
     board[10][5].classes = ['plain', 'laser-east'];
     board[10][5].walls.push('west'); // Changed from 'east' to 'west'
