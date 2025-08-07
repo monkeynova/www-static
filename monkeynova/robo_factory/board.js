@@ -8,11 +8,6 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'plain',
     'repair-station',
     'hole',
-    'conveyor-north',
-    'conveyor-east',
-    'conveyor-south',
-    'conveyor-west',
-    'speed-2x',
 ]);
 
 export class Board {
@@ -34,18 +29,7 @@ export class Board {
         this.repairStations = [];
         this.tiles = []; // Store processed data for each tile
 
-        // Validate TILE_SYMBOLS against ALLOWED_TILE_CLASSES
-        for (const key in TILE_SYMBOLS) {
-            // Skip 'repair-station' as it's a primary type, not a class for symbol lookup
-            if (key === 'repair-station') continue;
-
-            // For conveyor symbols, check the base class (e.g., 'conveyor-east' without '-speed-2x')
-            const baseClass = key.replace('-speed-2x', '');
-
-            if (!ALLOWED_TILE_CLASSES.has(baseClass)) {
-                throw new Error(`Invalid TILE_SYMBOLS key: '${key}'. It does not correspond to an allowed tile class.`);
-            }
-        }
+        
 
         Logger.log(`Parsing ${this.rows}x${this.cols} object board definition...`);
 

@@ -37,12 +37,9 @@ export class Tile {
     col;
     /** @type {string} */
     primaryType;
-    /** @type {number} */
-    speed;
-    /** @type {string | null} */
-    conveyorDirection;
-    /** @type {string | null} */
-    conveyorDirection;
+    
+    /** @type {{direction: string, speed: number} | null} */
+    conveyor; // NEW: Structured conveyor data
     /** @type {{direction: string} | null} */
     laser; // NEW: Structured laser data
     /** @type {{direction: string, steps: Set<number>} | null} */
@@ -52,7 +49,7 @@ export class Tile {
 
     /**
      * Creates a new Tile instance from a raw tile definition.
-     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?, laser?, gear?}.
+     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?, laser?, gear?, conveyor?}.
      * @param {number} r - The row index of the tile.
      * @param {number} c - The column index of the tile.
      */
@@ -65,6 +62,21 @@ export class Tile {
         this.col = c;
         this.classes = ['tile', ...tileDef.classes]; // Combine base 'tile' with defined classes
         this.walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
+
+        // Initialize conveyor property
+        this.conveyor = null;
+        if (tileDef.conveyor) {
+            if (!tileDef.conveyor.direction || !ALLOWED_WALL_SIDES.includes(tileDef.conveyor.direction)) {
+                throw new Error(`Invalid conveyor direction at (${r}, ${c}).`);
+            }
+            this.conveyor = {
+                direction: tileDef.conveyor.direction,
+                speed: tileDef.conveyor.speed || 1 // Default to 1x speed if not specified
+            };
+            if (this.conveyor.speed !== 1 && this.conveyor.speed !== 2) {
+                throw new Error(`Invalid conveyor speed '${this.conveyor.speed}' at (${r}, ${c}). Must be 1 or 2.`);
+            }
+        }
 
         // Initialize pusher property
         this.pusher = null;
@@ -124,21 +136,21 @@ export class Tile {
             this.primaryType = 'repair-station';
         } else if (this.classes.includes('hole')) {
             this.primaryType = 'hole';
+        } else if (this.gear) { // Check for gear property
+            this.primaryType = 'gear'; // Primary type is 'gear' if gear property exists
+        } else if (this.conveyor) { // Check for conveyor property
+            this.primaryType = 'conveyor'; // Primary type is 'conveyor' if conveyor property exists
         } else {
-            const foundConveyorClass = this.classes.find(cls => cls.startsWith('conveyor-'));
-            if (foundConveyorClass) {
-                this.primaryType = 'conveyor';
-                this.conveyorDirection = foundConveyorClass.split('-')[1];
-            } else {
-                this.primaryType = 'plain'; // Default primary type
-            }
+            this.primaryType = 'plain'; // Default primary type
         }
 
         this.hasPushPanel = !!this.pusher; // Derived from presence of pusher object
         this.laserDirection = this.laser ? this.laser.direction : null; // Derived from presence of laser object
-
-        this.speed = this.classes.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
+        this.conveyorDirection = this.conveyor ? this.conveyor.direction : null; // Derived from presence of conveyor object
+        this.speed = this.conveyor ? this.conveyor.speed : 1; // Derived from conveyor object, default 1
     }
+
+    
 
     /**
      * Checks if there is a wall on a specific side of this tile.
@@ -159,10 +171,10 @@ export class Tile {
      * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
      */
     tryApplySpeed2xConveyor(robotState, board) {
-        if (this.primaryType === 'conveyor' && this.speed === 2) {
+        if (this.conveyor && this.conveyor.speed === 2) {
             let dr = 0, dc = 0;
             let exitSide = '';
-            switch (this.conveyorDirection) {
+            switch (this.conveyor.direction) {
                 case 'north': dr = -1; exitSide = 'north'; break;
                 case 'south': dr = 1;  exitSide = 'south'; break;
                 case 'west':  dc = -1; exitSide = 'west';  break;
@@ -195,10 +207,10 @@ export class Tile {
      * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
      */
     tryApplyConveyor(robotState, board) {
-        if (this.primaryType === 'conveyor') {
+        if (this.conveyor) {
             let dr = 0, dc = 0;
             let exitSide = '';
-            switch (this.conveyorDirection) {
+            switch (this.conveyor.direction) {
                 case 'north': dr = -1; exitSide = 'north'; break;
                 case 'south': dr = 1;  exitSide = 'south'; break;
                 case 'west':  dc = -1; exitSide = 'west';  break;

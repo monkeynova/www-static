@@ -62,6 +62,10 @@ export const PUSH_PANEL_BASE_COLOR = '#8B4513'; // SaddleBrown
 export const PUSH_PANEL_ACTIVE_COLOR = '#FFD700'; // Gold
 export const PUSH_PANEL_TEXT_COLOR = '#FFFFFF'; // White
 
+// NEW: Conveyor Colors
+export const CONVEYOR_BASE_COLOR = '#aaddff'; // Light blue
+export const CONVEYOR_STRIPE_COLOR = '#77bbee'; // Slightly darker blue for stripes
+
 // Card definitions (can also live in cards.js)
 export const FULL_DECK_DEFINITION = [
     // Move 1 (18)

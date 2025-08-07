@@ -46,8 +46,8 @@ export function createDemonstrationBoard(rows, cols) {
     const riverCol = chasmStartCol - 1;
     const expressRiverCol = chasmStartCol - 2;
     for (let r = 1; r < rows - 1; r++) {
-        board[r][riverCol].classes = ['conveyor-south'];
-        board[r][expressRiverCol].classes = ['conveyor-south', 'speed-2x'];
+        board[r][riverCol].conveyor = { direction: 'south', speed: 1 };
+        board[r][expressRiverCol].conveyor = { direction: 'south', speed: 2 };
     }
 
     // 4. Create a walled maze in the top-right quadrant
@@ -71,13 +71,13 @@ export function createDemonstrationBoard(rows, cols) {
     const whirlSize = 5;
     for (let i = 0; i < whirlSize; i++) {
         // Top row (right)
-        board[whirlStart.r][whirlStart.c + i].classes = ['conveyor-east'];
+        board[whirlStart.r][whirlStart.c + i].conveyor = { direction: 'east', speed: 1 };
         // Bottom row (left)
-        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].classes = ['conveyor-west'];
+        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].conveyor = { direction: 'west', speed: 1 };
         // Left col (down)
-        board[whirlStart.r + i][whirlStart.c].classes = ['conveyor-south'];
+        board[whirlStart.r + i][whirlStart.c].conveyor = { direction: 'south', speed: 1 };
         // Right col (up)
-        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].classes = ['conveyor-north'];
+        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].conveyor = { direction: 'north', speed: 1 };
     }
 
     // 6. Place repair stations strategically
@@ -112,16 +112,16 @@ export function createDemonstrationBoard(rows, cols) {
     board[14][10].walls.push('north'); // Wall on the next tile, blocking the beam
 
     // Laser firing south, robot moves onto its path via conveyor (laser on a conveyor tile)
-    board[20][15].classes = ['conveyor-south'];
+    board[20][15].conveyor = { direction: 'south', speed: 1 };
     board[20][15].laser = { direction: 'south' };
     board[20][15].walls.push('north'); // Changed from 'south' to 'north'
-    board[19][15].classes = ['conveyor-south']; // Conveyor pushing robot onto this tile
+    board[19][15].conveyor = { direction: 'south', speed: 1 }; // Conveyor pushing robot onto this tile
 
     // Laser firing west, robot moves past its path via conveyor (laser on a gear tile)
-    board[25][20].classes = ['gear-cw'];
+    board[25][20].gear = 'cw';
     board[25][20].laser = { direction: 'west' };
     board[25][20].walls.push('east'); // Changed from 'west' to 'east'
-    board[25][19].classes = ['conveyor-east']; // Conveyor pushing robot past laser
+    board[25][19].conveyor = { direction: 'east', speed: 1 }; // Conveyor pushing robot past laser
 
     return board;
 }

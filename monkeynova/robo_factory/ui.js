@@ -242,6 +242,10 @@ function drawLaserBeams(boardData, robotState) {
     // A more optimized approach would use multiple canvases or track dirty regions.
     // For now, let's just clear and redraw the static board elements first.
     // This is a temporary measure until a more robust layering/clearing strategy is implemented.
+    // For simplicity, we'll clear the entire canvas and redraw static elements, then dynamic.
+    // A more optimized approach would use multiple canvases or track dirty regions.
+    // For now, let's just clear and redraw the static board elements first.
+    // This is a temporary measure until a more robust layering/clearing strategy is implemented.
     ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height); // Clear previous frame
     renderStaticBoardElements(boardData); // Redraw everything *except* dynamic elements
 
@@ -379,11 +383,9 @@ function renderStaticBoardElements(boardData) {
     // --- Get computed styles for colors (more robust than hardcoding) ---
     const styles = getComputedStyle(document.documentElement);
     const plainColor = styles.getPropertyValue('--tile-plain-color').trim() || '#eee';
-    const conveyorColor = styles.getPropertyValue('--tile-conveyor-color').trim() || '#aaddff';
     const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
     const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
     const gearColor = styles.getPropertyValue('--tile-gear-color').trim() || '#d8bfd8';
-    const laserColor = styles.getPropertyValue('--tile-laser-color').trim() || '#ffcccc'; // NEW: Laser color
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
     // Use pattern if available, otherwise fallback color
     const wallFill = wallStripePattern || styles.getPropertyValue('--wall-solid-color').trim() || '#630';
@@ -402,7 +404,8 @@ function renderStaticBoardElements(boardData) {
             switch (tileData.primaryType) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
                 case 'hole': ctx.fillStyle = holeColor; break;
-                case 'conveyor': ctx.fillStyle = conveyorColor; break;
+                case 'gear': ctx.fillStyle = gearColor; break; // NEW: Gear color
+                case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break; // NEW: Conveyor base color
                 case 'plain': default: ctx.fillStyle = plainColor; break;
             }
             ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
@@ -416,15 +419,56 @@ function renderStaticBoardElements(boardData) {
             const centerY = y + Config.TILE_SIZE / 2;
 
             let symbol = '';
-            const isSpeed2x = tileData.classes.includes('speed-2x');
 
             if (tileData.classes.includes('repair-station')) {
                 symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
             } else if (tileData.gear) {
                 symbol = Config.TILE_SYMBOLS[`gear-${tileData.gear}`] || '';
-            } else if (tileData.primaryType === 'conveyor') {
-                const symbolKey = `conveyor-${tileData.conveyorDirection}${isSpeed2x ? '-speed-2x' : ''}`;
-                symbol = Config.TILE_SYMBOLS[symbolKey] || ''; // Fallback to empty string if symbol not found
+            } else if (tileData.conveyor) {
+                // Draw conveyor stripes
+                ctx.strokeStyle = Config.CONVEYOR_STRIPE_COLOR;
+                ctx.lineWidth = 2; // Stripe thickness
+                ctx.beginPath();
+
+                const stripeSpacing = Config.TILE_SIZE / 4; // Adjust as needed
+
+                switch (tileData.conveyor.direction) {
+                    case 'north':
+                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                            ctx.moveTo(x, y + i);
+                            ctx.lineTo(x + Config.TILE_SIZE, y + i);
+                        }
+                        break;
+                    case 'south':
+                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                            ctx.moveTo(x, y + i);
+                            ctx.lineTo(x + Config.TILE_SIZE, y + i);
+                        }
+                        break;
+                    case 'east':
+                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                            ctx.moveTo(x + i, y);
+                            ctx.lineTo(x + i, y + Config.TILE_SIZE);
+                        }
+                        break;
+                    case 'west':
+                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                            ctx.moveTo(x + i, y);
+                            ctx.lineTo(x + i, y + Config.TILE_SIZE);
+                        }
+                        break;
+                }
+                ctx.stroke();
+
+                // Add speed indicator for 2x conveyors
+                if (tileData.conveyor.speed === 2) {
+                    symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.conveyor.direction}-speed-2x`] || '2x';
+                    ctx.fillStyle = '#FF0000'; // Red color for 2x indicator
+                    ctx.font = '16px Arial'; // Smaller font for 2x
+                    ctx.fillText(symbol, centerX, centerY + Config.TILE_SIZE / 4); // Offset slightly
+                } else {
+                    symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.conveyor.direction}`] || '';
+                }
             }
 
             if (symbol) {
