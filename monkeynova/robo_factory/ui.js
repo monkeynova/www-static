@@ -254,7 +254,7 @@ function drawLaserBeams(boardData, robotState) {
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
             const tileData = boardData.getTileData(r, c);
-            if (!tileData || !tileData.laserDirection) continue;
+            if (!tileData || !tileData.laser) continue;
 
             const x = c * Config.TILE_SIZE;
             const y = r * Config.TILE_SIZE;
@@ -262,7 +262,7 @@ function drawLaserBeams(boardData, robotState) {
             const centerY = y + Config.TILE_SIZE / 2;
 
             // Pass robotState to getLaserPath for dynamic termination
-            const laserPath = boardData.getLaserPath(r, c, tileData.laserDirection, robotState);
+            const laserPath = boardData.getLaserPath(r, c, tileData.laser.direction, robotState);
             if (laserPath.length > 0) { // Only draw if there's a path
                 ctx.beginPath();
 
@@ -270,7 +270,7 @@ function drawLaserBeams(boardData, robotState) {
                 let startBeamY = centerY;
 
                 // Adjust starting point to be on the edge of the tile where the laser is attached, firing outwards
-                switch (tileData.laserDirection) {
+                switch (tileData.laser.direction) {
                     case 'north':
                         startBeamY = y + Config.TILE_SIZE; // Start from bottom edge (south wall)
                         break;
@@ -284,7 +284,7 @@ function drawLaserBeams(boardData, robotState) {
                         startBeamX = x + Config.TILE_SIZE; // Start from right edge (east wall)
                         break;
                 }
-                Logger.log(`Laser at (${r},${c}) firing ${tileData.laserDirection}. Calculated start: (${startBeamX}, ${startBeamY})`);
+                Logger.log(`Laser at (${r},${c}) firing ${tileData.laser.direction}. Calculated start: (${startBeamX}, ${startBeamY})`);
 
                 ctx.moveTo(startBeamX, startBeamY);
 
@@ -309,7 +309,7 @@ function drawLaserBeams(boardData, robotState) {
                             const robotWidth = parseInt(robotStyle.width) || 35;
                             const robotHeight = parseInt(robotStyle.height) || 35;
 
-                            switch (tileData.laserDirection) {
+                            switch (tileData.laser.direction) {
                                 case 'north':
                                     targetBeamY = pathTileY + Config.TILE_SIZE - (Config.TILE_SIZE - robotHeight) / 2; // Bottom edge of robot
                                     break;
@@ -325,7 +325,7 @@ function drawLaserBeams(boardData, robotState) {
                             }
                             Logger.log(`  Beam ends at robot (${pathTile.row},${pathTile.col}). Calculated end: (${targetBeamX}, ${targetBeamY})`);
                         } else { // Terminate on the wall
-                            switch (tileData.laserDirection) {
+                            switch (tileData.laser.direction) {
                                 case 'north':
                                     targetBeamY = pathTileY; // Top edge of tile (wall)
                                     break;
@@ -343,7 +343,7 @@ function drawLaserBeams(boardData, robotState) {
                         }
                     } else {
                         // For intermediate tiles, draw to the edge of the current tile, towards the next
-                        switch (tileData.laserDirection) {
+                        switch (tileData.laser.direction) {
                             case 'north':
                                 targetBeamY = pathTileY; // Top edge of current tile
                                 break;
@@ -435,8 +435,8 @@ function renderStaticBoardElements(boardData) {
             }
 
             // NEW: Draw Laser Symbol (if present, on top of other tile visuals)
-            if (tileData.laserDirection) {
-                const laserSymbol = Config.TILE_SYMBOLS[tileData.laserDirection] || '';
+            if (tileData.laser) {
+                const laserSymbol = Config.TILE_SYMBOLS[tileData.laser.direction] || '';
                 if (laserSymbol) {
                     ctx.fillStyle = '#FFFF00'; // Bright yellow for laser symbol
                     ctx.font = '30px sans-serif'; // Larger font size
@@ -445,7 +445,7 @@ function renderStaticBoardElements(boardData) {
                     let symbolY = centerY;
 
                     // Adjust symbol position to be on the wall it's attached to
-                    switch (tileData.laserDirection) {
+                    switch (tileData.laser.direction) {
                         case 'north': // Attached to south wall
                             symbolY = y + Config.TILE_SIZE - (Config.TILE_SIZE / 4); // Near bottom edge
                             break;

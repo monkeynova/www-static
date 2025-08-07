@@ -42,13 +42,15 @@ export class Tile {
     /** @type {string | null} */
     conveyorDirection;
     /** @type {string | null} */
-    laserDirection;
+    conveyorDirection;
+    /** @type {{direction: string} | null} */
+    laser; // NEW: Structured laser data
     /** @type {{direction: string, steps: Set<number>} | null} */
     pusher; // NEW: Structured push panel data
 
     /**
      * Creates a new Tile instance from a raw tile definition.
-     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?}.
+     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?, laser?}.
      * @param {number} r - The row index of the tile.
      * @param {number} c - The column index of the tile.
      */
@@ -84,6 +86,21 @@ export class Tile {
             }
         }
 
+        // Initialize laser property
+        this.laser = null;
+        if (tileDef.laser) {
+            if (!tileDef.laser.direction || !ALLOWED_WALL_SIDES.includes(tileDef.laser.direction)) {
+                throw new Error(`Invalid laser direction at (${r}, ${c}).`);
+            }
+            this.laser = { direction: tileDef.laser.direction };
+
+            // Validate laser attachment to a wall
+            const requiredWallSide = getOppositeWallSide(this.laser.direction);
+            if (!this.walls.includes(requiredWallSide)) {
+                throw new Error(`Laser at (${r}, ${c}) firing ${this.laser.direction} must be attached to a ${requiredWallSide} wall.`);
+            }
+        }
+
         // Validate all defined classes
         for (const cls of tileDef.classes) {
             if (!ALLOWED_TILE_CLASSES.has(cls)) {
@@ -111,18 +128,7 @@ export class Tile {
         }
 
         this.hasPushPanel = !!this.pusher; // Derived from presence of pusher object
-
-        // Extract laser direction if present
-        const foundLaserClass = this.classes.find(cls => cls.startsWith('laser-'));
-        if (foundLaserClass) {
-            this.laserDirection = foundLaserClass.split('-')[1];
-            const requiredWallSide = getOppositeWallSide(this.laserDirection);
-            if (!this.walls.includes(requiredWallSide)) {
-                throw new Error(`Laser at (${r}, ${c}) firing ${this.laserDirection} must be attached to a ${requiredWallSide} wall.`);
-            }
-        } else {
-            this.laserDirection = null;
-        }
+        this.laserDirection = this.laser ? this.laser.direction : null; // Derived from presence of laser object
 
         this.speed = this.classes.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
     }

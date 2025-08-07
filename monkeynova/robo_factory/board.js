@@ -15,10 +15,6 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'speed-2x',
     'gear-cw',
     'gear-ccw',
-    'laser-north',
-    'laser-east',
-    'laser-south',
-    'laser-west',
 ]);
 
 export class Board {

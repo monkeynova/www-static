@@ -99,25 +99,27 @@ export function createDemonstrationBoard(rows, cols) {
 
     // 9. Add some lasers
     // Basic laser firing east (on plain tile)
-    board[10][5].classes = ['plain', 'laser-east'];
+    board[10][5].laser = { direction: 'east' };
     board[10][5].walls.push('west'); // Changed from 'east' to 'west'
 
     // NEW: Laser near start for testing (at 1,2 firing south, attached to its north wall)
-    board[1][2].classes = ['plain', 'laser-south'];
+    board[1][2].laser = { direction: 'south' };
     board[1][2].walls.push('north');
 
     // Laser firing north, blocked by a wall (on plain tile)
-    board[15][10].classes = ['plain', 'laser-north'];
+    board[15][10].laser = { direction: 'north' };
     board[15][10].walls.push('south'); // Changed from 'north' to 'south'
     board[14][10].walls.push('north'); // Wall on the next tile, blocking the beam
 
     // Laser firing south, robot moves onto its path via conveyor (laser on a conveyor tile)
-    board[20][15].classes = ['conveyor-south', 'laser-south'];
+    board[20][15].classes = ['conveyor-south'];
+    board[20][15].laser = { direction: 'south' };
     board[20][15].walls.push('north'); // Changed from 'south' to 'north'
     board[19][15].classes = ['conveyor-south']; // Conveyor pushing robot onto this tile
 
     // Laser firing west, robot moves past its path via conveyor (laser on a gear tile)
-    board[25][20].classes = ['gear-cw', 'laser-west'];
+    board[25][20].classes = ['gear-cw'];
+    board[25][20].laser = { direction: 'west' };
     board[25][20].walls.push('east'); // Changed from 'west' to 'east'
     board[25][19].classes = ['conveyor-east']; // Conveyor pushing robot past laser
 
