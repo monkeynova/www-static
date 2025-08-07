@@ -128,6 +128,10 @@ export class Tile {
             if (!this.walls.includes(requiredWallSide)) {
                 throw new Error(`Push panel at (${r}, ${c}) pushing ${pushDirection} must be attached to a ${requiredWallSide} wall.`);
             }
+            // NEW: Validate that push panels have at least one activation step
+            if (this.pushPanelFireSteps.size === 0) {
+                throw new Error(`Tile at (${r}, ${c}) has a push panel but no activation steps defined (e.g., 'push-steps-1-3-5').`);
+            }
         }
 
         this.speed = this.classes.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
