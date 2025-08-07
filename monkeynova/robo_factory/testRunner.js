@@ -347,7 +347,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         "Gears: Clockwise gear rotates robot right",
         async () => {
             const testBoardDef = [
-                [ { classes: ['gear-cw'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['north', 'west'], gear: 'cw' }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -370,7 +370,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         "Gears: Counter-clockwise gear rotates robot left",
         async () => {
             const testBoardDef = [
-                [ { classes: ['gear-ccw'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['north', 'west'], gear: 'ccw' }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -398,7 +398,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
                 // Row 0
                 [
                     { classes: ['conveyor-east'], walls: ['north', 'west'] }, // (0,0)
-                    { classes: ['gear-cw'], walls: ['north'] },                 // (0,1)
+                    { classes: ['plain'], walls: ['north'], gear: 'cw' },                 // (0,1)
                     { classes: ['plain'], walls: ['north', 'east'] }            // (0,2)
                 ],
                 // Row 1
@@ -567,7 +567,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Robot at (0,1) on gear-cw with laser-north (attached to south wall).
             const testBoardDef = [
-                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['gear-cw'], walls: ['north', 'south'], laser: { direction: 'north' } }, { classes: ['plain'], walls: ['north', 'east'] } ],
+                [ { classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'south'], gear: 'cw', laser: { direction: 'north' } }, { classes: ['plain'], walls: ['north', 'east'] } ],
                 [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);

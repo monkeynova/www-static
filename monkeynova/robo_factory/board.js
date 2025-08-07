@@ -13,8 +13,6 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'conveyor-south',
     'conveyor-west',
     'speed-2x',
-    'gear-cw',
-    'gear-ccw',
 ]);
 
 export class Board {

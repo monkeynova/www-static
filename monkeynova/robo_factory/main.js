@@ -86,10 +86,10 @@ export function createDemonstrationBoard(rows, cols) {
     board[rows - 5][cols - 5].classes = ['repair-station']; // Across the chasm
 
     // 7. Add some gears
-    board[whirlStart.r - 2][whirlStart.c + 2].classes = ['gear-cw'];
-    board[whirlStart.r + whirlSize + 1][whirlStart.c + 2].classes = ['gear-ccw'];
-    board[4][riverCol - 2].classes = ['gear-cw'];
-    board[5][riverCol - 2].classes = ['gear-cw'];
+    board[whirlStart.r - 2][whirlStart.c + 2].gear = 'cw';
+    board[whirlStart.r + whirlSize + 1][whirlStart.c + 2].gear = 'ccw';
+    board[4][riverCol - 2].gear = 'cw';
+    board[5][riverCol - 2].gear = 'cw';
 
     // 8. Add some push panels (decorators)
     board[1][5].pusher = { direction: 'east', steps: [1, 3, 5] }; board[1][5].walls.push('west'); // Plain tile with push-east, needs west wall, fires on steps 1,3,5

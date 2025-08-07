@@ -47,10 +47,12 @@ export class Tile {
     laser; // NEW: Structured laser data
     /** @type {{direction: string, steps: Set<number>} | null} */
     pusher; // NEW: Structured push panel data
+    /** @type {string | null} */
+    gear; // NEW: Structured gear data (cw or ccw)
 
     /**
      * Creates a new Tile instance from a raw tile definition.
-     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?, laser?}.
+     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?, laser?, gear?}.
      * @param {number} r - The row index of the tile.
      * @param {number} c - The column index of the tile.
      */
@@ -101,6 +103,15 @@ export class Tile {
             }
         }
 
+        // Initialize gear property
+        this.gear = null;
+        if (tileDef.gear) {
+            if (tileDef.gear !== 'cw' && tileDef.gear !== 'ccw') {
+                throw new Error(`Invalid gear direction '${tileDef.gear}' at (${r}, ${c}). Must be 'cw' or 'ccw'.`);
+            }
+            this.gear = tileDef.gear;
+        }
+
         // Validate all defined classes
         for (const cls of tileDef.classes) {
             if (!ALLOWED_TILE_CLASSES.has(cls)) {
@@ -113,10 +124,6 @@ export class Tile {
             this.primaryType = 'repair-station';
         } else if (this.classes.includes('hole')) {
             this.primaryType = 'hole';
-        } else if (this.classes.includes('gear-cw')) {
-            this.primaryType = 'gear-cw';
-        } else if (this.classes.includes('gear-ccw')) {
-            this.primaryType = 'gear-ccw';
         } else {
             const foundConveyorClass = this.classes.find(cls => cls.startsWith('conveyor-'));
             if (foundConveyorClass) {

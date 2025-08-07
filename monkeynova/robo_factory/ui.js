@@ -403,7 +403,6 @@ function renderStaticBoardElements(boardData) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
                 case 'hole': ctx.fillStyle = holeColor; break;
                 case 'conveyor': ctx.fillStyle = conveyorColor; break;
-                case 'gear-cw': case 'gear-ccw': ctx.fillStyle = gearColor; break;
                 case 'plain': default: ctx.fillStyle = plainColor; break;
             }
             ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
@@ -421,10 +420,8 @@ function renderStaticBoardElements(boardData) {
 
             if (tileData.classes.includes('repair-station')) {
                 symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
-            } else if (tileData.classes.includes('gear-cw')) {
-                symbol = Config.TILE_SYMBOLS['gear-cw'] || '↻';
-            } else if (tileData.classes.includes('gear-ccw')) {
-                symbol = Config.TILE_SYMBOLS['gear-ccw'] || '↺';
+            } else if (tileData.gear) {
+                symbol = Config.TILE_SYMBOLS[`gear-${tileData.gear}`] || '';
             } else if (tileData.primaryType === 'conveyor') {
                 const symbolKey = `conveyor-${tileData.conveyorDirection}${isSpeed2x ? '-speed-2x' : ''}`;
                 symbol = Config.TILE_SYMBOLS[symbolKey] || ''; // Fallback to empty string if symbol not found
