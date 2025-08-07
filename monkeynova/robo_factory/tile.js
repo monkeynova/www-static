@@ -43,12 +43,12 @@ export class Tile {
     conveyorDirection;
     /** @type {string | null} */
     laserDirection;
-    /** @type {Set<number>} */
-    pushPanelFireSteps; // NEW: Steps on which this push panel fires
+    /** @type {{direction: string, steps: Set<number>} | null} */
+    pusher; // NEW: Structured push panel data
 
     /**
      * Creates a new Tile instance from a raw tile definition.
-     * @param {object} tileDef - The raw tile definition object {classes, walls}.
+     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?}.
      * @param {number} r - The row index of the tile.
      * @param {number} c - The column index of the tile.
      */
@@ -62,26 +62,30 @@ export class Tile {
         this.classes = ['tile', ...tileDef.classes]; // Combine base 'tile' with defined classes
         this.walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
 
-        // Initialize pushPanelFireSteps
-        this.pushPanelFireSteps = new Set();
-        const pushStepsClass = this.classes.find(cls => cls.startsWith('push-steps-'));
-        if (pushStepsClass) {
-            const stepsStr = pushStepsClass.substring('push-steps-'.length);
-            stepsStr.split('-').forEach(step => {
-                const stepNum = parseInt(step, 10);
-                if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= Config.PROGRAM_SIZE) {
-                    this.pushPanelFireSteps.add(stepNum);
-                } else {
-                    Logger.warn(`Invalid push step '${step}' in class '${pushStepsClass}' at (${r}, ${c}). Ignoring.`);
-                }
-            });
+        // Initialize pusher property
+        this.pusher = null;
+        if (tileDef.pusher) {
+            if (!tileDef.pusher.direction || !ALLOWED_WALL_SIDES.includes(tileDef.pusher.direction)) {
+                throw new Error(`Invalid pusher direction at (${r}, ${c}).`);
+            }
+            this.pusher = {
+                direction: tileDef.pusher.direction,
+                steps: new Set(Array.isArray(tileDef.pusher.steps) ? tileDef.pusher.steps : [])
+            };
+
+            // Validate push panel attachment to a wall
+            const requiredWallSide = getOppositeWallSide(this.pusher.direction);
+            if (!this.walls.includes(requiredWallSide)) {
+                throw new Error(`Push panel at (${r}, ${c}) pushing ${this.pusher.direction} must be attached to a ${requiredWallSide} wall.`);
+            }
+            // Validate that push panels have at least one activation step
+            if (this.pusher.steps.size === 0) {
+                throw new Error(`Tile at (${r}, ${c}) has a push panel but no activation steps defined (e.g., steps: [1, 3, 5]).`);
+            }
         }
 
         // Validate all defined classes
         for (const cls of tileDef.classes) {
-            // Skip validation for push- and push-steps- classes as they are decorators and not primary tile types
-            if (cls.startsWith('push-')) continue;
-            if (cls.startsWith('push-steps-')) continue;
             if (!ALLOWED_TILE_CLASSES.has(cls)) {
                 throw new Error(`Invalid or unknown tile class '${cls}' at (${r}, ${c}).`);
             }
@@ -106,7 +110,7 @@ export class Tile {
             }
         }
 
-        this.hasPushPanel = this.classes.some(cls => cls.startsWith('push-'));
+        this.hasPushPanel = !!this.pusher; // Derived from presence of pusher object
 
         // Extract laser direction if present
         const foundLaserClass = this.classes.find(cls => cls.startsWith('laser-'));
@@ -118,20 +122,6 @@ export class Tile {
             }
         } else {
             this.laserDirection = null;
-        }
-
-        // Validate push panel attachment to a wall
-        const foundPushClass = this.classes.find(cls => cls.startsWith('push-'));
-        if (foundPushClass) {
-            const pushDirection = foundPushClass.split('-')[1];
-            const requiredWallSide = getOppositeWallSide(pushDirection);
-            if (!this.walls.includes(requiredWallSide)) {
-                throw new Error(`Push panel at (${r}, ${c}) pushing ${pushDirection} must be attached to a ${requiredWallSide} wall.`);
-            }
-            // NEW: Validate that push panels have at least one activation step
-            if (this.pushPanelFireSteps.size === 0) {
-                throw new Error(`Tile at (${r}, ${c}) has a push panel but no activation steps defined (e.g., 'push-steps-1-3-5').`);
-            }
         }
 
         this.speed = this.classes.includes('speed-2x') ? 2 : 1; // Speed only applies to conveyors
@@ -297,15 +287,15 @@ export class Tile {
      * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
      */
     tryPushPanel(robotState, board, currentProgramStep) {
-        if (this.hasPushPanel) { // Check the new decorator property
+        if (this.pusher) { // Check the new decorator property
             // If pushPanelFireSteps is defined, only fire on specified steps
-            if (this.pushPanelFireSteps.size > 0 && !this.pushPanelFireSteps.has(currentProgramStep)) {
-                Logger.log(`      Push Panel at (${this.row},${this.col}) configured to fire only on steps [${Array.from(this.pushPanelFireSteps).join(', ')}], skipping step ${currentProgramStep}.`);
+            if (this.pusher.steps.size > 0 && !this.pusher.steps.has(currentProgramStep)) {
+                Logger.log(`      Push Panel at (${this.row},${this.col}) configured to fire only on steps [${Array.from(this.pusher.steps).join(', ')}], skipping step ${currentProgramStep}.`);
                 return { moved: false };
             }
             let dr = 0, dc = 0;
             let exitSide = '';
-            const pushDirection = this.classes.find(cls => cls.startsWith('push-')).split('-')[1];
+            const pushDirection = this.pusher.direction;
             switch (pushDirection) {
                 case 'north': dr = -1; exitSide = 'north'; break;
                 case 'south': dr = 1;  exitSide = 'south'; break;

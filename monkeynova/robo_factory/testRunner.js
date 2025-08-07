@@ -125,7 +125,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] }],
-                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain', 'push-north', 'push-steps-1-2-3-4-5'], walls: ['south'] }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1)
+                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain'], walls: ['south'], pusher: { direction: 'north', steps: [1, 2, 3, 4, 5] } }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1)
                 [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -149,7 +149,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north', 'east'] }],
-                [{ classes: ['plain', 'push-east', 'push-steps-1-2-3-4-5'], walls: ['west'] }, { classes: ['plain'], walls: ['west', 'east'] }] // Push east panel at (1,0), Tile (1,1) has a west wall
+                [{ classes: ['plain'], walls: ['west'], pusher: { direction: 'east', steps: [1, 2, 3, 4, 5] } }, { classes: ['plain'], walls: ['west', 'east'] }] // Push east panel at (1,0), Tile (1,1) has a west wall
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(1, 0, 'east'); // Robot starts on push panel
@@ -172,7 +172,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['hole'], walls: [] }, { classes: ['plain'], walls: ['north', 'east'] }], // Hole at (0,1)
-                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain', 'push-north', 'push-steps-1-2-3-4-5'], walls: ['south'] }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1)
+                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain'], walls: ['south'], pusher: { direction: 'north', steps: [1, 2, 3, 4, 5] } }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1)
                 [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -198,7 +198,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] }],
-                [{ classes: ['conveyor-east'], walls: ['west'] }, { classes: ['plain', 'push-north', 'push-steps-1-2-3-4-5'], walls: ['south'] }, { classes: ['plain'], walls: ['east'] }], // Conveyor at (1,0), Push north panel at (1,1)
+                [{ classes: ['conveyor-east'], walls: ['west'] }, { classes: ['plain'], walls: ['south'], pusher: { direction: 'north', steps: [1, 2, 3, 4, 5] } }, { classes: ['plain'], walls: ['east'] }], // Conveyor at (1,0), Push north panel at (1,1)
                 [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -222,7 +222,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ classes: ['plain'], walls: ['north', 'west'] }, { classes: ['plain'], walls: ['north'] }, { classes: ['plain'], walls: ['north', 'east'] }],
-                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain', 'push-north', 'push-steps-2-4'], walls: ['south'] }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1), fires on steps 2 and 4
+                [{ classes: ['plain'], walls: ['west'] }, { classes: ['plain'], walls: ['south'], pusher: { direction: 'north', steps: [2, 4] } }, { classes: ['plain'], walls: ['east'] }], // Push north panel at (1,1), fires on steps 2 and 4
                 [{ classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);

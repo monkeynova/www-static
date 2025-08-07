@@ -19,10 +19,6 @@ export const ALLOWED_TILE_CLASSES = new Set([
     'laser-east',
     'laser-south',
     'laser-west',
-    'push-north',
-    'push-east',
-    'push-south',
-    'push-west',
 ]);
 
 export class Board {
@@ -51,10 +47,8 @@ export class Board {
 
             // For conveyor symbols, check the base class (e.g., 'conveyor-east' without '-speed-2x')
             const baseClass = key.replace('-speed-2x', '');
-            // For push- classes, check the base class (e.g., 'push-north' without direction)
-            const pushBaseClass = key.startsWith('push-') ? 'push-' : baseClass;
 
-            if (!ALLOWED_TILE_CLASSES.has(pushBaseClass) && !ALLOWED_TILE_CLASSES.has(baseClass)) {
+            if (!ALLOWED_TILE_CLASSES.has(baseClass)) {
                 throw new Error(`Invalid TILE_SYMBOLS key: '${key}'. It does not correspond to an allowed tile class.`);
             }
         }

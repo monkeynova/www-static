@@ -55,11 +55,6 @@ export const TILE_SYMBOLS = {
     'conveyor-south-speed-2x': '⇓',
     'gear-cw': '↻',
     'gear-ccw': '↺',
-    // Push Panel Arrows
-    'push-north': '↑',
-    'push-east': '→',
-    'push-south': '↓',
-    'push-west': '←',
 };
 
 // NEW: Push Panel Colors
