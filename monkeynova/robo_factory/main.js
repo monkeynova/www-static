@@ -20,7 +20,7 @@ export function createDemonstrationBoard(rows, cols) {
     for (let r = 0; r < rows; r++) {
         const row = [];
         for (let c = 0; c < cols; c++) {
-            const tile = { classes: ['plain'], walls: [] };
+            const tile = { walls: [] };
             if (r === 0) tile.walls.push('north');
             if (r === rows - 1) tile.walls.push('south');
             if (c === 0) tile.walls.push('west');
