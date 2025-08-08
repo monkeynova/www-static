@@ -43,6 +43,7 @@ export const TURN_RIGHT = 'right';
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',
+    'hole': '🕳️',
     // Conveyor Arrows
     'conveyor-east': '→',
     'conveyor-west': '←',

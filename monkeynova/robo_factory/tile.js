@@ -1,5 +1,5 @@
 // tile.js
-import { ALLOWED_TILE_CLASSES } from './board.js'; // Assuming ALLOWED_TILE_CLASSES remains in board.js for now
+
 import { ALLOWED_WALL_SIDES } from './config.js'; // For validation
 import * as Logger from './logger.js';
 import * as Config from './config.js';
@@ -24,13 +24,10 @@ export function getOppositeWallSide(direction) {
 export class Tile {
     /**
      * Represents a single tile on the game board, encapsulating its properties
-     * like classes, walls, primary type, and methods for interacting with a robot
+     * like walls, primary type, and methods for interacting with a robot
      * (e.g., conveyor movement, repair station, hole effects).
      */
-    /** @type {string[]} */
-    classes;
-    /** @type {string[]} */
-    walls;
+    
     /** @type {number} */
     row;
     /** @type {number} */
@@ -38,6 +35,11 @@ export class Tile {
     /** @type {string} */
     primaryType;
     
+    /** @type {boolean} */
+    isHole; // NEW
+    /** @type {boolean} */
+    isRepairStation; // NEW
+
     /** @type {{direction: string, speed: number} | null} */
     conveyor; // NEW: Structured conveyor data
     /** @type {{direction: string} | null} */
@@ -49,19 +51,21 @@ export class Tile {
 
     /**
      * Creates a new Tile instance from a raw tile definition.
-     * @param {object} tileDef - The raw tile definition object {classes, walls, pusher?, laser?, gear?, conveyor?}.
+     * @param {object} tileDef - The raw tile definition object {walls, pusher?, laser?, gear?, conveyor?, isHole?, isRepairStation?}.
      * @param {number} r - The row index of the tile.
      * @param {number} c - The column index of the tile.
      */
     constructor(tileDef, r, c) {
-        if (!tileDef || !Array.isArray(tileDef.classes)) {
-            throw new Error(`Invalid tile definition at (${r}, ${c}): missing 'classes' array.`);
+        if (!tileDef) {
+            throw new Error(`Invalid tile definition at (${r}, ${c}): tileDef is null or undefined.`);
         }
 
         this.row = r;
         this.col = c;
-        this.classes = ['tile', ...tileDef.classes]; // Combine base 'tile' with defined classes
         this.walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
+
+        this.isHole = !!tileDef.isHole;
+        this.isRepairStation = !!tileDef.isRepairStation;
 
         // Initialize conveyor property
         this.conveyor = null;
@@ -124,22 +128,15 @@ export class Tile {
             this.gear = tileDef.gear;
         }
 
-        // Validate all defined classes
-        for (const cls of tileDef.classes) {
-            if (!ALLOWED_TILE_CLASSES.has(cls)) {
-                throw new Error(`Invalid or unknown tile class '${cls}' at (${r}, ${c}).`);
-            }
-        }
-
-        // Determine primaryType based on non-modifier classes
-        if (this.classes.includes('repair-station')) {
+        // Determine primaryType based on new properties
+        if (this.isRepairStation) {
             this.primaryType = 'repair-station';
-        } else if (this.classes.includes('hole')) {
+        } else if (this.isHole) {
             this.primaryType = 'hole';
-        } else if (this.gear) { // Check for gear property
-            this.primaryType = 'gear'; // Primary type is 'gear' if gear property exists
-        } else if (this.conveyor) { // Check for conveyor property
-            this.primaryType = 'conveyor'; // Primary type is 'conveyor' if conveyor property exists
+        } else if (this.gear) {
+            this.primaryType = 'gear';
+        } else if (this.conveyor) {
+            this.primaryType = 'conveyor';
         } else {
             this.primaryType = 'plain'; // Default primary type
         }
@@ -244,7 +241,7 @@ export class Tile {
      */
     tryApplyRepairStation(robot, board) {
         let gameEnded = false;
-        if (this.classes.includes('repair-station')) {
+        if (this.isRepairStation) {
             const stationKey = `${this.row}-${this.col}`;
             robot.setLastVisitedStation(stationKey);
 
@@ -276,7 +273,7 @@ export class Tile {
     async tryApplyHole(robot, board) {
         let gameEnded = false;
         let fellInHole = false;
-        if (this.classes.includes('hole')) {
+        if (this.isHole) {
             Logger.log(`   Robot landed on a hole at (${this.row}, ${this.col})!`);
             fellInHole = true;
             robot.takeDamage();

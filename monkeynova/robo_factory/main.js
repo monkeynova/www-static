@@ -1,6 +1,6 @@
 // main.js
 import * as Config from './config.js';
-import { Board, ALLOWED_TILE_CLASSES } from './board.js'; // Import for validation
+import { Board } from './board.js'; // Import for validation
 import Robot from './robot.js';
 import * as Cards from './cards.js';
 import * as UI from './ui.js';
@@ -37,7 +37,7 @@ export function createDemonstrationBoard(rows, cols) {
         for (let c = chasmStartCol; c <= chasmEndCol; c++) {
             // Create a few bridges
             if (r % 7 !== 0 || c === chasmStartCol || c === chasmEndCol) {
-                 board[r][c].classes = ['hole'];
+                 board[r][c].isHole = true;
             }
         }
     }
@@ -81,9 +81,9 @@ export function createDemonstrationBoard(rows, cols) {
     }
 
     // 6. Place repair stations strategically
-    board[1][1].classes = ['repair-station']; // Start
-    board[mazeStartRow + 1][mazeEndCol - 1].classes = ['repair-station']; // In the maze
-    board[rows - 5][cols - 5].classes = ['repair-station']; // Across the chasm
+    board[1][1].isRepairStation = true; // Start
+    board[mazeStartRow + 1][mazeEndCol - 1].isRepairStation = true; // In the maze
+    board[rows - 5][cols - 5].isRepairStation = true; // Across the chasm
 
     // 7. Add some gears
     board[whirlStart.r - 2][whirlStart.c + 2].gear = 'cw';
@@ -153,7 +153,7 @@ if (typeof document !== 'undefined') {
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
             // Use the newly defined initialRobotState
             const startTileData = board.getTileData(initialRobotState.row, initialRobotState.col);
-            if (startTileData && startTileData.classes.includes('repair-station')) {
+            if (startTileData && startTileData.isRepairStation) {
                 const key = `${initialRobotState.row}-${initialRobotState.col}`;
                 Logger.log(`Robot starts on station ${key}. Updating state.`);
                 robot.visitStation(key);

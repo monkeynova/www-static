@@ -3,12 +3,7 @@ import * as Logger from './logger.js';
 import { ALLOWED_WALL_SIDES, TILE_SYMBOLS } from './config.js'; // Import for validation and laser constants
 import { Tile, getOppositeWallSide } from './tile.js';
 
-// Define all allowed tile classes for validation
-export const ALLOWED_TILE_CLASSES = new Set([
-    'plain',
-    'repair-station',
-    'hole',
-]);
+
 
 export class Board {
     /**
@@ -43,7 +38,7 @@ export class Board {
                 const tileData = new Tile(tileDef, r, c);
                 rowTiles.push(tileData);
 
-                if (tileData.classes.includes('repair-station')) {
+                if (tileData.isRepairStation) {
                     this.repairStations.push({ row: r, col: c });
                 }
             }

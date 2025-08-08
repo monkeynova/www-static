@@ -420,8 +420,10 @@ function renderStaticBoardElements(boardData) {
 
             let symbol = '';
 
-            if (tileData.classes.includes('repair-station')) {
+            if (tileData.isRepairStation) {
                 symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
+            } else if (tileData.isHole) {
+                symbol = Config.TILE_SYMBOLS['hole'] || '🕳️'; // Assuming a symbol for hole
             } else if (tileData.gear) {
                 symbol = Config.TILE_SYMBOLS[`gear-${tileData.gear}`] || '';
             } else if (tileData.conveyor) {
