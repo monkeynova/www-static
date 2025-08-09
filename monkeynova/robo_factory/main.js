@@ -20,7 +20,7 @@ export function createDemonstrationBoard(rows, cols) {
     for (let r = 0; r < rows; r++) {
         const row = [];
         for (let c = 0; c < cols; c++) {
-            const tile = { walls: [] };
+            const tile = { walls: [], floorDevice: { type: 'none' } };
             if (r === 0) tile.walls.push('north');
             if (r === rows - 1) tile.walls.push('south');
             if (c === 0) tile.walls.push('west');
@@ -37,7 +37,7 @@ export function createDemonstrationBoard(rows, cols) {
         for (let c = chasmStartCol; c <= chasmEndCol; c++) {
             // Create a few bridges
             if ((r % 7 !== 0 || c === chasmStartCol || c === chasmEndCol) && !(r === 25 && c === 19) && !(r === 25 && c === 20)) {
-                 board[r][c].isHole = true;
+                 board[r][c].floorDevice = { type: 'hole' };
             }
         }
     }
@@ -46,8 +46,8 @@ export function createDemonstrationBoard(rows, cols) {
     const riverCol = chasmStartCol - 1;
     const expressRiverCol = chasmStartCol - 2;
     for (let r = 1; r < rows - 1; r++) {
-        board[r][riverCol].conveyor = { direction: 'south', speed: 1 };
-        board[r][expressRiverCol].conveyor = { direction: 'south', speed: 2 };
+        board[r][riverCol].floorDevice = { type: 'conveyor', direction: 'south', speed: 1 };
+        board[r][expressRiverCol].floorDevice = { type: 'conveyor', direction: 'south', speed: 2 };
     }
 
     // 4. Create a walled maze in the top-right quadrant
@@ -71,25 +71,25 @@ export function createDemonstrationBoard(rows, cols) {
     const whirlSize = 5;
     for (let i = 0; i < whirlSize; i++) {
         // Top row (right)
-        board[whirlStart.r][whirlStart.c + i].conveyor = { direction: 'east', speed: 1 };
+        board[whirlStart.r][whirlStart.c + i].floorDevice = { type: 'conveyor', direction: 'east', speed: 1 };
         // Bottom row (left)
-        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].conveyor = { direction: 'west', speed: 1 };
+        board[whirlStart.r + whirlSize - 1][whirlStart.c + i].floorDevice = { type: 'conveyor', direction: 'west', speed: 1 };
         // Left col (down)
-        board[whirlStart.r + i][whirlStart.c].conveyor = { direction: 'south', speed: 1 };
+        board[whirlStart.r + i][whirlStart.c].floorDevice = { type: 'conveyor', direction: 'south', speed: 1 };
         // Right col (up)
-        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].conveyor = { direction: 'north', speed: 1 };
+        board[whirlStart.r + i][whirlStart.c + whirlSize - 1].floorDevice = { type: 'conveyor', direction: 'north', speed: 1 };
     }
 
     // 6. Place repair stations strategically
-    board[1][1].isRepairStation = true; // Start
-    board[mazeStartRow + 1][mazeEndCol - 1].isRepairStation = true; // In the maze
-    board[rows - 5][cols - 5].isRepairStation = true; // Across the chasm
+    board[1][1].floorDevice = { type: 'repair-station' }; // Start
+    board[mazeStartRow + 1][mazeEndCol - 1].floorDevice = { type: 'repair-station' }; // In the maze
+    board[rows - 5][cols - 5].floorDevice = { type: 'repair-station' }; // Across the chasm
 
     // 7. Add some gears
-    board[whirlStart.r - 2][whirlStart.c + 2].gear = 'cw';
-    board[whirlStart.r + whirlSize + 1][whirlStart.c + 2].gear = 'ccw';
-    board[4][riverCol - 2].gear = 'cw';
-    board[5][riverCol - 2].gear = 'cw';
+    board[whirlStart.r - 2][whirlStart.c + 2].floorDevice = { type: 'gear', direction: 'cw' };
+    board[whirlStart.r + whirlSize + 1][whirlStart.c + 2].floorDevice = { type: 'gear', direction: 'ccw' };
+    board[4][riverCol - 2].floorDevice = { type: 'gear', direction: 'cw' };
+    board[5][riverCol - 2].floorDevice = { type: 'gear', direction: 'cw' };
 
     // 8. Add some push panels (decorators)
     board[1][5].pusher = { direction: 'east', steps: [1, 3, 5] }; board[1][5].walls.push('west'); // Plain tile with push-east, needs west wall, fires on steps 1,3,5
@@ -112,7 +112,7 @@ export function createDemonstrationBoard(rows, cols) {
     board[14][10].walls.push('north'); // Wall on the next tile, blocking the beam
 
     // Laser firing south, robot moves onto its path via conveyor (laser on a conveyor tile)
-    board[20][15].conveyor = { direction: 'south', speed: 1 };
+    board[20][15].floorDevice = { type: 'conveyor', direction: 'south', speed: 1 };
     board[20][15].laser = { direction: 'south' };
     board[20][15].walls.push('north'); // Changed from 'south' to 'north'
     board[19][15].conveyor = { direction: 'south', speed: 1 }; // Conveyor pushing robot onto this tile
@@ -121,7 +121,7 @@ export function createDemonstrationBoard(rows, cols) {
     board[25][20].gear = 'cw';
     board[25][20].laser = { direction: 'west' };
     board[25][20].walls.push('east'); // Changed from 'west' to 'east'
-    board[25][19].conveyor = { direction: 'east', speed: 1 }; // Conveyor pushing robot past laser
+    board[25][19].floorDevice = { type: 'conveyor', direction: 'east', speed: 1 }; // Conveyor pushing robot past laser
 
     return board;
 }
@@ -153,7 +153,7 @@ if (typeof document !== 'undefined') {
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
             // Use the newly defined initialRobotState
             const startTileData = board.getTileData(initialRobotState.row, initialRobotState.col);
-            if (startTileData && startTileData.isRepairStation) {
+            if (startTileData && startTileData.floorDevice.type === 'repair-station') {
                 const key = `${initialRobotState.row}-${initialRobotState.col}`;
                 Logger.log(`Robot starts on station ${key}. Updating state.`);
                 robot.visitStation(key);

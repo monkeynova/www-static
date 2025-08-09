@@ -35,49 +35,42 @@ export class Board {
             const rowTiles = [];
             for (let c = 0; c < this.cols; c++) {
                 const tileDef = boardDefinition[r][c];
-                let floorDevice = { type: 'none' };
-                let deviceCount = 0; // For validation
+                // Default floorDevice to 'none' if not provided
+                const floorDevice = tileDef.floorDevice || { type: 'none' };
 
-                if (tileDef.isRepairStation) {
-                    floorDevice = { type: 'repair-station' };
-                    deviceCount++;
+                // Validate that floorDevice has a type
+                if (!floorDevice.type) {
+                    throw new Error(`Tile at (${r}, ${c}) is missing floorDevice type.`);
                 }
-                if (tileDef.isHole) {
-                    if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-                    floorDevice = { type: 'hole' };
-                    deviceCount++;
-                }
-                if (tileDef.gear) {
-                    if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-                    if (tileDef.gear !== 'cw' && tileDef.gear !== 'ccw') {
-                        throw new Error(`Invalid gear direction '${tileDef.gear}' at (${r}, ${c}). Must be 'cw' or 'ccw'.`);
+
+                // Ensure only one floor device type is defined (this check is now redundant if we assume floorDevice is already structured)
+                // const floorDeviceTypes = ['hole', 'repair-station', 'conveyor', 'gear'];
+                // const definedFloorDevices = floorDeviceTypes.filter(type => floorDevice.type === type);
+                // if (definedFloorDevices.length > 1) {
+                //     throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
+                // }
+
+                // Validate specific floor device properties
+                if (floorDevice.type === 'gear') {
+                    if (floorDevice.direction !== 'cw' && floorDevice.direction !== 'ccw') {
+                        throw new Error(`Invalid gear direction '${floorDevice.direction}' at (${r}, ${c}). Must be 'cw' or 'ccw'.`);
                     }
-                    floorDevice = { type: 'gear', direction: tileDef.gear };
-                    deviceCount++;
                 }
-                if (tileDef.conveyor) {
-                    if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-                    if (!tileDef.conveyor.direction || !ALLOWED_WALL_SIDES.includes(tileDef.conveyor.direction)) {
+                if (floorDevice.type === 'conveyor') {
+                    if (!floorDevice.direction || !ALLOWED_WALL_SIDES.includes(floorDevice.direction)) {
                         throw new Error(`Invalid conveyor direction at (${r}, ${c}).`);
                     }
-                    if (tileDef.conveyor.speed !== 1 && tileDef.conveyor.speed !== 2) {
-                        throw new Error(`Invalid conveyor speed '${tileDef.conveyor.speed}' at (${r}, ${c}). Must be 1 or 2.`);
+                    if (floorDevice.speed !== 1 && floorDevice.speed !== 2) {
+                        throw new Error(`Invalid conveyor speed '${floorDevice.speed}' at (${r}, ${c}). Must be 1 or 2.`);
                     }
-                    floorDevice = {
-                        type: 'conveyor',
-                        direction: tileDef.conveyor.direction,
-                        speed: tileDef.conveyor.speed || 1
-                    };
-                    deviceCount++;
                 }
 
                 // Handle pusher and laser separately, as they are not exclusive floor devices
                 let pusher = null;
                 if (tileDef.pusher) {
-                    const steps = new Set(Array.isArray(tileDef.pusher.steps) ? tileDef.pusher.steps : []);
                     pusher = {
                         direction: tileDef.pusher.direction,
-                        steps: steps
+                        steps: new Set(Array.isArray(tileDef.pusher.steps) ? tileDef.pusher.steps : [])
                     };
                 }
 
