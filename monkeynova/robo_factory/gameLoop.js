@@ -68,12 +68,12 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
 
     // --- NEW: 3. Gear Rotation ---
     finalTileData = boardData.getTileData(robotState.row, robotState.col); // Re-fetch after potential movement
-    if (finalTileData.gear === 'cw') {
+    if (finalTileData.floorDevice.type === 'gear' && finalTileData.floorDevice.direction === 'cw') {
         Logger.log(`   On clockwise gear. Turning right.`);
         robot.turn('right');
         await sleep(350); // Wait for turn animation
         robotState = robot.getRobotState(); // Update state after turn
-    } else if (finalTileData.gear === 'ccw') {
+    } else if (finalTileData.floorDevice.type === 'gear' && finalTileData.floorDevice.direction === 'ccw') {
         Logger.log(`   On counter-clockwise gear. Turning left.`);
         robot.turn('left');
         await sleep(350);

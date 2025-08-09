@@ -420,57 +420,56 @@ function renderStaticBoardElements(boardData) {
 
             let symbol = '';
 
-            if (tileData.isRepairStation) {
-                symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
-            } else if (tileData.isHole) {
-                symbol = Config.TILE_SYMBOLS['hole'] || '🕳️'; // Assuming a symbol for hole
-            } else if (tileData.gear) {
-                symbol = Config.TILE_SYMBOLS[`gear-${tileData.gear}`] || '';
-            } else if (tileData.conveyor) {
-                // Draw conveyor stripes
-                ctx.strokeStyle = Config.CONVEYOR_STRIPE_COLOR;
-                ctx.lineWidth = 2; // Stripe thickness
-                ctx.beginPath();
+            switch (tileData.floorDevice.type) {
+                case 'repair-station':
+                    symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
+                    break;
+                case 'hole':
+                    symbol = Config.TILE_SYMBOLS['hole'] || '🕳️';
+                    break;
+                case 'gear':
+                    symbol = Config.TILE_SYMBOLS[`gear-${tileData.floorDevice.direction}`] || '';
+                    break;
+                case 'conveyor':
+                    // Draw conveyor stripes
+                    ctx.strokeStyle = Config.CONVEYOR_STRIPE_COLOR;
+                    ctx.lineWidth = 2; // Stripe thickness
+                    ctx.beginPath();
 
-                const stripeSpacing = Config.TILE_SIZE / 4; // Adjust as needed
+                    const stripeSpacing = Config.TILE_SIZE / 4; // Adjust as needed
 
-                switch (tileData.conveyor.direction) {
-                    case 'north':
-                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
-                            ctx.moveTo(x, y + i);
-                            ctx.lineTo(x + Config.TILE_SIZE, y + i);
-                        }
-                        break;
-                    case 'south':
-                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
-                            ctx.moveTo(x, y + i);
-                            ctx.lineTo(x + Config.TILE_SIZE, y + i);
-                        }
-                        break;
-                    case 'east':
-                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
-                            ctx.moveTo(x + i, y);
-                            ctx.lineTo(x + i, y + Config.TILE_SIZE);
-                        }
-                        break;
-                    case 'west':
-                        for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
-                            ctx.moveTo(x + i, y);
-                            ctx.lineTo(x + i, y + Config.TILE_SIZE);
-                        }
-                        break;
-                }
-                ctx.stroke();
+                    switch (tileData.floorDevice.direction) {
+                        case 'north':
+                        case 'south':
+                            for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                                ctx.moveTo(x, y + i);
+                                ctx.lineTo(x + Config.TILE_SIZE, y + i);
+                            }
+                            break;
+                        case 'east':
+                        case 'west':
+                            for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                                ctx.moveTo(x + i, y);
+                                ctx.lineTo(x + i, y + Config.TILE_SIZE);
+                            }
+                            break;
+                    }
+                    ctx.stroke();
 
-                // Add speed indicator for 2x conveyors
-                if (tileData.conveyor.speed === 2) {
-                    symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.conveyor.direction}-speed-2x`] || '2x';
-                    ctx.fillStyle = '#FF0000'; // Red color for 2x indicator
-                    ctx.font = '16px Arial'; // Smaller font for 2x
-                    ctx.fillText(symbol, centerX, centerY + Config.TILE_SIZE / 4); // Offset slightly
-                } else {
-                    symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.conveyor.direction}`] || '';
-                }
+                    // Add speed indicator for 2x conveyors
+                    if (tileData.floorDevice.speed === 2) {
+                        symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.floorDevice.direction}-speed-2x`] || '2x';
+                        ctx.fillStyle = '#FF0000'; // Red color for 2x indicator
+                        ctx.font = '16px Arial'; // Smaller font for 2x
+                        ctx.fillText(symbol, centerX, centerY + Config.TILE_SIZE / 4); // Offset slightly
+                    } else {
+                        symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.floorDevice.direction}`] || '';
+                    }
+                    break;
+                case 'none':
+                default:
+                    symbol = ''; // No symbol for plain tiles
+                    break;
             }
 
             if (symbol) {

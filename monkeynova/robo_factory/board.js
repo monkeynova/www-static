@@ -38,7 +38,7 @@ export class Board {
                 const tileData = new Tile(tileDef, r, c);
                 rowTiles.push(tileData);
 
-                if (tileData.isRepairStation) {
+                if (tileData.floorDevice.type === 'repair-station') {
                     this.repairStations.push({ row: r, col: c });
                 }
             }

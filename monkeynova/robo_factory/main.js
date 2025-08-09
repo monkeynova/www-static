@@ -36,7 +36,7 @@ export function createDemonstrationBoard(rows, cols) {
     for (let r = 1; r < rows - 1; r++) {
         for (let c = chasmStartCol; c <= chasmEndCol; c++) {
             // Create a few bridges
-            if (r % 7 !== 0 || c === chasmStartCol || c === chasmEndCol) {
+            if ((r % 7 !== 0 || c === chasmStartCol || c === chasmEndCol) && !(r === 25 && c === 19) && !(r === 25 && c === 20)) {
                  board[r][c].isHole = true;
             }
         }
