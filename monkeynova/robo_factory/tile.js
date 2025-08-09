@@ -179,23 +179,25 @@ export class Tile {
         let gameEnded = false;
         if (this.floorDevice.type === 'checkpoint') {
             const flagKey = `${this.row}-${this.col}`;
+            const flagOrder = this.floorDevice.order;
             robot.setLastVisitedStation(flagKey); // Checkpoints also update last visited station
             robot.heal(); // Checkpoints also heal
 
-            if (!robot.hasVisitedFlag(flagKey)) {
-                Logger.log(`   Visiting NEW checkpoint at (${this.row}, ${this.col})!`);
-                robot.visitFlag(flagKey);
-                emit('flagVisited', flagKey);
+            // Only visit if it's the next in order
+            const visitedInOrder = robot.visitFlag(flagKey, flagOrder);
+
+            if (visitedInOrder) {
+                emit('flagVisited', { flagKey, visitedOrder: robot.getVisitedFlagCount() });
                 const visitCount = robot.getVisitedFlagCount();
 
-                Logger.log(`   Visited ${visitCount} / ${board.flags.length} flags.`);
-                if (visitCount === board.flags.length && board.flags.length > 0) {
+                Logger.log(`   Visited ${visitCount} / ${board.totalCheckpoints} checkpoints.`);
+                if (visitCount === board.totalCheckpoints && board.totalCheckpoints > 0) {
                     Logger.log("   *** WIN CONDITION MET! ***");
                     emit('gameOver', true);
                     gameEnded = true;
                 }
             } else {
-                Logger.log(`   Already visited checkpoint at (${this.row}, ${this.col}).`);
+                Logger.log(`   Checkpoint at (${this.row}, ${this.col}) (Order: ${flagOrder}) not visited in sequence.`);
             }
         }
         return { gameEnded };

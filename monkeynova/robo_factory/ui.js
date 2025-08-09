@@ -429,6 +429,12 @@ function renderStaticBoardElements(boardData) {
                     break;
                 case 'checkpoint': // NEW: Checkpoint symbol
                     symbol = Config.TILE_SYMBOLS['checkpoint'] || '🚩';
+                    ctx.fillText(symbol, centerX, centerY); // Draw flag symbol
+
+                    // Draw order number on top of the flag
+                    ctx.fillStyle = 'white'; // Color for the number
+                    ctx.font = '16px Arial'; // Smaller font for the number
+                    ctx.fillText(tileData.floorDevice.order.toString(), centerX, centerY + 5); // Offset slightly for better visibility
                     break;
                 case 'hole':
                     symbol = Config.TILE_SYMBOLS['hole'] || '🕳️';
@@ -686,20 +692,26 @@ function createFlagIndicatorsUI(flags) {
     // Clear any previous indicators
     flagStatusContainer.querySelectorAll('.flag-indicator').forEach(el => el.remove());
 
-    if (!flags || flags.length === 0) {
-        Logger.warn("UI: No flags found in board data to create indicators for.");
+    const checkpointFlags = flags.filter(flag => flag.type === 'checkpoint');
+
+    if (!checkpointFlags || checkpointFlags.length === 0) {
+        Logger.warn("UI: No checkpoint flags found in board data to create indicators for.");
         return;
     }
 
-    Logger.log(`UI: Creating indicators for ${flags.length} flags.`);
-    flags.forEach(flag => {
+    Logger.log(`UI: Creating indicators for ${checkpointFlags.length} checkpoint flags.`);
+    checkpointFlags.forEach(flag => {
         const flagKey = `${flag.row}-${flag.col}`;
         const indicator = document.createElement('div');
         indicator.classList.add('flag-indicator');
         indicator.dataset.stationKey = flagKey; // Link indicator to station data
+        indicator.dataset.order = flag.order; // NEW: Store order for sorting/marking
         // Use symbol from config based on flag type
-        const symbol = Config.TILE_SYMBOLS[flag.type] || '❓'; // Use flag.type directly
-        indicator.textContent = symbol;
+        let displayContent = Config.TILE_SYMBOLS[flag.type] || '❓';
+        if (flag.type === 'checkpoint') {
+            displayContent += ` ${flag.order}`;
+        }
+        indicator.textContent = displayContent;
         flagStatusContainer.appendChild(indicator);
     });
 }
@@ -797,13 +809,15 @@ function updateHealthUI(health, maxHealth) {
 }
 
 /** Marks a flag indicator as visited. */
-function updateFlagIndicatorUI(stationKey) {
-    const indicator = flagStatusContainer.querySelector(`.flag-indicator[data-station-key="${stationKey}"]`);
-    if (indicator) {
-        indicator.classList.add('visited');
-    } else {
-        Logger.warn(`UI: Could not find flag indicator for key ${stationKey}`);
-    }
+function updateFlagIndicatorUI({ flagKey, visitedOrder }) {
+    // Mark all flags up to the visitedOrder as 'visited'
+    flagStatusContainer.querySelectorAll('.flag-indicator').forEach(indicator => {
+        const indicatorOrder = parseInt(indicator.dataset.order, 10);
+        if (indicatorOrder && indicatorOrder <= visitedOrder) {
+            indicator.classList.add('visited');
+        }
+    });
+    Logger.log(`UI: Updated flag indicators. Highest visited order: ${visitedOrder}`);
 }
 
 /** Shows the end game modal. */
@@ -811,7 +825,7 @@ function showModalUI(isWin) {
     if (modal && modalTitleEl && modalMessageEl) {
         modalTitleEl.textContent = isWin ? "You Win!" : "Robot Destroyed!";
         modalTitleEl.className = isWin ? 'win' : 'loss'; // Add class for styling
-        modalMessageEl.textContent = isWin ? "Congratulations! You visited all repair stations!" : "Your robot ran out of health.";
+        modalMessageEl.textContent = isWin ? "Congratulations! You visited all checkpoints in order!" : "Your robot ran out of health.";
         modal.style.display = 'flex'; // Show modal
     }
 }

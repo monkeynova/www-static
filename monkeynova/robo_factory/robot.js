@@ -16,7 +16,7 @@ class Robot {
     orientation;
     health;
     lastVisitedStationKey;
-    visitedFlags;
+    highestVisitedCheckpointOrder;
     program; // NEW: Array to store the program cards
 
     /**
@@ -34,7 +34,7 @@ class Robot {
         this.orientation = startOrientation;
         this.health = MAX_HEALTH;
         this.lastVisitedStationKey = null;
-        this.visitedFlags = new Set();
+        this.highestVisitedCheckpointOrder = 0;
         this.program = []; // Initialize program as an empty array
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
     }
@@ -72,32 +72,40 @@ class Robot {
     }
 
     /**
-     * Marks a flag (checkpoint or repair station) as visited by this robot.
+     * Attempts to mark a flag (checkpoint) as visited by this robot in order.
      * @param {string} flagKey - The key ('row-col') of the flag.
+     * @param {number} flagOrder - The order number of the checkpoint.
+     * @returns {boolean} True if the flag was visited in order, false otherwise.
      */
-    visitFlag(flagKey) {
-        if (flagKey && !this.visitedFlags.has(flagKey)) {
-            this.visitedFlags.add(flagKey);
-            Logger.log(`Robot visited new flag: ${flagKey}. Total: ${this.visitedFlags.size}`);
-            // Note: We still emit 'flagVisited' from gameLoop when this happens
+    visitFlag(flagKey, flagOrder) {
+        if (flagOrder === this.highestVisitedCheckpointOrder + 1) {
+            this.highestVisitedCheckpointOrder = flagOrder;
+            Logger.log(`Robot visited checkpoint ${flagOrder} in order. Highest visited: ${this.highestVisitedCheckpointOrder}`);
+            return true;
+        } else if (flagOrder <= this.highestVisitedCheckpointOrder) {
+            Logger.log(`Robot revisited checkpoint ${flagOrder}. Highest visited remains: ${this.highestVisitedCheckpointOrder}`);
+            return false;
+        } else {
+            Logger.log(`Robot visited checkpoint ${flagOrder} out of order. Expected ${this.highestVisitedCheckpointOrder + 1}. Highest visited remains: ${this.highestVisitedCheckpointOrder}`);
+            return false;
         }
     }
 
     /**
-     * Checks if this robot has visited a specific flag.
-     * @param {string} flagKey - The key ('row-col') of the flag.
-     * @returns {boolean} True if the flag has been visited.
+     * Checks if this robot has visited a specific flag (checkpoint) or an earlier one.
+     * @param {number} flagOrder - The order number of the checkpoint to check.
+     * @returns {boolean} True if the flag (or an earlier one) has been visited.
      */
-    hasVisitedFlag(flagKey) {
-        return this.visitedFlags.has(flagKey);
+    hasVisitedFlag(flagOrder) {
+        return flagOrder <= this.highestVisitedCheckpointOrder;
     }
 
     /**
-     * Gets the number of unique flags visited by this robot.
-     * @returns {number} The count of visited flags.
+     * Gets the highest order number of a checkpoint visited by this robot.
+     * @returns {number} The highest checkpoint order visited.
      */
     getVisitedFlagCount() {
-        return this.visitedFlags.size;
+        return this.highestVisitedCheckpointOrder;
     }
 
     /**

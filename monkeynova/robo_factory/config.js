@@ -40,6 +40,8 @@ export const ALLOWED_LOG_LEVELS = new Set([
 export const TURN_LEFT = 'left';
 export const TURN_RIGHT = 'right';
 
+export const CHECKPOINT_ORDER_PROPERTY = 'order'; // NEW: Property name for checkpoint order
+
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',

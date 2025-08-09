@@ -620,7 +620,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         "Checkpoint: Robot heals damage and marks flag when visiting a new checkpoint",
         async () => {
             const testBoardDef = [
-                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'checkpoint' }, walls: ['north', 'east'] } ],
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'checkpoint', order: 1 }, walls: ['north', 'east'] } ],
                 [ { walls: ['south', 'west'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -632,14 +632,14 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
             const robotState = setupData.robot.getRobotState();
-            return { ...robotState, visitedFlags: setupData.robot.getVisitedFlagCount() };
+            return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
         },
-        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }, visitedFlags: 1 }, // Expected: Robot's health is MAX_HEALTH, 1 flag visited
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }, highestVisitedCheckpointOrder: 1 }, // Expected: Robot's health is MAX_HEALTH, highest visited is 1
         (actual, expected) => {
             const healthMatch = actual.health === expected.robot.health;
-            const flagCountMatch = actual.visitedFlags === expected.visitedFlags;
+            const flagCountMatch = actual.highestVisitedCheckpointOrder === expected.highestVisitedCheckpointOrder;
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            if (!flagCountMatch) Logger.error(`   FAIL: Flag count mismatch. Expected ${expected.visitedFlags}, Got ${actual.visitedFlags}`);
+            if (!flagCountMatch) Logger.error(`   FAIL: Highest visited checkpoint order mismatch. Expected ${expected.highestVisitedCheckpointOrder}, Got ${actual.highestVisitedCheckpointOrder}`);
             return healthMatch && flagCountMatch;
         }
     ),
@@ -660,14 +660,74 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
             const robotState = setupData.robot.getRobotState();
-            return { ...robotState, visitedFlags: setupData.robot.getVisitedFlagCount() };
+            return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
         },
-        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }, visitedFlags: 0 }, // Expected: Robot's health is MAX_HEALTH, 0 flags visited
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }, highestVisitedCheckpointOrder: 0 }, // Expected: Robot's health is MAX_HEALTH, 0 flags visited
         (actual, expected) => {
             const healthMatch = actual.health === expected.robot.health;
-            const flagCountMatch = actual.visitedFlags === expected.visitedFlags;
+            const flagCountMatch = actual.highestVisitedCheckpointOrder === expected.highestVisitedCheckpointOrder;
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            if (!flagCountMatch) Logger.error(`   FAIL: Flag count mismatch. Expected ${expected.visitedFlags}, Got ${actual.visitedFlags}`);
+            if (!flagCountMatch) Logger.error(`   FAIL: Highest visited checkpoint order mismatch. Expected ${expected.highestVisitedCheckpointOrder}, Got ${actual.highestVisitedCheckpointOrder}`);
+            return healthMatch && flagCountMatch;
+        }
+    ),
+
+    defineTest(
+        "Checkpoint: Robot does NOT mark flag when visiting out of order (2 before 1)",
+        async () => {
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'checkpoint', order: 1 }, walls: ['north'] }, { floorDevice: { type: 'checkpoint', order: 2 }, walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 2, 'east'); // Robot starts on checkpoint 2
+            robot.takeDamage(); // Make robot take damage
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
+        },
+        { robot: { row: 0, col: 2, orientation: 'east', health: Config.MAX_HEALTH }, highestVisitedCheckpointOrder: 0 }, // Expected: Robot heals, but highest visited remains 0
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            const flagCountMatch = actual.highestVisitedCheckpointOrder === expected.highestVisitedCheckpointOrder;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            if (!flagCountMatch) Logger.error(`   FAIL: Highest visited checkpoint order mismatch. Expected ${expected.highestVisitedCheckpointOrder}, Got ${actual.highestVisitedCheckpointOrder}`);
+            return healthMatch && flagCountMatch;
+        }
+    ),
+
+    defineTest(
+        "Checkpoint: Robot marks flag 1, then does NOT mark flag 3 (skipping 2)",
+        async () => {
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'checkpoint', order: 1 }, walls: ['north'] }, { floorDevice: { type: 'checkpoint', order: 2 }, walls: ['north'] }, { floorDevice: { type: 'checkpoint', order: 3 }, walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 1, 'east'); // Robot starts on checkpoint 1
+            robot.takeDamage(); // Make robot take damage
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Visit checkpoint 1
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot); // Robot is on (0,1) (order 1)
+            // Manually move robot to checkpoint 3 (0,3)
+            setupData.robot.setPosition(0, 3);
+            setupData.robot.takeDamage(); // Take damage again before visiting checkpoint 3
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot); // Robot is on (0,3) (order 3)
+
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
+        },
+        { robot: { row: 0, col: 3, orientation: 'east', health: Config.MAX_HEALTH }, highestVisitedCheckpointOrder: 1 }, // Expected: Robot heals, but highest visited remains 1
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            const flagCountMatch = actual.highestVisitedCheckpointOrder === expected.highestVisitedCheckpointOrder;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            if (!flagCountMatch) Logger.error(`   FAIL: Highest visited checkpoint order mismatch. Expected ${expected.highestVisitedCheckpointOrder}, Got ${actual.highestVisitedCheckpointOrder}`);
             return healthMatch && flagCountMatch;
         }
     )

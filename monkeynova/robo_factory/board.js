@@ -65,16 +65,28 @@ export class Board {
                     }
                 }
 
+                if (floorDevice.type === 'checkpoint') {
+                    if (typeof floorDevice.order !== 'number' || floorDevice.order < 1) {
+                        throw new Error(`Checkpoint at (${r}, ${c}) is missing a valid 'order' property (must be a number >= 1).`);
+                    }
+                }
+
                 const tileData = new Tile(floorDevice, r, c, tileDef.walls, tileDef.wallDevices);
                 rowTiles.push(tileData);
 
                 if (tileData.floorDevice.type === 'repair-station' || tileData.floorDevice.type === 'checkpoint') {
-                    this.flags.push({ row: r, col: c, type: tileData.floorDevice.type });
+                    this.flags.push({ row: r, col: c, type: tileData.floorDevice.type, order: tileData.floorDevice.order });
                 }
             }
             this.tiles.push(rowTiles);
         }
+
+        // Sort flags by order and count total checkpoints
+        this.flags.sort((a, b) => a.order - b.order);
+        this.totalCheckpoints = this.flags.filter(flag => flag.type === 'checkpoint').length;
+
         Logger.log(`Parsed board. Found ${this.flags.length} flags.`);
+        Logger.log(`Total checkpoints: ${this.totalCheckpoints}`);
         // Note: Wall consistency (east wall of A matching west wall of B) is assumed
         // to be handled correctly in the definition for now.
     }

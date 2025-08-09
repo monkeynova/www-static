@@ -82,9 +82,9 @@ export function createDemonstrationBoard(rows, cols) {
 
     // 6. Place repair stations and checkpoints strategically
     board[1][1].floorDevice = { type: 'repair-station' }; // Start
-    board[mazeStartRow + 1][mazeEndCol - 1].floorDevice = { type: 'checkpoint' }; // In the maze (now a checkpoint)
+    board[mazeStartRow + 1][mazeEndCol - 1].floorDevice = { type: 'checkpoint', order: 1 }; // Checkpoint 1 in the maze
     board[rows - 5][cols - 5].floorDevice = { type: 'repair-station' }; // Across the chasm
-    board[rows - 2][2].floorDevice = { type: 'checkpoint' }; // New checkpoint near bottom-left
+    board[rows - 2][2].floorDevice = { type: 'checkpoint', order: 2 }; // Checkpoint 2 near bottom-left
 
     // 7. Add some gears
     board[whirlStart.r - 2][whirlStart.c + 2].floorDevice = { type: 'gear', direction: 'cw' };
@@ -154,12 +154,17 @@ if (typeof document !== 'undefined') {
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
             // Use the newly defined initialRobotState
             const startTileData = board.getTileData(initialRobotState.row, initialRobotState.col);
-            if (startTileData && (startTileData.floorDevice.type === 'repair-station' || startTileData.floorDevice.type === 'checkpoint')) {
+            if (startTileData && startTileData.floorDevice.type === 'checkpoint') {
                 const key = `${initialRobotState.row}-${initialRobotState.col}`;
-                Logger.log(`Robot starts on station ${key}. Updating state.`);
-                robot.visitFlag(key);
+                const order = startTileData.floorDevice.order;
+                Logger.log(`Robot starts on checkpoint ${order}. Updating state.`);
+                robot.visitFlag(key, order);
                 robot.setLastVisitedStation(key);
                 // UI update for this will happen via initial event emission later
+            } else if (startTileData && startTileData.floorDevice.type === 'repair-station') {
+                const key = `${initialRobotState.row}-${initialRobotState.col}`;
+                Logger.log(`Robot starts on repair station ${key}. Updating state.`);
+                robot.setLastVisitedStation(key);
             }
             // --- End Initial Station Check ---
 
