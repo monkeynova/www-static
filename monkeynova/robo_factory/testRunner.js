@@ -540,8 +540,8 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             // Setup: Robot at (0,1) on conveyor-east with laser-east (attached to west wall).
             // Add an east wall to (0,1) to block conveyor movement.
             const testBoardDef = [
-                [ { classes: ['plain'], walls: ['north', 'west'] }, { conveyor: { direction: 'east', speed: 1 }, walls: ['north', 'west', 'east'], laser: { direction: 'east' } }, { classes: ['plain'], walls: ['north', 'east'] } ],
-                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+                [ { walls: ['north', 'west'] }, { conveyor: { direction: 'east', speed: 1 }, walls: ['north', 'west', 'east'], laser: { direction: 'east' } }, { walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'east'); // Robot starts on conveyor with laser
@@ -567,8 +567,8 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Robot at (0,1) on gear-cw with laser-north (attached to south wall).
             const testBoardDef = [
-                [ { classes: ['plain'], walls: ['north', 'west'] }, { walls: ['north', 'south'], gear: 'cw', laser: { direction: 'north' } }, { classes: ['plain'], walls: ['north', 'east'] } ],
-                [ { classes: ['plain'], walls: ['south', 'west'] }, { classes: ['plain'], walls: ['south'] }, { classes: ['plain'], walls: ['south', 'east'] } ]
+                [ { walls: ['north', 'west'] }, { walls: ['north', 'south'], gear: 'cw', laser: { direction: 'north' } }, { walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'north'); // Robot starts on gear with laser
