@@ -92,18 +92,19 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
         for (let r = 0; r < boardData.rows; r++) {
             for (let c = 0; c < boardData.cols; c++) {
                 const tile = boardData.getTileData(r, c);
-                if (tile && tile.laserDirection) {
+                const laserDevice = tile ? tile.getWallDevice('laser') : null;
+                if (laserDevice) {
                     // Check if robot is on the laser emitter tile itself
                     const robotOnEmitter = (robotState.row === r && robotState.col === c);
 
-                    const laserPath = boardData.getLaserPath(r, c, tile.laserDirection, robotState);
+                    const laserPath = boardData.getLaserPath(r, c, laserDevice.direction, robotState);
                     // Check if robot is on any tile in the laser's path
                     const robotInLaserPath = laserPath.some(
                         pathTile => pathTile.row === robotState.row && pathTile.col === robotState.col
                     );
 
                     if (robotOnEmitter || robotInLaserPath) {
-                        Logger.log(`   Robot hit by laser from (${r},${c}) firing ${tile.laserDirection}!`);
+                        Logger.log(`   Robot hit by laser from (${r},${c}) firing ${laserDevice.direction}!`);
                         Logger.log(`   Robot health BEFORE damage: ${robot.getRobotState().health}`);
                         robot.takeDamage();
                         Logger.log(`   Robot health AFTER damage: ${robot.getRobotState().health}`);

@@ -180,7 +180,7 @@ export function initializeUI(boardData, initialRobotState) {
 }
 
 /** Initialize Canvas dimensions and context */
-export function initCanvas(boardData) {
+function initCanvas(boardData) {
     if (!boardCanvas) {
         Logger.error("Canvas element not found!");
         return false;
@@ -258,7 +258,8 @@ function drawLaserBeams(boardData, robotState) {
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
             const tileData = boardData.getTileData(r, c);
-            if (!tileData || !tileData.laser) continue;
+            const laserDevice = tileData ? tileData.getWallDevice('laser') : null;
+            if (!laserDevice) continue;
 
             const x = c * Config.TILE_SIZE;
             const y = r * Config.TILE_SIZE;
@@ -266,7 +267,7 @@ function drawLaserBeams(boardData, robotState) {
             const centerY = y + Config.TILE_SIZE / 2;
 
             // Pass robotState to getLaserPath for dynamic termination
-            const laserPath = boardData.getLaserPath(r, c, tileData.laser.direction, robotState);
+            const laserPath = boardData.getLaserPath(r, c, laserDevice.direction, robotState);
             if (laserPath.length > 0) { // Only draw if there's a path
                 ctx.beginPath();
 
@@ -274,7 +275,7 @@ function drawLaserBeams(boardData, robotState) {
                 let startBeamY = centerY;
 
                 // Adjust starting point to be on the edge of the tile where the laser is attached, firing outwards
-                switch (tileData.laser.direction) {
+                switch (laserDevice.direction) {
                     case 'north':
                         startBeamY = y + Config.TILE_SIZE; // Start from bottom edge (south wall)
                         break;
@@ -288,7 +289,7 @@ function drawLaserBeams(boardData, robotState) {
                         startBeamX = x + Config.TILE_SIZE; // Start from right edge (east wall)
                         break;
                 }
-                Logger.log(`Laser at (${r},${c}) firing ${tileData.laser.direction}. Calculated start: (${startBeamX}, ${startBeamY})`);
+                Logger.log(`Laser at (${r},${c}) firing ${laserDevice.direction}. Calculated start: (${startBeamX}, ${startBeamY})`);
 
                 ctx.moveTo(startBeamX, startBeamY);
 
@@ -313,7 +314,7 @@ function drawLaserBeams(boardData, robotState) {
                             const robotWidth = parseInt(robotStyle.width) || 35;
                             const robotHeight = parseInt(robotStyle.height) || 35;
 
-                            switch (tileData.laser.direction) {
+                            switch (laserDevice.direction) {
                                 case 'north':
                                     targetBeamY = pathTileY + Config.TILE_SIZE - (Config.TILE_SIZE - robotHeight) / 2; // Bottom edge of robot
                                     break;
@@ -329,7 +330,7 @@ function drawLaserBeams(boardData, robotState) {
                             }
                             Logger.log(`  Beam ends at robot (${pathTile.row},${pathTile.col}). Calculated end: (${targetBeamX}, ${targetBeamY})`);
                         } else { // Terminate on the wall
-                            switch (tileData.laser.direction) {
+                            switch (laserDevice.direction) {
                                 case 'north':
                                     targetBeamY = pathTileY; // Top edge of tile (wall)
                                     break;
@@ -347,7 +348,7 @@ function drawLaserBeams(boardData, robotState) {
                         }
                     } else {
                         // For intermediate tiles, draw to the edge of the current tile, towards the next
-                        switch (tileData.laser.direction) {
+                        switch (laserDevice.direction) {
                             case 'north':
                                 targetBeamY = pathTileY; // Top edge of current tile
                                 break;
@@ -477,8 +478,9 @@ function renderStaticBoardElements(boardData) {
             }
 
             // NEW: Draw Laser Symbol (if present, on top of other tile visuals)
-            if (tileData.laser) {
-                const laserSymbol = Config.TILE_SYMBOLS[tileData.laser.direction] || '';
+            const laserDevice = tileData.getWallDevice('laser');
+            if (laserDevice) {
+                const laserSymbol = Config.TILE_SYMBOLS[laserDevice.direction] || '';
                 if (laserSymbol) {
                     ctx.fillStyle = '#FFFF00'; // Bright yellow for laser symbol
                     ctx.font = '30px sans-serif'; // Larger font size
@@ -487,7 +489,7 @@ function renderStaticBoardElements(boardData) {
                     let symbolY = centerY;
 
                     // Adjust symbol position to be on the wall it's attached to
-                    switch (tileData.laser.direction) {
+                    switch (laserDevice.direction) {
                         case 'north': // Attached to south wall
                             symbolY = y + Config.TILE_SIZE - (Config.TILE_SIZE / 4); // Near bottom edge
                             break;
@@ -506,8 +508,9 @@ function renderStaticBoardElements(boardData) {
             }
 
             // NEW: Draw Push Panel Visual (if present, on top of other tile visuals)
-            if (tileData.pusher) {
-                const pushDirection = tileData.pusher.direction;
+            const pusherDevice = tileData.getWallDevice('pusher');
+            if (pusherDevice) {
+                const pushDirection = pusherDevice.direction;
                 const attachmentWallSide = getOppositeWallSide(pushDirection);
 
                 const panelSize = Config.TILE_SIZE * 0.25; // 25% of tile size
@@ -541,7 +544,7 @@ function renderStaticBoardElements(boardData) {
 
                 for (let i = 0; i < Config.PROGRAM_SIZE; i++) {
                     const step = i + 1;
-                    const isActiveStep = tileData.pusher.steps.has(step);
+                    const isActiveStep = pusherDevice.steps.has(step);
 
                     let stripeX, stripeY, stripeW, stripeH;
                     let textX, textY;
@@ -631,13 +634,12 @@ function renderStaticBoardElements(boardData) {
     // --- Draw Laser Emitters (Draw AFTER walls for correct layering) ---
     ctx.fillStyle = '#8B0000'; // Dark red for the emitter
     const emitterSize = Config.TILE_SIZE / 4; // Size of the emitter square
-    // const styles = getComputedStyle(document.documentElement); // REMOVED: Already declared above
-    // const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3; // Get wall thickness - REMOVED: Already declared above
 
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
             const tileData = boardData.getTileData(r, c);
-            if (!tileData || !tileData.laserDirection) continue;
+            const laserDevice = tileData ? tileData.getWallDevice('laser') : null;
+            if (!laserDevice) continue;
 
             const x = c * Config.TILE_SIZE;
             const y = r * Config.TILE_SIZE;
@@ -647,7 +649,7 @@ function renderStaticBoardElements(boardData) {
             let emitterX = x, emitterY = y;
 
             // Position the emitter on the wall it's attached to, which is opposite the firing direction.
-            switch (tileData.laserDirection) {
+            switch (laserDevice.direction) {
                 case 'north': // Laser fires north, emitter is on the south wall of this tile
                     emitterX = centerX - emitterSize / 2;
                     emitterY = y + Config.TILE_SIZE - emitterSize;
@@ -671,7 +673,7 @@ function renderStaticBoardElements(boardData) {
 }
 
 /** Creates the flag indicator DOM elements */
-export function createFlagIndicatorsUI(repairStations) {
+function createFlagIndicatorsUI(repairStations) {
     if (!flagStatusContainer) {
         Logger.error("UI Error: Flag status container not found.");
         return;
@@ -698,7 +700,7 @@ export function createFlagIndicatorsUI(repairStations) {
 }
 
 /** Creates the robot DOM element and appends it to the container */
-export function createRobotElement() {
+function createRobotElement() {
     if (robotElement) { // Avoid creating multiple robots
         robotElement.remove();
     }

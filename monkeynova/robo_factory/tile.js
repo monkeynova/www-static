@@ -35,52 +35,35 @@ export class Tile {
     /** @type {{type: 'none' | 'hole' | 'repair-station' | 'conveyor' | 'gear', direction?: string, speed?: number, steps?: Set<number>} | null} */
     floorDevice;
 
-    /**
-     * Creates a new Tile instance from a raw tile definition.
-     * @param {object} tileDef - The raw tile definition object {walls, pusher?, laser?, gear?, conveyor?, isHole?, isRepairStation?}.
-     * @param {number} r - The row index of the tile.
-     * @param {number} c - The column index of the tile.
-     */
-    constructor(floorDevice, r, c, walls = [], pusher = null, laser = null) {
+    constructor(floorDevice, r, c, walls = [], wallDevices = []) {
         if (!floorDevice) {
             throw new Error(`Invalid floor device definition at (${r}, ${c}): floorDevice is null or undefined.`);
         }
 
         this.row = r;
         this.col = c;
-        this.walls = Array.isArray(walls) ? walls : [];
+        this.walls = Array.isArray(walls) ? walls : []; // ADDED THIS LINE
         this.floorDevice = floorDevice;
-        this.pusher = pusher;
-        this.laser = laser;
+        this.wallDevices = Array.isArray(wallDevices) ? wallDevices : [];
 
-        // Derived properties
-        this.hasPushPanel = !!this.pusher;
-        this.laserDirection = this.laser ? this.laser.direction : null;
-        this.conveyorDirection = this.floorDevice.type === 'conveyor' ? this.floorDevice.direction : null;
-        this.speed = this.floorDevice.type === 'conveyor' ? this.floorDevice.speed : 1;
-
-        // Validate pusher and laser if they exist
-        if (this.pusher) {
-            if (!this.pusher.direction || !ALLOWED_WALL_SIDES.includes(this.pusher.direction)) {
-                throw new Error(`Invalid pusher direction at (${r}, ${c}).`);
+        // Validate wall devices
+        this.wallDevices.forEach(device => {
+            if (!device.direction || !ALLOWED_WALL_SIDES.includes(device.direction)) {
+                throw new Error(`Invalid ${device.type} direction at (${r}, ${c}).`);
             }
-            if (!this.pusher.steps || this.pusher.steps.size === 0) {
+            const requiredWallSide = getOppositeWallSide(device.direction);
+            if (!this.walls.includes(requiredWallSide)) {
+                throw new Error(`${device.type} at (${r}, ${c}) firing ${device.direction} must be attached to a ${requiredWallSide} wall.`);
+            }
+            if (device.type === 'pusher' && (!device.steps || device.steps.size === 0)) {
                 throw new Error(`Tile at (${r}, ${c}) has a push panel but no activation steps defined (e.g., steps: [1, 3, 5]).`);
             }
-            const requiredWallSide = getOppositeWallSide(this.pusher.direction);
-            if (!this.walls.includes(requiredWallSide)) {
-                throw new Error(`Push panel at (${r}, ${c}) pushing ${this.pusher.direction} must be attached to a ${requiredWallSide} wall.`);
-            }
-        }
-        if (this.laser) {
-            if (!this.laser.direction || !ALLOWED_WALL_SIDES.includes(this.laser.direction)) {
-                throw new Error(`Invalid laser direction at (${r}, ${c}).`);
-            }
-            const requiredWallSide = getOppositeWallSide(this.laser.direction);
-            if (!this.walls.includes(requiredWallSide)) {
-                throw new Error(`Laser at (${r}, ${c}) firing ${this.laser.direction} must be attached to a ${requiredWallSide} wall.`);
-            }
-        }
+        });
+    }
+
+    // Helper to get a specific wall device
+    getWallDevice(type) {
+        return this.wallDevices.find(device => device.type === type);
     }
 
     
@@ -245,15 +228,16 @@ export class Tile {
      * @returns {{moved: boolean, newR?: number, newC?: number}} - Indicates if a move occurred and the new position.
      */
     tryPushPanel(robotState, board, currentProgramStep) {
-        if (this.pusher) { // Check the new decorator property
+        const pusher = this.getWallDevice('pusher');
+        if (pusher) { // Check the new decorator property
             // If pushPanelFireSteps is defined, only fire on specified steps
-            if (this.pusher.steps.size > 0 && !this.pusher.steps.has(currentProgramStep)) {
-                Logger.log(`      Push Panel at (${this.row},${this.col}) configured to fire only on steps [${Array.from(this.pusher.steps).join(', ')}], skipping step ${currentProgramStep}.`);
+            if (pusher.steps.size > 0 && !pusher.steps.has(currentProgramStep)) {
+                Logger.log(`      Push Panel at (${this.row},${this.col}) configured to fire only on steps [${Array.from(pusher.steps).join(', ')}], skipping step ${currentProgramStep}.`);
                 return { moved: false };
             }
             let dr = 0, dc = 0;
             let exitSide = '';
-            const pushDirection = this.pusher.direction;
+            const pushDirection = pusher.direction;
             switch (pushDirection) {
                 case 'north': dr = -1; exitSide = 'north'; break;
                 case 'south': dr = 1;  exitSide = 'south'; break;

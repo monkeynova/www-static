@@ -65,21 +65,7 @@ export class Board {
                     }
                 }
 
-                // Handle pusher and laser separately, as they are not exclusive floor devices
-                let pusher = null;
-                if (tileDef.pusher) {
-                    pusher = {
-                        direction: tileDef.pusher.direction,
-                        steps: new Set(Array.isArray(tileDef.pusher.steps) ? tileDef.pusher.steps : [])
-                    };
-                }
-
-                let laser = null;
-                if (tileDef.laser) {
-                    laser = { direction: tileDef.laser.direction };
-                }
-
-                const tileData = new Tile(floorDevice, r, c, tileDef.walls, pusher, laser);
+                const tileData = new Tile(floorDevice, r, c, tileDef.walls, tileDef.wallDevices);
                 rowTiles.push(tileData);
 
                 if (tileData.floorDevice.type === 'repair-station') {

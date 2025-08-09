@@ -125,7 +125,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ walls: ['north', 'west'] }, { walls: ['north'] }, { walls: ['north', 'east'] }],
-                [{ walls: ['west'] }, { walls: ['south'], pusher: { direction: 'north', steps: [1, 2, 3, 4, 5] } }, { walls: ['east'] }], // Push north panel at (1,1)
+                [{ walls: ['west'] }, { walls: ['south'], wallDevices: [{ type: 'pusher', direction: 'north', steps: new Set([1, 2, 3, 4, 5]) }] }, { walls: ['east'] }], // Push north panel at (1,1)
                 [{ walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -149,7 +149,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ walls: ['north', 'west'] }, { walls: ['north', 'east'] }],
-                [{ walls: ['west'], pusher: { direction: 'east', steps: [1, 2, 3, 4, 5] } }, { walls: ['west', 'east'] }] // Push east panel at (1,0), Tile (1,1) has a west wall
+                [{ walls: ['west'], wallDevices: [{ type: 'pusher', direction: 'east', steps: new Set([1, 2, 3, 4, 5]) }] }, { walls: ['west', 'east'] }] // Push east panel at (1,0), Tile (1,1) has a west wall
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(1, 0, 'east'); // Robot starts on push panel
@@ -172,7 +172,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ walls: ['north', 'west'] }, { floorDevice: { type: 'hole' }, walls: [] }, { walls: ['north', 'east'] }], // Hole at (0,1)
-                [{ walls: ['west'] }, { walls: ['south'], pusher: { direction: 'north', steps: [1, 2, 3, 4, 5] } }, { walls: ['east'] }], // Push north panel at (1,1)
+                [{ walls: ['west'] }, { walls: ['south'], wallDevices: [{ type: 'pusher', direction: 'north', steps: new Set([1, 2, 3, 4, 5]) }] }, { walls: ['east'] }], // Push north panel at (1,1)
                 [{ walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -198,7 +198,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ walls: ['north', 'west'] }, { walls: ['north'] }, { walls: ['north', 'east'] }],
-                [{ floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['west'] }, { walls: ['south'], pusher: { direction: 'north', steps: [1, 2, 3, 4, 5] } }, { walls: ['east'] }], // Conveyor at (1,0), Push north panel at (1,1)
+                [{ floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['west'] }, { walls: ['south'], wallDevices: [{ type: 'pusher', direction: 'north', steps: new Set([1, 2, 3, 4, 5]) }] }, { walls: ['east'] }], // Conveyor at (1,0), Push north panel at (1,1)
                 [{ walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -222,7 +222,7 @@ const testScenarios = [
         async () => {
             const testBoardDef = [
                 [{ walls: ['north', 'west'] }, { walls: ['north'] }, { walls: ['north', 'east'] }],
-                [{ walls: ['west'] }, { walls: ['south'], pusher: { direction: 'north', steps: [2, 4] } }, { walls: ['east'] }], // Push north panel at (1,1), fires on steps 2 and 4
+                [{ walls: ['west'] }, { walls: ['south'], wallDevices: [{ type: 'pusher', direction: 'north', steps: new Set([2, 4]) }] }, { walls: ['east'] }], // Push north panel at (1,1), fires on steps 2 and 4
                 [{ walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] }]
             ];
             const boardData = new Board(testBoardDef);
@@ -437,7 +437,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Robot at (0,1) facing East. Laser at (0,0) firing East.
             const testBoardDef = [
-                [ { walls: ['north', 'west', 'east'], laser: { direction: 'east' } }, { walls: ['north'] }, { walls: ['north', 'east'] } ],
+                [ { walls: ['north', 'west', 'east'], wallDevices: [{ type: 'laser', direction: 'east' }] }, { walls: ['north'] }, { walls: ['north', 'east'] } ],
                 [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -461,7 +461,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Robot at (0,2). Laser at (0,0) firing East. Wall at (0,1) blocking laser.
             const testBoardDef = [
-                [ { walls: ['north', 'west'], laser: { direction: 'east' } }, { walls: ['north', 'west'] }, { walls: [ 'north', 'east'] } ], // Wall west of (0,1)
+                [ { walls: ['north', 'west'], wallDevices: [{ type: 'laser', direction: 'east' }] }, { walls: ['north', 'west'] }, { walls: [ 'north', 'east'] } ], // Wall west of (0,1)
                 [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -485,7 +485,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Robot at (0,0) on conveyor-east. Tile (0,2) has a laser-north (attached to south wall).
             const testBoardDef = [
-                [ { floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['north', 'west'] }, { walls: ['north'] }, { walls: ['north', 'east', 'south'], laser: { direction: 'north' } } ], // Added south wall
+                [ { floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['north', 'west'] }, { walls: ['north'] }, { walls: ['north', 'east', 'south'], wallDevices: [{ type: 'laser', direction: 'north' }] } ], // Added south wall
                 [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -511,7 +511,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Board with a laser-east tile but NO west wall on that tile.
             const testBoardDef = [
-                [ { walls: ['north', 'south'], laser: { direction: 'east' } } ] // Missing 'west' wall
+                [ { walls: ['north', 'south'], wallDevices: [{ type: 'laser', direction: 'east' }] } ] // Missing 'west' wall
             ];
             // Expect this to throw an error during parsing
             return { testBoardDef };
@@ -540,7 +540,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             // Setup: Robot at (0,1) on conveyor-east with laser-east (attached to west wall).
             // Add an east wall to (0,1) to block conveyor movement.
             const testBoardDef = [
-                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['north', 'west', 'east'], laser: { direction: 'east' } }, { walls: ['north', 'east'] } ],
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['north', 'west', 'east'], wallDevices: [{ type: 'laser', direction: 'east' }] }, { walls: ['north', 'east'] } ],
                 [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);
@@ -567,7 +567,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async () => {
             // Setup: Robot at (0,1) on gear-cw with laser-north (attached to south wall).
             const testBoardDef = [
-                [ { walls: ['north', 'west'] }, { walls: ['north', 'south'], floorDevice: { type: 'gear', direction: 'cw' }, laser: { direction: 'north' } }, { walls: ['north', 'east'] } ],
+                [ { walls: ['north', 'west'] }, { walls: ['north', 'south'], floorDevice: { type: 'gear', direction: 'cw' }, wallDevices: [{ type: 'laser', direction: 'north' }] }, { walls: ['north', 'east'] } ],
                 [ { walls: ['south', 'west'] }, { walls: ['south'] }, { walls: ['south', 'east'] } ]
             ];
             const boardData = new Board(testBoardDef);

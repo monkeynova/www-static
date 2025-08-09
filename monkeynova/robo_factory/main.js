@@ -92,34 +92,34 @@ export function createDemonstrationBoard(rows, cols) {
     board[5][riverCol - 2].floorDevice = { type: 'gear', direction: 'cw' };
 
     // 8. Add some push panels (decorators)
-    board[1][5].pusher = { direction: 'east', steps: [1, 3, 5] }; board[1][5].walls.push('west'); // Plain tile with push-east, needs west wall, fires on steps 1,3,5
-    board[rows - 3][cols - 10].pusher = { direction: 'north', steps: [1, 2, 3, 4, 5] }; board[rows - 3][cols - 10].walls.push('south'); // Near bottom-right, push north, needs south wall, fires on all steps
-    board[whirlStart.r][whirlStart.c + 1].pusher = { direction: 'south', steps: [2, 4] }; board[whirlStart.r][whirlStart.c + 1].walls.push('north'); // On a conveyor, push south, needs north wall, fires on steps 2,4
-    board[whirlStart.r - 2][whirlStart.c + 2].pusher = { direction: 'west', steps: [1, 3, 5] }; board[whirlStart.r - 2][whirlStart.c + 2].walls.push('east'); // On a gear, push west, needs east wall, fires on steps 1,3,5
+    board[1][5].wallDevices = [{ type: 'pusher', direction: 'east', steps: new Set([1, 3, 5]) }]; board[1][5].walls.push('west'); // Plain tile with push-east, needs west wall, fires on steps 1,3,5
+    board[rows - 3][cols - 10].wallDevices = [{ type: 'pusher', direction: 'north', steps: new Set([1, 2, 3, 4, 5]) }]; board[rows - 3][cols - 10].walls.push('south'); // Near bottom-right, push north, needs south wall, fires on all steps
+    board[whirlStart.r][whirlStart.c + 1].wallDevices = [{ type: 'pusher', direction: 'south', steps: new Set([2, 4]) }]; board[whirlStart.r][whirlStart.c + 1].walls.push('north'); // On a conveyor, push south, needs north wall, fires on steps 2,4
+    board[whirlStart.r - 2][whirlStart.c + 2].wallDevices = [{ type: 'pusher', direction: 'west', steps: new Set([1, 3, 5]) }]; board[whirlStart.r - 2][whirlStart.c + 2].walls.push('east'); // On a gear, push west, needs east wall, fires on steps 1,3,5
 
     // 9. Add some lasers
     // Basic laser firing east (on plain tile)
-    board[10][5].laser = { direction: 'east' };
+    board[10][5].wallDevices = [{ type: 'laser', direction: 'east' }];
     board[10][5].walls.push('west'); // Changed from 'east' to 'west'
 
     // NEW: Laser near start for testing (at 1,2 firing south, attached to its north wall)
-    board[1][2].laser = { direction: 'south' };
+    board[1][2].wallDevices = [{ type: 'laser', direction: 'south' }];
     board[1][2].walls.push('north');
 
     // Laser firing north, blocked by a wall (on plain tile)
-    board[15][10].laser = { direction: 'north' };
+    board[15][10].wallDevices = [{ type: 'laser', direction: 'north' }];
     board[15][10].walls.push('south'); // Changed from 'north' to 'south'
     board[14][10].walls.push('north'); // Wall on the next tile, blocking the beam
 
     // Laser firing south, robot moves onto its path via conveyor (laser on a conveyor tile)
     board[20][15].floorDevice = { type: 'conveyor', direction: 'south', speed: 1 };
-    board[20][15].laser = { direction: 'south' };
+    board[20][15].wallDevices = [{ type: 'laser', direction: 'south' }];
     board[20][15].walls.push('north'); // Changed from 'south' to 'north'
-    board[19][15].conveyor = { direction: 'south', speed: 1 }; // Conveyor pushing robot onto this tile
+    board[19][15].floorDevice = { type: 'conveyor', direction: 'south', speed: 1 }; // Conveyor pushing robot onto this tile
 
     // Laser firing west, robot moves past its path via conveyor (laser on a gear tile)
-    board[25][20].gear = 'cw';
-    board[25][20].laser = { direction: 'west' };
+    board[25][20].floorDevice = { type: 'gear', direction: 'cw' };
+    board[25][20].wallDevices = [{ type: 'laser', direction: 'west' }];
     board[25][20].walls.push('east'); // Changed from 'west' to 'east'
     board[25][19].floorDevice = { type: 'conveyor', direction: 'east', speed: 1 }; // Conveyor pushing robot past laser
 
