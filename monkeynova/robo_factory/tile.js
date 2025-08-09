@@ -33,7 +33,7 @@ export class Tile {
     /** @type {number} */
     col;
     /** @type {string} */
-    primaryType;
+    floorDevice;
     
     /** @type {boolean} */
     isHole; // NEW
@@ -128,17 +128,17 @@ export class Tile {
             this.gear = tileDef.gear;
         }
 
-        // Determine primaryType based on new properties
+        // Determine floorDevice based on new properties
         if (this.isRepairStation) {
-            this.primaryType = 'repair-station';
+            this.floorDevice = 'repair-station';
         } else if (this.isHole) {
-            this.primaryType = 'hole';
+            this.floorDevice = 'hole';
         } else if (this.gear) {
-            this.primaryType = 'gear';
+            this.floorDevice = 'gear';
         } else if (this.conveyor) {
-            this.primaryType = 'conveyor';
+            this.floorDevice = 'conveyor';
         } else {
-            this.primaryType = 'plain'; // Default primary type
+            this.floorDevice = 'none'; // Default floor device
         }
 
         this.hasPushPanel = !!this.pusher; // Derived from presence of pusher object

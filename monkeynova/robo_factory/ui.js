@@ -401,12 +401,12 @@ function renderStaticBoardElements(boardData) {
             const y = r * Config.TILE_SIZE;
 
             // 1. Draw Tile Background Color
-            switch (tileData.primaryType) {
+            switch (tileData.floorDevice) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
                 case 'hole': ctx.fillStyle = holeColor; break;
                 case 'gear': ctx.fillStyle = gearColor; break; // NEW: Gear color
                 case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break; // NEW: Conveyor base color
-                case 'plain': default: ctx.fillStyle = plainColor; break;
+                case 'none': default: ctx.fillStyle = plainColor; break;
             }
             ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
 
