@@ -614,6 +614,31 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             if (!pass) Logger.error(`   FAIL: Expected no parsing error, but got: ${actual.parseError ? actual.parseError.message : 'None'}`);
             return pass;
         }
+    ),
+
+    defineTest(
+        "Repair Station: Robot heals damage when visiting a new repair station",
+        async () => {
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'repair-station' }, walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 1, 'east'); // Robot starts on repair station
+            robot.takeDamage(); // Make robot take damage
+            robot.takeDamage(); // Make robot take more damage
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH } }, // Expected: Robot's health is MAX_HEALTH
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return healthMatch;
+        }
     )
 ];
 

@@ -226,6 +226,17 @@ class Robot {
     }
 
     /**
+     * Restores robot health to maximum and emits an event.
+     * @returns {number} The new health value (MAX_HEALTH).
+     */
+    heal() {
+        this.health = MAX_HEALTH;
+        Logger.log(`Robot healed to full health: ${this.health}`);
+        emit('healthChanged', { health: this.health, maxHealth: MAX_HEALTH });
+        return this.health;
+    }
+
+    /**
      * Updates the last visited station key.
      * @param {string | null} key
      */

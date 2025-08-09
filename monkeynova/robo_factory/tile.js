@@ -167,6 +167,7 @@ export class Tile {
             if (!robot.hasVisitedStation(stationKey)) {
                 Logger.log(`   Visiting NEW repair station at (${this.row}, ${this.col})!`);
                 robot.visitStation(stationKey);
+                robot.heal(); // Heal the robot when it visits a new station
                 emit('flagVisited', stationKey);
                 const visitCount = robot.getVisitedStationCount();
 
