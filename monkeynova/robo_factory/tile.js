@@ -41,86 +41,46 @@ export class Tile {
      * @param {number} r - The row index of the tile.
      * @param {number} c - The column index of the tile.
      */
-    constructor(tileDef, r, c) {
-        if (!tileDef) {
-            throw new Error(`Invalid tile definition at (${r}, ${c}): tileDef is null or undefined.`);
+    constructor(floorDevice, r, c, walls = [], pusher = null, laser = null) {
+        if (!floorDevice) {
+            throw new Error(`Invalid floor device definition at (${r}, ${c}): floorDevice is null or undefined.`);
         }
 
         this.row = r;
         this.col = c;
-        this.walls = Array.isArray(tileDef.walls) ? tileDef.walls : [];
+        this.walls = Array.isArray(walls) ? walls : [];
+        this.floorDevice = floorDevice;
+        this.pusher = pusher;
+        this.laser = laser;
 
-        let deviceCount = 0;
-        this.floorDevice = { type: 'none' }; // Default to 'none'
-        this.pusher = null; // Initialize pusher separately
-        this.laser = null; // Initialize laser separately
+        // Derived properties
+        this.hasPushPanel = !!this.pusher;
+        this.laserDirection = this.laser ? this.laser.direction : null;
+        this.conveyorDirection = this.floorDevice.type === 'conveyor' ? this.floorDevice.direction : null;
+        this.speed = this.floorDevice.type === 'conveyor' ? this.floorDevice.speed : 1;
 
-        if (tileDef.isRepairStation) {
-            this.floorDevice = { type: 'repair-station' };
-            deviceCount++;
-        }
-        if (tileDef.isHole) {
-            if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-            this.floorDevice = { type: 'hole' };
-            deviceCount++;
-        }
-        if (tileDef.gear) {
-            if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-            if (tileDef.gear !== 'cw' && tileDef.gear !== 'ccw') {
-                throw new Error(`Invalid gear direction '${tileDef.gear}' at (${r}, ${c}). Must be 'cw' or 'ccw'.`);
-            }
-            this.floorDevice = { type: 'gear', direction: tileDef.gear };
-            deviceCount++;
-        }
-        if (tileDef.conveyor) {
-            if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-            if (!tileDef.conveyor.direction || !ALLOWED_WALL_SIDES.includes(tileDef.conveyor.direction)) {
-                throw new Error(`Invalid conveyor direction at (${r}, ${c}).`);
-            }
-            if (tileDef.conveyor.speed !== 1 && tileDef.conveyor.speed !== 2) {
-                throw new Error(`Invalid conveyor speed '${tileDef.conveyor.speed}' at (${r}, ${c}). Must be 1 or 2.`);
-            }
-            this.floorDevice = {
-                type: 'conveyor',
-                direction: tileDef.conveyor.direction,
-                speed: tileDef.conveyor.speed || 1
-            };
-            deviceCount++;
-        }
-
-        // Handle pusher and laser separately, as they are not exclusive floor devices
-        if (tileDef.pusher) {
-            if (!tileDef.pusher.direction || !ALLOWED_WALL_SIDES.includes(tileDef.pusher.direction)) {
+        // Validate pusher and laser if they exist
+        if (this.pusher) {
+            if (!this.pusher.direction || !ALLOWED_WALL_SIDES.includes(this.pusher.direction)) {
                 throw new Error(`Invalid pusher direction at (${r}, ${c}).`);
             }
-            const steps = new Set(Array.isArray(tileDef.pusher.steps) ? tileDef.pusher.steps : []);
-            if (steps.size === 0) {
+            if (!this.pusher.steps || this.pusher.steps.size === 0) {
                 throw new Error(`Tile at (${r}, ${c}) has a push panel but no activation steps defined (e.g., steps: [1, 3, 5]).`);
             }
-            this.pusher = {
-                direction: tileDef.pusher.direction,
-                steps: steps
-            };
             const requiredWallSide = getOppositeWallSide(this.pusher.direction);
             if (!this.walls.includes(requiredWallSide)) {
                 throw new Error(`Push panel at (${r}, ${c}) pushing ${this.pusher.direction} must be attached to a ${requiredWallSide} wall.`);
             }
         }
-        if (tileDef.laser) {
-            if (!tileDef.laser.direction || !ALLOWED_WALL_SIDES.includes(tileDef.laser.direction)) {
+        if (this.laser) {
+            if (!this.laser.direction || !ALLOWED_WALL_SIDES.includes(this.laser.direction)) {
                 throw new Error(`Invalid laser direction at (${r}, ${c}).`);
             }
-            this.laser = { direction: tileDef.laser.direction };
             const requiredWallSide = getOppositeWallSide(this.laser.direction);
             if (!this.walls.includes(requiredWallSide)) {
                 throw new Error(`Laser at (${r}, ${c}) firing ${this.laser.direction} must be attached to a ${requiredWallSide} wall.`);
             }
         }
-
-        this.hasPushPanel = !!this.pusher; // Derived from presence of pusher object
-        this.laserDirection = this.laser ? this.laser.direction : null; // Derived from presence of laser object
-        this.conveyorDirection = this.floorDevice.type === 'conveyor' ? this.floorDevice.direction : null;
-        this.speed = this.floorDevice.type === 'conveyor' ? this.floorDevice.speed : 1;
     }
 
     

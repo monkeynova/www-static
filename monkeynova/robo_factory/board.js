@@ -35,7 +35,58 @@ export class Board {
             const rowTiles = [];
             for (let c = 0; c < this.cols; c++) {
                 const tileDef = boardDefinition[r][c];
-                const tileData = new Tile(tileDef, r, c);
+                let floorDevice = { type: 'none' };
+                let deviceCount = 0; // For validation
+
+                if (tileDef.isRepairStation) {
+                    floorDevice = { type: 'repair-station' };
+                    deviceCount++;
+                }
+                if (tileDef.isHole) {
+                    if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
+                    floorDevice = { type: 'hole' };
+                    deviceCount++;
+                }
+                if (tileDef.gear) {
+                    if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
+                    if (tileDef.gear !== 'cw' && tileDef.gear !== 'ccw') {
+                        throw new Error(`Invalid gear direction '${tileDef.gear}' at (${r}, ${c}). Must be 'cw' or 'ccw'.`);
+                    }
+                    floorDevice = { type: 'gear', direction: tileDef.gear };
+                    deviceCount++;
+                }
+                if (tileDef.conveyor) {
+                    if (deviceCount > 0) throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
+                    if (!tileDef.conveyor.direction || !ALLOWED_WALL_SIDES.includes(tileDef.conveyor.direction)) {
+                        throw new Error(`Invalid conveyor direction at (${r}, ${c}).`);
+                    }
+                    if (tileDef.conveyor.speed !== 1 && tileDef.conveyor.speed !== 2) {
+                        throw new Error(`Invalid conveyor speed '${tileDef.conveyor.speed}' at (${r}, ${c}). Must be 1 or 2.`);
+                    }
+                    floorDevice = {
+                        type: 'conveyor',
+                        direction: tileDef.conveyor.direction,
+                        speed: tileDef.conveyor.speed || 1
+                    };
+                    deviceCount++;
+                }
+
+                // Handle pusher and laser separately, as they are not exclusive floor devices
+                let pusher = null;
+                if (tileDef.pusher) {
+                    const steps = new Set(Array.isArray(tileDef.pusher.steps) ? tileDef.pusher.steps : []);
+                    pusher = {
+                        direction: tileDef.pusher.direction,
+                        steps: steps
+                    };
+                }
+
+                let laser = null;
+                if (tileDef.laser) {
+                    laser = { direction: tileDef.laser.direction };
+                }
+
+                const tileData = new Tile(floorDevice, r, c, tileDef.walls, pusher, laser);
                 rowTiles.push(tileData);
 
                 if (tileData.floorDevice.type === 'repair-station') {
