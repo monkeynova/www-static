@@ -21,7 +21,7 @@ export class Board {
         }
         this.rows = boardDefinition.length;
         this.cols = boardDefinition[0].length;
-        this.repairStations = [];
+        this.flags = [];
         this.tiles = []; // Store processed data for each tile
 
         
@@ -68,13 +68,13 @@ export class Board {
                 const tileData = new Tile(floorDevice, r, c, tileDef.walls, tileDef.wallDevices);
                 rowTiles.push(tileData);
 
-                if (tileData.floorDevice.type === 'repair-station') {
-                    this.repairStations.push({ row: r, col: c });
+                if (tileData.floorDevice.type === 'repair-station' || tileData.floorDevice.type === 'checkpoint') {
+                    this.flags.push({ row: r, col: c, type: tileData.floorDevice.type });
                 }
             }
             this.tiles.push(rowTiles);
         }
-        Logger.log(`Parsed board. Found ${this.repairStations.length} repair stations.`);
+        Logger.log(`Parsed board. Found ${this.flags.length} flags.`);
         // Note: Wall consistency (east wall of A matching west wall of B) is assumed
         // to be handled correctly in the definition for now.
     }

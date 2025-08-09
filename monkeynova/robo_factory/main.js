@@ -80,10 +80,11 @@ export function createDemonstrationBoard(rows, cols) {
         board[whirlStart.r + i][whirlStart.c + whirlSize - 1].floorDevice = { type: 'conveyor', direction: 'north', speed: 1 };
     }
 
-    // 6. Place repair stations strategically
+    // 6. Place repair stations and checkpoints strategically
     board[1][1].floorDevice = { type: 'repair-station' }; // Start
-    board[mazeStartRow + 1][mazeEndCol - 1].floorDevice = { type: 'repair-station' }; // In the maze
+    board[mazeStartRow + 1][mazeEndCol - 1].floorDevice = { type: 'checkpoint' }; // In the maze (now a checkpoint)
     board[rows - 5][cols - 5].floorDevice = { type: 'repair-station' }; // Across the chasm
+    board[rows - 2][2].floorDevice = { type: 'checkpoint' }; // New checkpoint near bottom-left
 
     // 7. Add some gears
     board[whirlStart.r - 2][whirlStart.c + 2].floorDevice = { type: 'gear', direction: 'cw' };
@@ -153,10 +154,10 @@ if (typeof document !== 'undefined') {
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
             // Use the newly defined initialRobotState
             const startTileData = board.getTileData(initialRobotState.row, initialRobotState.col);
-            if (startTileData && startTileData.floorDevice.type === 'repair-station') {
+            if (startTileData && (startTileData.floorDevice.type === 'repair-station' || startTileData.floorDevice.type === 'checkpoint')) {
                 const key = `${initialRobotState.row}-${initialRobotState.col}`;
                 Logger.log(`Robot starts on station ${key}. Updating state.`);
-                robot.visitStation(key);
+                robot.visitFlag(key);
                 robot.setLastVisitedStation(key);
                 // UI update for this will happen via initial event emission later
             }

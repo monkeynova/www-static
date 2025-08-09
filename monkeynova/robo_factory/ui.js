@@ -171,7 +171,7 @@ export function initializeUI(boardData, initialRobotState) {
     cacheDOMElements(); // Corrected function name
     if (!initCanvas(boardData)) return false; // Init canvas size/context
     renderStaticBoardElements(boardData);   // Draw static board elements
-    createFlagIndicatorsUI(boardData.repairStations); // Create flag DOM elements
+    createFlagIndicatorsUI(boardData.flags); // Create flag DOM elements (now uses boardData.flags) // Create flag DOM elements (now uses boardData.flags)
     createRobotElement();                   // Create robot DOM element
     applyZoom();                            // NEW: Apply initial zoom
     drawLaserBeams(boardData, initialRobotState); // Initial draw of laser beams
@@ -385,6 +385,7 @@ function renderStaticBoardElements(boardData) {
     const styles = getComputedStyle(document.documentElement);
     const plainColor = styles.getPropertyValue('--tile-plain-color').trim() || '#eee';
     const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
+    const checkpointColor = styles.getPropertyValue('--tile-checkpoint-color').trim() || '#ffcc00'; // NEW: Checkpoint color
     const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
     const gearColor = styles.getPropertyValue('--tile-gear-color').trim() || '#d8bfd8';
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
@@ -404,6 +405,7 @@ function renderStaticBoardElements(boardData) {
             // 1. Draw Tile Background Color
             switch (tileData.floorDevice.type) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
+                case 'checkpoint': ctx.fillStyle = checkpointColor; break; // NEW: Checkpoint color
                 case 'hole': ctx.fillStyle = holeColor; break;
                 case 'gear': ctx.fillStyle = gearColor; break; // NEW: Gear color
                 case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break; // NEW: Conveyor base color
@@ -424,6 +426,9 @@ function renderStaticBoardElements(boardData) {
             switch (tileData.floorDevice.type) {
                 case 'repair-station':
                     symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
+                    break;
+                case 'checkpoint': // NEW: Checkpoint symbol
+                    symbol = Config.TILE_SYMBOLS['checkpoint'] || '🚩';
                     break;
                 case 'hole':
                     symbol = Config.TILE_SYMBOLS['hole'] || '🕳️';
@@ -673,7 +678,7 @@ function renderStaticBoardElements(boardData) {
 }
 
 /** Creates the flag indicator DOM elements */
-function createFlagIndicatorsUI(repairStations) {
+function createFlagIndicatorsUI(flags) {
     if (!flagStatusContainer) {
         Logger.error("UI Error: Flag status container not found.");
         return;
@@ -681,19 +686,19 @@ function createFlagIndicatorsUI(repairStations) {
     // Clear any previous indicators
     flagStatusContainer.querySelectorAll('.flag-indicator').forEach(el => el.remove());
 
-    if (!repairStations || repairStations.length === 0) {
-        Logger.warn("UI: No repair stations found in board data to create indicators for.");
+    if (!flags || flags.length === 0) {
+        Logger.warn("UI: No flags found in board data to create indicators for.");
         return;
     }
 
-    Logger.log(`UI: Creating indicators for ${repairStations.length} stations.`);
-    repairStations.forEach(station => {
-        const stationKey = `${station.row}-${station.col}`;
+    Logger.log(`UI: Creating indicators for ${flags.length} flags.`);
+    flags.forEach(flag => {
+        const flagKey = `${flag.row}-${flag.col}`;
         const indicator = document.createElement('div');
         indicator.classList.add('flag-indicator');
-        indicator.dataset.stationKey = stationKey; // Link indicator to station data
-        // Use symbol from config if available, otherwise fallback
-        const symbol = Config.TILE_SYMBOLS ? (Config.TILE_SYMBOLS['repair-station'] || '🔧') : '🔧';
+        indicator.dataset.stationKey = flagKey; // Link indicator to station data
+        // Use symbol from config based on flag type
+        const symbol = Config.TILE_SYMBOLS[flag.type] || '❓'; // Use flag.type directly
         indicator.textContent = symbol;
         flagStatusContainer.appendChild(indicator);
     });

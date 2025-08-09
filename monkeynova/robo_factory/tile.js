@@ -32,7 +32,7 @@ export class Tile {
     row;
     /** @type {number} */
     col;
-    /** @type {{type: 'none' | 'hole' | 'repair-station' | 'conveyor' | 'gear', direction?: string, speed?: number, steps?: Set<number>} | null} */
+    /** @type {{type: 'none' | 'hole' | 'repair-station' | 'checkpoint' | 'conveyor' | 'gear', direction?: string, speed?: number, steps?: Set<number>} | null} */
     floorDevice;
 
     constructor(floorDevice, r, c, walls = [], wallDevices = []) {
@@ -163,22 +163,39 @@ export class Tile {
         if (this.floorDevice.type === 'repair-station') {
             const stationKey = `${this.row}-${this.col}`;
             robot.setLastVisitedStation(stationKey);
+            robot.heal(); // Repair stations only heal
+            Logger.log(`   Robot visited repair station at (${this.row}, ${this.col}) and healed.`);
+        }
+        return { gameEnded };
+    }
 
-            if (!robot.hasVisitedStation(stationKey)) {
-                Logger.log(`   Visiting NEW repair station at (${this.row}, ${this.col})!`);
-                robot.visitStation(stationKey);
-                robot.heal(); // Heal the robot when it visits a new station
-                emit('flagVisited', stationKey);
-                const visitCount = robot.getVisitedStationCount();
+    /**
+     * Attempts to apply checkpoint effects if the tile is a checkpoint.
+     * @param {Robot} robot - The robot instance.
+     * @param {Board} board - The board instance.
+     * @returns {{gameEnded: boolean}} - Indicates if the game ended (win condition).
+     */
+    tryApplyCheckpoint(robot, board) {
+        let gameEnded = false;
+        if (this.floorDevice.type === 'checkpoint') {
+            const flagKey = `${this.row}-${this.col}`;
+            robot.setLastVisitedStation(flagKey); // Checkpoints also update last visited station
+            robot.heal(); // Checkpoints also heal
 
-                Logger.log(`   Visited ${visitCount} / ${board.repairStations.length} stations.`);
-                if (visitCount === board.repairStations.length && board.repairStations.length > 0) {
+            if (!robot.hasVisitedFlag(flagKey)) {
+                Logger.log(`   Visiting NEW checkpoint at (${this.row}, ${this.col})!`);
+                robot.visitFlag(flagKey);
+                emit('flagVisited', flagKey);
+                const visitCount = robot.getVisitedFlagCount();
+
+                Logger.log(`   Visited ${visitCount} / ${board.flags.length} flags.`);
+                if (visitCount === board.flags.length && board.flags.length > 0) {
                     Logger.log("   *** WIN CONDITION MET! ***");
                     emit('gameOver', true);
                     gameEnded = true;
                 }
             } else {
-                Logger.log(`   Already visited repair station at (${this.row}, ${this.col}).`);
+                Logger.log(`   Already visited checkpoint at (${this.row}, ${this.col}).`);
             }
         }
         return { gameEnded };

@@ -130,6 +130,12 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
         gameEnded = true;
     }
 
+    // --- NEW: Checkpoint ---
+    const checkpointResult = finalTileData.tryApplyCheckpoint(robot, boardData);
+    if (checkpointResult.gameEnded) {
+        gameEnded = true;
+    }
+
     // --- 4. Hole ---
     if (!gameEnded) { // Only check for hole if game hasn't ended from repair station
         const holeResult = await finalTileData.tryApplyHole(robot, boardData);

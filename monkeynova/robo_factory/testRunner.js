@@ -617,7 +617,35 @@ Executing Card 1: ${cardData.type} (${cardData.text})
     ),
 
     defineTest(
-        "Repair Station: Robot heals damage when visiting a new repair station",
+        "Checkpoint: Robot heals damage and marks flag when visiting a new checkpoint",
+        async () => {
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'checkpoint' }, walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 1, 'east'); // Robot starts on checkpoint
+            robot.takeDamage(); // Make robot take damage
+            robot.takeDamage(); // Make robot take more damage
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, visitedFlags: setupData.robot.getVisitedFlagCount() };
+        },
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }, visitedFlags: 1 }, // Expected: Robot's health is MAX_HEALTH, 1 flag visited
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            const flagCountMatch = actual.visitedFlags === expected.visitedFlags;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            if (!flagCountMatch) Logger.error(`   FAIL: Flag count mismatch. Expected ${expected.visitedFlags}, Got ${actual.visitedFlags}`);
+            return healthMatch && flagCountMatch;
+        }
+    ),
+
+    defineTest(
+        "Repair Station: Robot heals damage but does NOT mark flag when visiting a repair station",
         async () => {
             const testBoardDef = [
                 [ { walls: ['north', 'west'] }, { floorDevice: { type: 'repair-station' }, walls: ['north', 'east'] } ],
@@ -631,13 +659,16 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
-            return setupData.robot.getRobotState();
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, visitedFlags: setupData.robot.getVisitedFlagCount() };
         },
-        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH } }, // Expected: Robot's health is MAX_HEALTH
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }, visitedFlags: 0 }, // Expected: Robot's health is MAX_HEALTH, 0 flags visited
         (actual, expected) => {
             const healthMatch = actual.health === expected.robot.health;
+            const flagCountMatch = actual.visitedFlags === expected.visitedFlags;
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            return healthMatch;
+            if (!flagCountMatch) Logger.error(`   FAIL: Flag count mismatch. Expected ${expected.visitedFlags}, Got ${actual.visitedFlags}`);
+            return healthMatch && flagCountMatch;
         }
     )
 ];

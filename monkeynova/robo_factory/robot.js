@@ -16,7 +16,7 @@ class Robot {
     orientation;
     health;
     lastVisitedStationKey;
-    visitedRepairStations;
+    visitedFlags;
     program; // NEW: Array to store the program cards
 
     /**
@@ -34,7 +34,7 @@ class Robot {
         this.orientation = startOrientation;
         this.health = MAX_HEALTH;
         this.lastVisitedStationKey = null;
-        this.visitedRepairStations = new Set();
+        this.visitedFlags = new Set();
         this.program = []; // Initialize program as an empty array
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
     }
@@ -72,32 +72,32 @@ class Robot {
     }
 
     /**
-     * Marks a repair station as visited by this robot.
-     * @param {string} stationKey - The key ('row-col') of the station.
+     * Marks a flag (checkpoint or repair station) as visited by this robot.
+     * @param {string} flagKey - The key ('row-col') of the flag.
      */
-    visitStation(stationKey) {
-        if (stationKey && !this.visitedRepairStations.has(stationKey)) {
-            this.visitedRepairStations.add(stationKey);
-            Logger.log(`Robot visited new station: ${stationKey}. Total: ${this.visitedRepairStations.size}`);
+    visitFlag(flagKey) {
+        if (flagKey && !this.visitedFlags.has(flagKey)) {
+            this.visitedFlags.add(flagKey);
+            Logger.log(`Robot visited new flag: ${flagKey}. Total: ${this.visitedFlags.size}`);
             // Note: We still emit 'flagVisited' from gameLoop when this happens
         }
     }
 
     /**
-     * Checks if this robot has visited a specific repair station.
-     * @param {string} stationKey - The key ('row-col') of the station.
-     * @returns {boolean} True if the station has been visited.
+     * Checks if this robot has visited a specific flag.
+     * @param {string} flagKey - The key ('row-col') of the flag.
+     * @returns {boolean} True if the flag has been visited.
      */
-    hasVisitedStation(stationKey) {
-        return this.visitedRepairStations.has(stationKey);
+    hasVisitedFlag(flagKey) {
+        return this.visitedFlags.has(flagKey);
     }
 
     /**
-     * Gets the number of unique repair stations visited by this robot.
-     * @returns {number} The count of visited stations.
+     * Gets the number of unique flags visited by this robot.
+     * @returns {number} The count of visited flags.
      */
-    getVisitedStationCount() {
-        return this.visitedRepairStations.size;
+    getVisitedFlagCount() {
+        return this.visitedFlags.size;
     }
 
     /**
