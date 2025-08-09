@@ -401,7 +401,7 @@ function renderStaticBoardElements(boardData) {
             const y = r * Config.TILE_SIZE;
 
             // 1. Draw Tile Background Color
-            switch (tileData.floorDevice) {
+            switch (tileData.floorDevice.type) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
                 case 'hole': ctx.fillStyle = holeColor; break;
                 case 'gear': ctx.fillStyle = gearColor; break; // NEW: Gear color
