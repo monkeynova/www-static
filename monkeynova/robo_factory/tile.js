@@ -215,20 +215,15 @@ export class Tile {
         if (this.floorDevice.type === 'hole') {
             Logger.log(`   Robot landed on a hole at (${this.row}, ${this.col})!`);
             fellInHole = true;
-            robot.takeDamage();
+            gameEnded = robot.loseLife(); // Robot loses a life and respawns or game ends
 
-            if (robot.isDestroyed()) {
-                Logger.error("   *** ROBOT DESTROYED by falling in hole! ***");
-                emit('gameOver', false);
-                gameEnded = true;
-            } else {
+            if (!gameEnded) { // If game didn't end, robot respawned
                 const lastKey = robot.getRobotState().lastVisitedStationKey;
                 if (lastKey) {
                     Logger.log(`   Returning to last visited station: ${lastKey}`);
                     const [lastR, lastC] = lastKey.split('-').map(Number);
                     if (board.getTileData(lastR, lastC)) {
                         robot.setPosition(lastR, lastC);
-                        // No await sleep here, as it's handled by gameLoop after this function returns
                     } else {
                         Logger.error(`   Last visited station key ${lastKey} points to an invalid tile! Cannot return.`);
                     }

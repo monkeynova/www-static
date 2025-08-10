@@ -134,9 +134,10 @@ const testScenarios = [
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1); // Pass step 1
-            return setupData.robot.getRobotState();
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives };
         },
-        { robot: { row: 0, col: 1, orientation: 'north' } }, // Expected: Moves to (0,1)
+        { robot: { row: 0, col: 1, orientation: 'north', health: Config.MAX_HEALTH }, lives: 2 }, // Expected: Moves to (0,1), loses a life, health resets
         (actual, expected) => {
             const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
@@ -183,13 +184,15 @@ const testScenarios = [
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1); // Pass step 1
             return setupData.robot.getRobotState();
         },
-        { robot: { row: 0, col: 1, orientation: 'north', health: Config.MAX_HEALTH - 1 } }, // Expected: Moves to (0,1) and takes damage
+        { robot: { row: 0, col: 1, orientation: 'north', health: Config.MAX_HEALTH }, lives: 2 }, // Expected: Moves to (0,1), loses a life, health resets
         (actual, expected) => {
             const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
             const healthMatch = actual.health === expected.robot.health;
+            const livesMatch = actual.lives === expected.lives;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            return posMatch && healthMatch;
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            return posMatch && healthMatch && livesMatch;
         }
     ),
 
@@ -446,13 +449,16 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         },
         async (setupData) => {
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
-            return setupData.robot.getRobotState();
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives };
         },
-        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 } }, // Expected: Robot takes 1 damage
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 }, lives: 3 }, // Expected: Robot takes 1 damage, lives remain 3
         (actual, expected) => {
             const healthMatch = actual.health === expected.robot.health;
+            const livesMatch = actual.lives === expected.lives;
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            return healthMatch;
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            return healthMatch && livesMatch;
         }
     ),
 
@@ -550,15 +556,18 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async (setupData) => {
             // Simulate one program card execution to trigger board effects
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
-            return setupData.robot.getRobotState();
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives };
         },
-        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 } }, // Expected: Robot stays at (0,1) and takes damage
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 }, lives: 3 }, // Expected: Robot stays at (0,1) and takes damage, lives remain 3
         (actual, expected) => {
             const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
             const healthMatch = actual.health === expected.robot.health;
+            const livesMatch = actual.lives === expected.lives;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            return posMatch && healthMatch;
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            return posMatch && healthMatch && livesMatch;
         }
     ),
 
@@ -577,17 +586,20 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         async (setupData) => {
             // Simulate one program card execution to trigger board effects
             await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
-            return setupData.robot.getRobotState();
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives };
         },
-        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 } }, // Expected: Robot stays at (0,1), rotates, and takes damage
+        { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 1 }, lives: 3 }, // Expected: Robot stays at (0,1), rotates, and takes damage, lives remain 3
         (actual, expected) => {
             const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
             const orientMatch = actual.orientation === expected.robot.orientation;
             const healthMatch = actual.health === expected.robot.health;
+            const livesMatch = actual.lives === expected.lives;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
             if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${expected.robot.orientation}, Got ${actual.orientation}`);
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
-            return posMatch && orientMatch && healthMatch;
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            return posMatch && orientMatch && healthMatch && livesMatch;
         }
     ),
 
@@ -729,6 +741,138 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
             if (!flagCountMatch) Logger.error(`   FAIL: Highest visited checkpoint order mismatch. Expected ${expected.highestVisitedCheckpointOrder}, Got ${actual.highestVisitedCheckpointOrder}`);
             return healthMatch && flagCountMatch;
+        }
+    ),
+
+    defineTest(
+        "Damage: Robot loses all health from lasers, loses a life, and respawns",
+        async () => {
+            // Setup: Robot at (0,0) with a laser firing at it from (0,1) (west wall).
+            // Robot will take 10 damage, lose a life, and respawn at (0,0) (its starting point).
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { walls: ['north', 'east'], wallDevices: [{ type: 'laser', direction: 'west' }] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 0, 'east'); // Robot starts at (0,0)
+            robot.setLastVisitedStation('0-0'); // Set initial respawn point
+
+            // Make robot take 9 damage to be at 1 health
+            for (let i = 0; i < 9; i++) {
+                robot.takeDamage();
+            }
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Robot takes 1 more damage from laser, health drops to 0, loses a life, respawns
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives };
+        },
+        { robot: { row: 0, col: 0, orientation: 'east', health: Config.MAX_HEALTH }, lives: 2 }, // Expected: Respawned at (0,0) with full health, 2 lives left
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const healthMatch = actual.health === expected.robot.health;
+            const livesMatch = actual.lives === expected.lives;
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            return posMatch && healthMatch && livesMatch;
+        }
+    ),
+
+    defineTest(
+        "Game Over: Robot loses all lives from health depletion",
+        async () => {
+            // Setup: Robot at (0,0) with a laser firing at it from (0,1) (west wall).
+            // Robot will take 10 damage repeatedly until all 3 lives are gone.
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { walls: ['north', 'east'], wallDevices: [{ type: 'laser', direction: 'west' }] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 0, 'east'); // Robot starts at (0,0)
+            robot.setLastVisitedStation('0-0'); // Set initial respawn point
+
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            let gameEnded = false;
+            // Simulate taking damage until game over
+            for (let i = 0; i < 3; i++) { // 3 lives
+                for (let j = 0; j < Config.MAX_HEALTH; j++) { // 10 health per life
+                    setupData.robot.takeDamage(); // Directly apply damage
+                    if (setupData.robot.isDestroyed()) {
+                        gameEnded = true;
+                        break;
+                    }
+                }
+                if (gameEnded) break;
+            }
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives, gameEnded };
+        },
+        { robot: { row: 0, col: 0, orientation: 'east', health: 0 }, lives: 0, gameEnded: true }, // Expected: Game over, 0 lives left
+        (actual, expected) => {
+            const livesMatch = actual.lives === expected.lives;
+            const gameEndedMatch = actual.gameEnded === expected.gameEnded;
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            if (!gameEndedMatch) Logger.error(`   FAIL: GameEnded mismatch. Expected ${expected.gameEnded}, Got ${actual.gameEnded}`);
+            return livesMatch && gameEndedMatch;
+        }
+    ),
+
+    defineTest(
+        "Game Over: Robot loses all lives by falling in holes",
+        async () => {
+            // Setup: Robot at (0,0) with a hole at (0,1).
+            // Robot will move to (0,1) and fall into hole repeatedly until all 3 lives are gone.
+            const testBoardDef = [
+                [ { walls: ['north', 'west'] }, { floorDevice: { type: 'hole' }, walls: ['north', 'east'] } ],
+                [ { walls: ['south', 'west'] }, { walls: ['south', 'east'] } ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 0, 'east'); // Robot starts at (0,0)
+            robot.setLastVisitedStation('0-0'); // Set initial respawn point
+
+            // Program: Move 1 (to fall into hole)
+            const programCards = [
+                { type: 'move1', text: 'Move 1', instanceId: 'card-1' },
+            ];
+            robot.setProgram(programCards);
+
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            let gameEnded = false;
+            const initialRespawnKey = setupData.robot.lastVisitedStationKey; // Store initial respawn point
+
+            // Simulate falling into hole until game over
+            for (let i = 0; i < 3; i++) { // 3 lives
+                gameEnded = setupData.robot.loseLife(); // Directly lose a life
+                if (gameEnded) {
+                    break;
+                }
+                // Manually reset position to last visited station after losing a life
+                if (initialRespawnKey) {
+                    const [lastR, lastC] = initialRespawnKey.split('-').map(Number);
+                    setupData.robot.setPosition(lastR, lastC);
+                }
+            }
+            const robotState = setupData.robot.getRobotState();
+            return { ...robotState, lives: setupData.robot.lives, gameEnded };
+        },
+        { robot: { row: 0, col: 0, orientation: 'east', health: Config.MAX_HEALTH }, lives: 0, gameEnded: true }, // Expected: Game over, 0 lives left, health reset to MAX_HEALTH on last respawn attempt
+        (actual, expected) => {
+            const livesMatch = actual.lives === expected.lives;
+            const gameEndedMatch = actual.gameEnded === expected.gameEnded;
+            // Health should be MAX_HEALTH because it's reset on the last respawn attempt before game over
+            const healthMatch = actual.health === expected.robot.health;
+
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.lives}, Got ${actual.lives}`);
+            if (!gameEndedMatch) Logger.error(`   FAIL: GameEnded mismatch. Expected ${expected.gameEnded}, Got ${actual.gameEnded}`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return livesMatch && gameEndedMatch && healthMatch;
         }
     )
 ];

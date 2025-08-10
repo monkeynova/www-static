@@ -15,6 +15,7 @@ class Robot {
     col;
     orientation;
     health;
+    lives; // NEW: Number of lives
     lastVisitedStationKey;
     highestVisitedCheckpointOrder;
     program; // NEW: Array to store the program cards
@@ -33,6 +34,7 @@ class Robot {
         this.col = startCol;
         this.orientation = startOrientation;
         this.health = MAX_HEALTH;
+        this.lives = 3; // Initialize with 3 lives
         this.lastVisitedStationKey = null;
         this.highestVisitedCheckpointOrder = 0;
         this.program = []; // Initialize program as an empty array
@@ -67,6 +69,7 @@ class Robot {
             col: this.col,
             orientation: this.orientation,
             health: this.health,
+            lives: this.lives, // Include lives in the state
             lastVisitedStationKey: this.lastVisitedStationKey,
         };
     }
@@ -223,14 +226,43 @@ class Robot {
 
     /**
      * Decreases robot health by 1 and emits an event.
+     * If health drops to 0 or below, the robot loses a life and respawns.
      * @returns {number} The new health value.
      */
     takeDamage() {
         this.health--;
         Logger.log(`Robot took 1 damage. Health: ${this.health}`);
-        // Emit event with current state AFTER update
         emit('healthChanged', { health: this.health, maxHealth: MAX_HEALTH });
+
+        if (this.health <= 0) {
+            Logger.log("Robot health depleted. Losing a life...");
+            this.loseLife();
+        }
         return this.health;
+    }
+
+    /**
+     * Decrements robot lives by 1 and triggers respawn if possible.
+     * Emits 'gameOver' if no lives remain.
+     * @returns {boolean} True if a life was lost and robot respawned/game ended, false otherwise.
+     */
+    loseLife() {
+        this.lives--;
+        Logger.log(`Robot lost a life. Lives remaining: ${this.lives}`);
+        emit('livesChanged', this.lives); // Emit event for UI to update lives display
+
+        if (this.lives <= 0) {
+            Logger.error("*** ROBOT DESTROYED! No lives left. ***");
+            emit('gameOver', false); // Game over, loss
+            return true;
+        } else {
+            // Respawn at last visited station
+            this.health = MAX_HEALTH; // Restore health
+            emit('healthChanged', { health: this.health, maxHealth: MAX_HEALTH });
+            Logger.log(`Robot respawned at last checkpoint with full health (${this.health}).`);
+            // The actual position change will be handled by gameLoop based on lastVisitedStationKey
+            return false; // Robot respawned, game is NOT over
+        }
     }
 
     /**
@@ -254,11 +286,11 @@ class Robot {
     }
 
     /**
-     * Checks if the robot's health is 0 or less.
+     * Checks if the robot has 0 lives or less.
      * @returns {boolean}
      */
     isDestroyed() {
-        return this.health <= 0;
+        return this.lives <= 0;
     }
 }
 

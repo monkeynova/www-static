@@ -111,9 +111,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
                         await sleep(300); // Small delay for visual feedback of damage
                         robotState = robot.getRobotState(); // Update robot state after damage
                         if (robot.isDestroyed()) {
-                            Logger.error("   *** ROBOT DESTROYED by laser! ***");
-                            emit('gameOver', false);
-                            gameEnded = true;
+                            gameEnded = true; // Game ended due to no lives left
                             return { gameEnded, boardMoved, fellInHole }; // Exit early if game over
                         }
                     }

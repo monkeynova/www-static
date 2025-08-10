@@ -97,6 +97,7 @@ let runProgramButton = null;
 let flagStatusContainer = null;
 let healthValueEl = null;
 let maxHealthValueEl = null;
+let livesValueEl = null; // NEW: Element for lives display
 let modal = null;
 let modalTitleEl = null;
 let modalMessageEl = null;
@@ -128,6 +129,7 @@ function cacheDOMElements() {
     flagStatusContainer = document.getElementById('flag-status');
     healthValueEl = document.getElementById('health-value');
     maxHealthValueEl = document.getElementById('max-health-value');
+    livesValueEl = document.getElementById('lives-value'); // NEW: Cache lives element
     modal = document.getElementById('end-game-modal');
     modalTitleEl = document.getElementById('modal-title');
     modalMessageEl = document.getElementById('modal-message');
@@ -175,6 +177,7 @@ export function initializeUI(boardData, initialRobotState) {
     createRobotElement();                   // Create robot DOM element
     applyZoom();                            // NEW: Apply initial zoom
     drawLaserBeams(boardData, initialRobotState); // Initial draw of laser beams
+    updateLivesUI(initialRobotState.lives); // NEW: Set initial lives display
     Logger.log("UI Initialization complete.");
     return true;
 }
@@ -808,6 +811,14 @@ function updateHealthUI(health, maxHealth) {
     }
 }
 
+/** NEW: Updates the lives display. */
+function updateLivesUI(lives) {
+    if (livesValueEl) {
+        livesValueEl.textContent = lives;
+        livesValueEl.classList.toggle('critical', lives <= 1);
+    }
+}
+
 /** Marks a flag indicator as visited. */
 function updateFlagIndicatorUI({ flagKey, visitedOrder }) {
     // Mark all flags up to the visitedOrder as 'visited'
@@ -825,7 +836,7 @@ function showModalUI(isWin) {
     if (modal && modalTitleEl && modalMessageEl) {
         modalTitleEl.textContent = isWin ? "You Win!" : "Robot Destroyed!";
         modalTitleEl.className = isWin ? 'win' : 'loss'; // Add class for styling
-        modalMessageEl.textContent = isWin ? "Congratulations! You visited all checkpoints in order!" : "Your robot ran out of health.";
+        modalMessageEl.textContent = isWin ? "Congratulations! You visited all checkpoints in order!" : "Your robot ran out of lives.";
         modal.style.display = 'flex'; // Show modal
     }
 }
@@ -1146,6 +1157,9 @@ function subscribeToModelEvents(boardData, robot) { // Pass needed static data l
     });
     on('healthChanged', ({ health, maxHealth }) => {
         updateHealthUI(health, maxHealth);
+    });
+    on('livesChanged', (lives) => { // NEW: Listen for lives changes
+        updateLivesUI(lives);
     });
     on('flagVisited', (stationKey) => { // Assuming gameLoop emits this
          updateFlagIndicatorUI(stationKey);

@@ -198,6 +198,8 @@ if (typeof document !== 'undefined') {
                 health: initialRobotState.health,
                 maxHealth: Config.MAX_HEALTH
             });
+            // NEW: Emit initial lives
+            emit('livesChanged', robot.lives);
             // Emit starting flag visit status (if applicable)
             if (initialRobotState.lastVisitedStationKey) {
                 emit('flagVisited', initialRobotState.lastVisitedStationKey);

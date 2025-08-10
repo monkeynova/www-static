@@ -29,6 +29,7 @@ export const ALLOWED_EVENT_NAMES = new Set([
     'handUpdated',
     'cardCountsUpdated',
     'programExecutionFinished',
+    'livesChanged', // NEW: Event for lives changing
 ]);
 
 export const ALLOWED_LOG_LEVELS = new Set([
