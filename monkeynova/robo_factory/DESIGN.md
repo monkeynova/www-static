@@ -76,6 +76,7 @@ The application is architected with a clear separation of concerns, using modern
 *   **`config.js`:** A central place for game constants (e.g., `MAX_HEALTH`, `HAND_SIZE`, `TILE_SIZE`, deck composition).
 *   **`robot.js`:** (Model) Defines the `Robot` class, managing its state (position, health, etc.) and state-changing methods (`move`, `turn`, `takeDamage`).
 *   **`board.js`:** (Model) Contains functions for parsing the board definition and querying tile properties (e.g., `getTileData`, `hasWall`).
+*   **`tile.js`:** (Model) Defines the `Tile` class, representing a single tile on the game board and encapsulating its properties (walls, floor devices, wall devices) and methods for applying their effects to the robot.
 *   **`cards.js`:** (Model) Manages the card deck, hand, and discard pile. Handles shuffling, drawing, and discarding logic.
 *   **`gameLoop.js`:** (Controller) Orchestrates the execution phase of the game. It processes the programmed cards and triggers board effects in the correct sequence.
 *   **`ui.js`:** (View) Responsible for all DOM manipulation and canvas rendering. It listens for events to update the visual representation of the game state and captures user input (drag-and-drop, button clicks).
@@ -107,10 +108,6 @@ To maintain a clean, predictable, and maintainable codebase, the following princ
 
 ## 4. Future Work & Potential Enhancements
 
-*   **More Board Elements:**
-    *   **Lasers:** Stationary lasers that fire at the end of each card execution, damaging robots in their path.
-    *   **Push Panels:** Attached to walls, these panels activate on specific phases of play (e.g., 2/4 or 1/3/5) to push adjacent robots one tile away from the wall. They activate after conveyor belts and before gears.
-    *   **Rotating Gears:** Tiles that rotate the robot standing on them.
 *   **More Card Types:**
     *   **"Again":** Repeats the previous card's action.
     *   **"Power Down":** Robot skips the next card but regains some health.
