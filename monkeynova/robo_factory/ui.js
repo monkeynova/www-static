@@ -429,12 +429,12 @@ function renderStaticBoardElements(boardData) {
                     break;
                 case 'checkpoint': // NEW: Checkpoint symbol
                     symbol = Config.TILE_SYMBOLS['checkpoint'] || '🚩';
-                    ctx.fillText(symbol, centerX, centerY); // Draw flag symbol
+                    ctx.fillText(symbol, centerX, centerY - 8); // Draw flag symbol slightly higher
 
                     // Draw order number on top of the flag
                     ctx.fillStyle = 'white'; // Color for the number
-                    ctx.font = '16px Arial'; // Smaller font for the number
-                    ctx.fillText(tileData.floorDevice.order.toString(), centerX, centerY + 5); // Offset slightly for better visibility
+                    ctx.font = 'bold 14px Arial'; // Smaller, bold font for the number
+                    ctx.fillText(tileData.floorDevice.order.toString(), centerX, centerY + 12); // Offset slightly for better visibility
                     break;
                 case 'hole':
                     symbol = Config.TILE_SYMBOLS['hole'] || '🕳️';
