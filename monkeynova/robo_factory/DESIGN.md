@@ -10,7 +10,7 @@ The game is turn-based, with a distinct programming phase and an execution phase
 
 ### 2.1. Game Objective
 
-The primary objective is to guide the robot to touch every **Repair Station** tile on the board. The game is won when the last unique repair station is visited. The game is lost if the robot's health reaches zero.
+The primary objective is to guide the robot to visit all **Checkpoint** tiles on the board *in their designated numerical order*. The game is won when the robot visits the final checkpoint in sequence. The game is lost if the robot runs out of lives.
 
 ### 2.2. The Turn Cycle
 
@@ -25,7 +25,7 @@ Each round consists of two main phases:
 2.  **Execution Phase:**
     *   When "Run Program" is clicked, the game takes over.
     *   The 5 programmed cards are executed sequentially, one by one.
-    *   After each card's action is resolved, board elements (like conveyor belts) are activated.
+    *   After each card's action is resolved, board elements (like conveyor belts, lasers, push panels, gears) are activated.
     *   This sequence (Card Action -> Board Effects) repeats for all 5 cards or until the game ends.
     *   After the execution phase, the 5 used cards are moved to a discard pile, and the player draws 5 new cards from their deck to replenish their hand to 7.
 
@@ -34,9 +34,10 @@ Each round consists of two main phases:
 The robot is the player's avatar on the board. Its state is defined by:
 *   **Position:** A row and column on the grid.
 *   **Orientation:** North, East, South, or West.
-*   **Health:** Starts at a maximum (10) and decreases when encountering hazards. The game ends if health reaches 0.
-*   **Visited Stations:** A record of the unique repair stations it has touched.
-*   **Last Visited Station:** The robot's respawn point if it falls into a hole.
+*   **Health:** Starts at a maximum (10) and decreases when hit by lasers. If health reaches 0, the robot loses a life and respawns.
+*   **Lives:** Starts at 3. If the robot falls into a hole or its health reaches 0, it loses a life and respawns at the last visited checkpoint or repair station. The game ends if lives reach 0.
+*   **Highest Visited Checkpoint:** The highest-numbered checkpoint the robot has visited in sequential order. This contributes to the win condition.
+*   **Last Visited Station:** The robot's respawn point if it loses a life (either from health depletion or falling in a hole). This is updated when visiting any repair station or checkpoint.
 
 ### 2.4. The Cards
 
@@ -54,12 +55,15 @@ The game board is a grid of tiles with various properties.
 
 *   **Tiles:**
     *   **Plain:** Standard empty space.
-    *   **Repair Station:** The target tiles. Visiting one for the first time contributes to the win condition and sets the robot's respawn point. Indicated by a 🔧 symbol.
+    *   **Repair Station:** These tiles heal the robot to full health and update its last visited station (respawn point). They do NOT count towards the win condition. Indicated by a 🔧 symbol.
+    *   **Checkpoint:** These tiles heal the robot to full health, update its last visited station, and contribute to the win condition if visited in the correct numerical order. Indicated by a 🚩 symbol and a number.
     *   **Conveyor Belt:** Automatically moves the robot one tile in the indicated direction.
         *   **Normal (1x):** Moves the robot one tile.
         *   **Express (2x):** Can move the robot up to two tiles. The movement is phased: the 2x belt moves the robot one tile, then the conveyor on the *new* tile activates to move it a second tile.
-    *   **Hole:** If the robot ends its movement on a hole, it takes damage and respawns at the last visited repair station. If no station has been visited, this is likely a game-ending event.
-    *   **Lasers:** Stationary lasers attached to a wall that fire a beam perpendicularly away from the wall. The beam damages the first robot it encounters and is stopped by walls. Beams are always visible.
+    *   **Hole:** If the robot ends its movement on a hole, it loses a life and respawns at the last visited checkpoint or repair station. If no station has been visited, this is likely a game-ending event.
+    *   **Lasers:** Stationary lasers attached to a wall that fire a beam perpendicularly away from the wall. The beam damages the first robot it encounters (costing 1 health) and is stopped by walls. Beams are always visible.
+    *   **Push Panels:** Attached to walls, these panels activate on specific phases of play (e.g., 2/4 or 1/3/5) to push adjacent robots one tile away from the wall. They activate after conveyor belts and before gears.
+    *   **Rotating Gears:** Tiles that rotate the robot standing on them (90 degrees clockwise for 'cw', 90 degrees counter-clockwise for 'ccw').
 *   **Walls:** Impassable barriers that block robot movement. They exist on the edges of tiles.
 
 ## 3. Technical Architecture & Design
