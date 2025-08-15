@@ -18,66 +18,59 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
  */
 export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     Logger.log("   Checking board actions...");
-    let robotState = robot.getRobotState(); // Initial state for the phase
     let boardMoved = false; // Track if ANY movement happened this phase
     let gameEnded = false;
     let fellInHole = false; // Make sure this is declared
-    let finalTileData = boardData.getTileData(robotState.row, robotState.col); // Declare and initialize here
+    let finalTileData = boardData.getTileData(robot.row, robot.col); // Declare and initialize here
 
     // --- 1. Conveyor Movement ---
     // Phase 1: Check 2x Conveyor
-    let tileData = boardData.getTileData(robotState.row, robotState.col);
+    let tileData = boardData.getTileData(robot.row, robot.col);
     Logger.log(`      Phase 1: Checking 2x Conveyor ${tileData}`);
 
-    const conveyor2xResult = tileData.tryApplySpeed2xConveyor(robotState, boardData);
+    const conveyor2xResult = tileData.tryApplySpeed2xConveyor(robot.getRobotState(), boardData);
     if (conveyor2xResult.moved) {
         robot.setPosition(conveyor2xResult.newR, conveyor2xResult.newC);
         boardMoved = true;
         await sleep(150); // Short delay after phase 1 movement
-        robotState = robot.getRobotState(); // Get updated state
     }
 
     // Phase 2: Check All Conveyors
     Logger.log("      Phase 2: Checking All Conveyors");
-    tileData = boardData.getTileData(robotState.row, robotState.col);
+    tileData = boardData.getTileData(robot.row, robot.col);
 
-    const conveyorResult = tileData.tryApplyConveyor(robotState, boardData);
+    const conveyorResult = tileData.tryApplyConveyor(robot.getRobotState(), boardData);
     if (conveyorResult.moved) {
         robot.setPosition(conveyorResult.newR, conveyorResult.newC);
         boardMoved = true;
         await sleep(150); // Short delay after phase 2 movement
-        robotState = robot.getRobotState(); // Get final updated state
     }
     // --- End Conveyor Movement ---
 
     // --- NEW: 2. Push Panel Movement ---
     Logger.log("      Phase 3: Checking Push Panels");
-    finalTileData = boardData.getTileData(robotState.row, robotState.col); // Re-fetch after conveyor movement
-    const pushPanelResult = finalTileData.tryPushPanel(robotState, boardData, currentProgramStep);
+    finalTileData = boardData.getTileData(robot.row, robot.col); // Re-fetch after conveyor movement
+    const pushPanelResult = finalTileData.tryPushPanel(robot.getRobotState(), boardData, currentProgramStep);
     if (pushPanelResult.moved) {
         robot.setPosition(pushPanelResult.newR, pushPanelResult.newC);
         boardMoved = true;
         await sleep(150); // Short delay after push panel movement
-        robotState = robot.getRobotState(); // Get updated state
     }
 
     // --- Get Final State After Push Panels ---
     // Ensure robotState reflects the final position after push panels
-    robotState = robot.getRobotState();
     // No need to re-assign finalTileData here, it's updated by robotState
 
     // --- NEW: 3. Gear Rotation ---
-    finalTileData = boardData.getTileData(robotState.row, robotState.col); // Re-fetch after potential movement
+    finalTileData = boardData.getTileData(robot.row, robot.col); // Re-fetch after potential movement
     if (finalTileData.floorDevice.type === 'gear' && finalTileData.floorDevice.direction === 'cw') {
         Logger.log(`   On clockwise gear. Turning right.`);
         robot.turn('right');
         await sleep(350); // Wait for turn animation
-        robotState = robot.getRobotState(); // Update state after turn
     } else if (finalTileData.floorDevice.type === 'gear' && finalTileData.floorDevice.direction === 'ccw') {
         Logger.log(`   On counter-clockwise gear. Turning left.`);
         robot.turn('left');
         await sleep(350);
-        robotState = robot.getRobotState(); // Update state after turn
     }
     // --- End Gear Rotation ---
 
@@ -95,12 +88,12 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
                 const laserDevice = tile ? tile.getWallDevice('laser') : null;
                 if (laserDevice) {
                     // Check if robot is on the laser emitter tile itself
-                    const robotOnEmitter = (robotState.row === r && robotState.col === c);
+                    const robotOnEmitter = (robot.row === r && robot.col === c);
 
-                    const laserPath = boardData.getLaserPath(r, c, laserDevice.direction, robotState);
+                    const laserPath = boardData.getLaserPath(r, c, laserDevice.direction, robot.getRobotState());
                     // Check if robot is on any tile in the laser's path
                     const robotInLaserPath = laserPath.some(
-                        pathTile => pathTile.row === robotState.row && pathTile.col === robotState.col
+                        pathTile => pathTile.row === robot.row && pathTile.col === robot.col
                     );
 
                     if (robotOnEmitter || robotInLaserPath) {
@@ -109,7 +102,6 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
                         robot.takeDamage();
                         Logger.log(`   Robot health AFTER damage: ${robot.getRobotState().health}`);
                         await sleep(300); // Small delay for visual feedback of damage
-                        robotState = robot.getRobotState(); // Update robot state after damage
                         if (robot.isDestroyed()) {
                             gameEnded = true; // Game ended due to no lives left
                             return { gameEnded, boardMoved, fellInHole }; // Exit early if game over
@@ -165,58 +157,66 @@ export async function runProgramExecution(boardData, robot) {
     }
     Logger.log("--- Starting Program Execution ---");
 
+    const isRobotPoweredDown = robot.getIsPoweredDown();
     const programCards = robot.getProgram(); // Get program from robot
 
-    if (programCards.length !== Config.PROGRAM_SIZE) {
+    if (!isRobotPoweredDown && programCards.length !== Config.PROGRAM_SIZE) {
         Logger.error("Program is not full!");
         emit('programExecutionFinished'); // EMIT EVENT
         return;
     }
 
     // --- Card Execution Loop ---
-    for (let i = 0; i < programCards.length; i++) {
-        const cardData = programCards[i]; // Get card data directly
+    for (let i = 0; i < Config.PROGRAM_SIZE; i++) { // Loop 5 times regardless of program length
+        const cardData = programCards[i]; // cardData might be undefined if program is not full
 
         Logger.log(`
-Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
+Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData ? cardData.text : 'No Card')}`);
+        Logger.log(`  Current robot powered down state: ${isRobotPoweredDown}`);
+        Logger.log(`  Card data for this step: ${JSON.stringify(cardData)}`);
         let cardMoved = false;
 
-        // --- 1. Execute Card Action ---
-        if (cardData.type === 'turnL') {
-            robot.turn(TURN_LEFT); // Update state
-        } else if (cardData.type === 'turnR') {
-            robot.turn(TURN_RIGHT); // Update state
-        }
-        // --- Handle U-Turn ---
-        else if (cardData.type === 'uturn') {
-            robot.uTurn(); // Update state & emit event
-        }
-        else { // Movement cards (move1, move2, back1)
-            let steps = 0;
-            if (cardData.type === 'move1') steps = 1;
-            else if (cardData.type === 'move2') steps = 2;
-            else if (cardData.type === 'back1') steps = -1;
+        // --- 1. Execute Card Action (only if not powered down) ---
+        if (isRobotPoweredDown) {
+            Logger.log("Robot is powered down. Skipping card action.");
+            await sleep(500); // Small delay to show nothing is happening
+        } else if (cardData) { // Only execute if cardData exists (program is full)
+            if (cardData.type === 'turnL') {
+                robot.turn(TURN_LEFT); // Update state
+            } else if (cardData.type === 'turnR') {
+                robot.turn(TURN_RIGHT); // Update state
+            }
+            // --- Handle U-Turn ---
+            else if (cardData.type === 'uturn') {
+                robot.uTurn(); // Update state & emit event
+            }
+            else { // Movement cards (move1, move2, back1)
+                let steps = 0;
+                if (cardData.type === 'move1') steps = 1;
+                else if (cardData.type === 'move2') steps = 2;
+                else if (cardData.type === 'back1') steps = -1;
 
-            const moveCount = cardData.type === 'move2' ? 2 : 1;
-            const stepType = cardData.type === 'back1' ? -1 : 1; // -1 for back, 1 for move
+                const moveCount = cardData.type === 'move2' ? 2 : 1;
+                const stepType = cardData.type === 'back1' ? -1 : 1; // -1 for back, 1 for move
 
-            for (let moveStep = 0; moveStep < moveCount; moveStep++) {
-                // Calculate target and check boundaries/walls
-                const moveTarget = robot.calculateMoveTarget(stepType, boardData);
+                for (let moveStep = 0; moveStep < moveCount; moveStep++) {
+                    // Calculate target and check boundaries/walls
+                    const moveTarget = robot.calculateMoveTarget(stepType, boardData);
 
-                if (moveTarget.success) {
-                    // No need for extra obstacle check here, calculateMoveTarget did it
-                    Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
-                    robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
-                    cardMoved = true;
-                    if (moveCount > 1) await sleep(500);
-                } else { // Move failed boundary or wall check
-                    if (moveTarget.blockedByWall) {
-                        Logger.log("   Move failed: Hit wall.");
-                    } else {
-                        Logger.log("   Move failed: Hit boundary.");
+                    if (moveTarget.success) {
+                        // No need for extra obstacle check here, calculateMoveTarget did it
+                        Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
+                        robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
+                        cardMoved = true;
+                        if (moveCount > 1) await sleep(500);
+                    } else { // Move failed boundary or wall check
+                        if (moveTarget.blockedByWall) {
+                            Logger.log("   Move failed: Hit wall.");
+                        } else {
+                            Logger.log("   Move failed: Hit boundary.");
+                        }
+                        if (moveCount > 1) break; // Stop Move 2 if first step fails
                     }
-                    if (moveCount > 1) break; // Stop Move 2 if first step fails
                 }
             }
         }
@@ -239,9 +239,40 @@ Executing Card ${i + 1}: ${cardData.text} (${cardData.type})`);
     }
 
     Logger.log("\n--- Program Finished ---");
-    Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
+    // Only discard cards if robot was NOT powered down (i.e., cards were actually used)
+    if (!isRobotPoweredDown) {
+        Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
+    }
     emit('programExecutionFinished');
-    Cards.draw(Config.PROGRAM_SIZE);
+    // Only draw new cards if robot was NOT powered down
+    if (!isRobotPoweredDown) {
+        Cards.draw(Config.PROGRAM_SIZE);
+    }
 
+}
+
+
+/**
+ * Performs end-of-turn cleanup, including power down state transitions.
+ * @param {Robot} robot - The robot instance.
+ */
+export function endOfTurnCleanup(robot) {
+    Logger.log("--- Performing End of Turn Cleanup ---");
+    const robotState = robot.getRobotState();
+
+    // Step 1: If robot was powered down last turn, power it back up now.
+    if (robotState.isPoweredDown) {
+        robot.setIsPoweredDown(false); // Robot powers back up
+        robot.restoreFullHealth(); // NEW: Heal robot when powering back up
+        Logger.log("Robot is powering back up from a powered-down turn.");
+    }
+
+    // Step 2: If robot intended to power down, set it to powered down for THIS turn.
+    if (robotState.powerDownIntent) {
+        robot.setIsPoweredDown(true);
+        robot.setPowerDownIntent(false); // Consume the intent
+        Logger.log("Robot is now powered down for this turn (due to previous intent).");
+    }
+    Logger.log("--- End of Turn Cleanup Complete ---");
 }
 

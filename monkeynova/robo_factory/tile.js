@@ -163,7 +163,7 @@ export class Tile {
         if (this.floorDevice.type === 'repair-station') {
             const stationKey = `${this.row}-${this.col}`;
             robot.setLastVisitedStation(stationKey);
-            robot.heal(); // Repair stations only heal
+            robot.restoreFullHealth(); // Repair stations only heal
             Logger.log(`   Robot visited repair station at (${this.row}, ${this.col}) and healed.`);
         }
         return { gameEnded };
@@ -181,7 +181,7 @@ export class Tile {
             const flagKey = `${this.row}-${this.col}`;
             const flagOrder = this.floorDevice.order;
             robot.setLastVisitedStation(flagKey); // Checkpoints also update last visited station
-            robot.heal(); // Checkpoints also heal
+            robot.restoreFullHealth(); // Checkpoints also heal
 
             // Only visit if it's the next in order
             const visitedInOrder = robot.visitFlag(flagKey, flagOrder);

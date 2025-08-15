@@ -98,6 +98,8 @@ let flagStatusContainer = null;
 let healthValueEl = null;
 let maxHealthValueEl = null;
 let livesValueEl = null; // NEW: Element for lives display
+let powerDownButton = null; // NEW: Power Down Button
+let powerDownStatusEl = null; // NEW: Power Down Status Element
 let modal = null;
 let modalTitleEl = null;
 let modalMessageEl = null;
@@ -130,6 +132,8 @@ function cacheDOMElements() {
     healthValueEl = document.getElementById('health-value');
     maxHealthValueEl = document.getElementById('max-health-value');
     livesValueEl = document.getElementById('lives-value'); // NEW: Cache lives element
+    powerDownButton = document.getElementById('power-down-button'); // NEW: Cache power down button
+    powerDownStatusEl = document.getElementById('power-down-status'); // NEW: Cache power down status element
     modal = document.getElementById('end-game-modal');
     modalTitleEl = document.getElementById('modal-title');
     modalMessageEl = document.getElementById('modal-message');
@@ -774,8 +778,9 @@ function updateRobotVisualsUI(row, col, orientation) {
 /**
  * Updates the card hand display based on provided card data.
  * @param {object[]} handCardsData - Array of card data objects from cards.js.
+ * @param {Robot} robot - The robot instance.
  */
-function updateHandUI(handCardsData) {
+function updateHandUI(handCardsData, robot) {
     cardHandContainer.innerHTML = ''; // Clear current UI cards
     if (!handCardsData) {
         Logger.warn("updateHandUI called with null/undefined hand data.");
@@ -785,11 +790,13 @@ function updateHandUI(handCardsData) {
         const cardElement = document.createElement('div');
         cardElement.id = cardData.instanceId;
         cardElement.classList.add('card', cardData.type);
-        cardElement.draggable = true;
+        // draggable attribute will be set by setProgrammingUIEnabled
         cardElement.textContent = cardData.text;
         addDragHandlersToCardElement(cardElement);
         cardHandContainer.appendChild(cardElement);
     });
+    // Re-apply programming UI state after hand update
+    setProgrammingUIEnabled(!robot.getRobotState().isPoweredDown);
     Logger.log("Hand UI updated via event.");
 }
 
@@ -797,7 +804,7 @@ function updateHandUI(handCardsData) {
 function resetProgramSlotsUI() {
     programSlots.forEach((slot, index) => {
         slot.innerHTML = `${index + 1}`;
-        slot.className = 'program-slot drop-zone'; // Reset classes, keep drop-zone
+        slot.className = 'program-slot'; // Remove drop-zone, setProgrammingUIEnabled will add it
     });
     // Logger.log("Program slots UI reset.");
 }
@@ -816,6 +823,24 @@ function updateLivesUI(lives) {
     if (livesValueEl) {
         livesValueEl.textContent = lives;
         livesValueEl.classList.toggle('critical', lives <= 1);
+    }
+}
+
+/** NEW: Updates the power down status display. */
+function updatePowerDownStatusUI(powerDownIntent, isPoweredDown) {
+    if (powerDownStatusEl) {
+        if (isPoweredDown) {
+            powerDownStatusEl.textContent = "POWERED DOWN";
+            powerDownStatusEl.classList.add('active');
+            powerDownStatusEl.classList.remove('intent');
+        } else if (powerDownIntent) {
+            powerDownStatusEl.textContent = "POWER DOWN NEXT TURN";
+            powerDownStatusEl.classList.add('intent');
+            powerDownStatusEl.classList.remove('active');
+        } else {
+            powerDownStatusEl.textContent = "";
+            powerDownStatusEl.classList.remove('active', 'intent');
+        }
     }
 }
 
@@ -885,6 +910,28 @@ function updateButtonStateUI(isEnabled) {
     runProgramButton.disabled = !isEnabled;
 }
 
+/** NEW: Enables or disables the programming UI (card dragging, slot dropping). */
+function setProgrammingUIEnabled(isEnabled) {
+    // Toggle draggable attribute on cards in hand
+    if (cardHandContainer) {
+        cardHandContainer.querySelectorAll('.card').forEach(cardElement => {
+            cardElement.draggable = isEnabled;
+            cardElement.classList.toggle('disabled', !isEnabled);
+        });
+    }
+
+    // Toggle drop-zone class on program slots
+    programSlots.forEach(slot => {
+        slot.classList.toggle('drop-zone', isEnabled);
+        slot.classList.toggle('disabled', !isEnabled);
+    });
+
+    // Also disable/enable the entire hand and program area visually if needed
+    // For now, just controlling draggable/drop-zone should suffice.
+    if (cardHandContainer) cardHandContainer.classList.toggle('disabled-programming', !isEnabled);
+    if (programSlotsContainer) programSlotsContainer.classList.toggle('disabled-programming', !isEnabled);
+}
+
 // --- UI Helpers ---
 
 /** NEW: Applies the current zoom level to the board container */
@@ -940,7 +987,7 @@ function handleDragLeave(e) {
     }
 }
 
-function handleDrop(e) {
+function handleDrop(e, robot) {
     e.preventDefault();
     const dropTarget = e.target.closest('.program-slot, #card-hand');
 
@@ -1004,18 +1051,24 @@ function handleDrop(e) {
     }
 
     // Final cleanup is handled by dragend
-    checkProgramReady(); // Update run button state after any drop
+    checkProgramReady(robot); // Update run button state after any drop
 }
 
 /** Checks if program slots are full and updates button state. */
-function checkProgramReady() {
+function checkProgramReady(robot) {
     let filledSlots = 0;
     programSlots.forEach(slot => {
         if (slot.querySelector('.card')) {
             filledSlots++;
         }
     });
-    updateButtonStateUI(filledSlots === Config.PROGRAM_SIZE);
+
+    // If robot is powered down, the button should always be enabled to advance the turn.
+    if (robot && robot.getIsPoweredDown()) {
+        updateButtonStateUI(true);
+    } else {
+        updateButtonStateUI(filledSlots === Config.PROGRAM_SIZE);
+    }
 }
 
 // --- Event Listener Setup ---
@@ -1030,8 +1083,11 @@ export function setupUIListeners(runProgramCallback, boardData, robot) { // Pass
         zone.addEventListener('dragover', handleDragOver);
         zone.addEventListener('dragenter', handleDragEnter);
         zone.addEventListener('dragleave', handleDragLeave);
-        zone.addEventListener('drop', handleDrop);
+        zone.addEventListener('drop', (e) => handleDrop(e, robot));
     });
+
+    // Initial state for programming UI
+    setProgrammingUIEnabled(!robot.getRobotState().isPoweredDown);
 
     // Attach run button listener
     runProgramButton.addEventListener('click', async () => {
@@ -1062,6 +1118,16 @@ export function setupUIListeners(runProgramCallback, boardData, robot) { // Pass
             // updateButtonStateUI(true);
         }
     });
+
+    // NEW: Attach Power Down Button Listener
+    if (powerDownButton) {
+        powerDownButton.addEventListener('click', () => {
+            const currentIntent = robot.getPowerDownIntent();
+            robot.setPowerDownIntent(!currentIntent);
+        });
+    } else {
+        Logger.warn("Power Down button not found.");
+    }
 
     // Attach modal close button listener
     if (modalCloseButton) {
@@ -1142,7 +1208,7 @@ export function setupUIListeners(runProgramCallback, boardData, robot) { // Pass
     subscribeToModelEvents(boardData, robot); // Setup model listeners
 
     // Initial check for button state after setup
-    checkProgramReady();
+    checkProgramReady(robot);
     Logger.log("UI Listeners set up.");
 }
 
@@ -1161,6 +1227,13 @@ function subscribeToModelEvents(boardData, robot) { // Pass needed static data l
     on('livesChanged', (lives) => { // NEW: Listen for lives changes
         updateLivesUI(lives);
     });
+    on('powerDownIntentChanged', (intent) => { // NEW: Listen for power down intent changes
+        updatePowerDownStatusUI(intent, robot.getIsPoweredDown());
+    });
+    on('isPoweredDownChanged', (isPoweredDown) => { // NEW: Listen for isPoweredDown changes
+        updatePowerDownStatusUI(robot.getPowerDownIntent(), isPoweredDown);
+        setProgrammingUIEnabled(!isPoweredDown); // Disable programming when powered down
+    });
     on('flagVisited', (stationKey) => { // Assuming gameLoop emits this
          updateFlagIndicatorUI(stationKey);
     });
@@ -1168,8 +1241,8 @@ function subscribeToModelEvents(boardData, robot) { // Pass needed static data l
          showModalUI(isWin);
     });
     on('handUpdated', (handData) => {
-        updateHandUI(handData);
-        checkProgramReady(); // Check button state whenever hand changes (might be empty)
+        updateHandUI(handData, robot); // Pass robot instance
+        checkProgramReady(robot); // Check button state whenever hand changes (might be empty)
     });
     on('cardCountsUpdated', (counts) => {
         updateDebugCountsUI(counts);

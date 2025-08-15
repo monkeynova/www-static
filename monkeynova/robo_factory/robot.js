@@ -38,6 +38,8 @@ class Robot {
         this.lastVisitedStationKey = null;
         this.highestVisitedCheckpointOrder = 0;
         this.program = []; // Initialize program as an empty array
+        this.powerDownIntent = false; // NEW: Player intends to power down next turn
+        this.isPoweredDown = false;   // NEW: Robot is currently powered down
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
     }
 
@@ -71,7 +73,50 @@ class Robot {
             health: this.health,
             lives: this.lives, // Include lives in the state
             lastVisitedStationKey: this.lastVisitedStationKey,
+            powerDownIntent: this.powerDownIntent, // NEW: Include powerDownIntent
+            isPoweredDown: this.isPoweredDown,     // NEW: Include isPoweredDown
         };
+    }
+
+    /**
+     * Sets the robot's intention to power down next turn.
+     * @param {boolean} intent - True to set power down intent, false otherwise.
+     */
+    setPowerDownIntent(intent) {
+        if (this.powerDownIntent !== intent) {
+            this.powerDownIntent = intent;
+            Logger.log(`Robot power down intent set to: ${this.powerDownIntent}`);
+            Logger.log(`Emitting powerDownIntentChanged: ${this.powerDownIntent}`);
+            emit('powerDownIntentChanged', this.powerDownIntent); // Emit event
+        }
+    }
+
+    /**
+     * Gets the robot's power down intent.
+     * @returns {boolean}
+     */
+    getPowerDownIntent() {
+        return this.powerDownIntent;
+    }
+
+    /**
+     * Sets the robot's current powered down state.
+     * @param {boolean} poweredDown - True if robot is powered down, false otherwise.
+     */
+    setIsPoweredDown(poweredDown) {
+        if (this.isPoweredDown !== poweredDown) {
+            this.isPoweredDown = poweredDown;
+            Logger.log(`Robot isPoweredDown set to: ${this.isPoweredDown}`);
+            emit('isPoweredDownChanged', this.isPoweredDown); // Emit event
+        }
+    }
+
+    /**
+     * Gets the robot's current powered down state.
+     * @returns {boolean}
+     */
+    getIsPoweredDown() {
+        return this.isPoweredDown;
     }
 
     /**
@@ -269,7 +314,7 @@ class Robot {
      * Restores robot health to maximum and emits an event.
      * @returns {number} The new health value (MAX_HEALTH).
      */
-    heal() {
+    restoreFullHealth() {
         this.health = MAX_HEALTH;
         Logger.log(`Robot healed to full health: ${this.health}`);
         emit('healthChanged', { health: this.health, maxHealth: MAX_HEALTH });

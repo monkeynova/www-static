@@ -6,7 +6,7 @@ import * as Cards from './cards.js';
 import * as UI from './ui.js';
 import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
-import { emit } from './eventEmitter.js';
+import { emit, on } from './eventEmitter.js';
 
 /**
  * Generates a large, feature-rich board.
@@ -178,6 +178,11 @@ if (typeof document !== 'undefined') {
             // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
             // and AFTER model init if listeners need initial state immediately (less common).
             UI.setupUIListeners(() => GameLoop.runProgramExecution(board, robot), board, robot);
+
+            // NEW: Listen for program execution to finish to trigger end-of-turn cleanup
+            on('programExecutionFinished', () => {
+                GameLoop.endOfTurnCleanup(robot);
+            });
 
             // 6. Initialize Deck and Hand State
             Cards.initDeckAndHand(); // Emits events

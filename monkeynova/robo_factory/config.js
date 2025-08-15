@@ -30,6 +30,8 @@ export const ALLOWED_EVENT_NAMES = new Set([
     'cardCountsUpdated',
     'programExecutionFinished',
     'livesChanged', // NEW: Event for lives changing
+    'powerDownIntentChanged', // NEW: Event for power down intent changing
+    'isPoweredDownChanged',   // NEW: Event for robot being powered down
 ]);
 
 export const ALLOWED_LOG_LEVELS = new Set([

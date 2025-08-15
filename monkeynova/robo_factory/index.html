@@ -284,14 +284,31 @@
             border: 2px dashed #000;
         }
 
+        .card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .program-slot.drag-over {
             background-color: #ddd; /* Highlight drop target slot */
             border-style: dashed;
         }
 
+        .program-slot.disabled {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
+            border-style: dotted;
+        }
+
         #card-hand.drag-over {
              background-color: #f0f0f0; /* Highlight hand drop zone */
              border-color: #888;
+        }
+
+        #card-hand.disabled-programming,
+        #program-slots.disabled-programming {
+            pointer-events: none; /* Disable all mouse events */
+            opacity: 0.7; /* Visually dim the area */
         }
 
         /* Ensure .program-slot still has box-sizing */
@@ -541,7 +558,9 @@
                         <div class="program-slot">4</div>
                         <div class="program-slot">5</div>
                     </div>
-                    <button id="run-program" disabled>Run Program</button>
+                    <button id="run-program">Run Program</button>
+            <button id="power-down-button">Power Down</button> <!-- NEW: Power Down Button -->
+            <div id="power-down-status" class="status-indicator"></div> <!-- NEW: Power Down Status -->
                 </div>
 
                 <div id="card-hand-area">
