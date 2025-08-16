@@ -8,6 +8,7 @@ import './main.js';
 import { Board } from './board.js';
 import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';
+import { setTestingMode } from './gameLoop.js'; // NEW: Import setTestingMode
 import * as Logger from './logger.js';
 import * as Config from './config.js'; // May need for constants like MAX_HEALTH
 import { createDemonstrationBoard } from './main.js'; // NEW: Import createDemonstrationBoard
@@ -1133,6 +1134,8 @@ export async function runAllTests() {
     Logger.log("===== STARTING AUTOMATED TESTS =====");
     let passed = 0;
     let failed = 0;
+
+    setTestingMode(true);
 
     for (const test of testScenarios) {
         Logger.log(`

@@ -7,7 +7,18 @@ import { emit } from './eventEmitter.js';
 import { TURN_LEFT, TURN_RIGHT } from './config.js'; // NEW: Import laser constants
 
 // Simple sleep utility
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+let isTesting = false; // NEW: Flag to indicate if tests are running
+
+export function setTestingMode(mode) {
+    isTesting = mode;
+}
+
+function sleep(ms) { 
+    if (isTesting) {
+        return Promise.resolve(); // Resolve immediately during tests
+    }
+    return new Promise(resolve => setTimeout(resolve, ms)); 
+}
 
 /**
  * Applies effects of the tile the robot is currently on.
