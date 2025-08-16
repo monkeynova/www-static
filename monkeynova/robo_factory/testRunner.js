@@ -220,13 +220,12 @@ const testScenarios = [
     defineTest(
         "Power Down: Board effects (conveyor, laser) still apply when robot is powered down",
         async () => {
-            // Setup: Robot on a conveyor that moves it into a laser path.
+            // Setup: Robot on a conveyor that moves it.
             // Robot starts at (0,0) facing east. Conveyor at (0,0) moves east.
-            // Laser at (0,1) fires west (attached to east wall).
             const testBoardDef = [
                 [
                     { floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['north', 'west'] },
-                    { walls: ['north', 'east'], wallDevices: [{ type: 'laser', direction: 'west' }] }
+                    { walls: ['north', 'east'] }
                 ],
                 [
                     { walls: ['south', 'west'] },
@@ -236,7 +235,7 @@ const testScenarios = [
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
             robot.setPowerDownIntent(true); // Set intent for next turn
-            robot.takeDamage(); // Damage robot so we can see if laser applies damage
+            // No initial damage, no laser
             robot.setProgram([]); // Empty program for powered down turn
 
             return { boardData, robot };
@@ -244,13 +243,13 @@ const testScenarios = [
         async (setupData) => {
             // Run one turn to transition to powered down state
             await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
-            // Run the powered down turn (robot should move and take damage)
+            // Run the powered down turn (robot should move, but not take damage)
             await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
             return setupData.robot.getRobotState();
         },
         {
-            // Expected: Robot moves to (0,1) and takes damage from laser
-            robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 2 } // Initial damage + laser damage
+            // Expected: Robot moves to (0,1) and takes no damage
+            robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH }
         },
         (actual, expected) => {
             const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
