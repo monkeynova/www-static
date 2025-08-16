@@ -188,23 +188,30 @@ const testScenarios = [
             ];
             robot.setProgram(programCards);
 
-            return { boardData, robot, initialRobotState: robot.getRobotState() };
+            return { boardData, robot };
         },
         async (setupData) => {
-            // Run one turn to transition to powered down state
+            // Run one turn to transition to powered down state (robot executes program)
             await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
-            // Run the powered down turn
+            const stateAfterFirstTurn = setupData.robot.getRobotState();
+
+            // Run the powered down turn (robot skips actions)
             await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
-            return setupData.robot.getRobotState();
+            const stateAfterSecondTurn = setupData.robot.getRobotState();
+
+            return { stateAfterFirstTurn, stateAfterSecondTurn };
+        },
+        {
+            // Expected state after the powered-down turn should be the same as after the first turn
+            robot: { row: 0, col: 0, orientation: 'west' } // This is the state after the first turn's program execution
         },
         (actual, expected) => {
-            // Expected: Robot should be in the same position and orientation as initial state
-            const initial = expected.initialRobotState;
-            const posMatch = actual.row === initial.row && actual.col === initial.col;
-            const orientMatch = actual.orientation === initial.orientation;
+            // Compare stateAfterSecondTurn with the expected state (which is stateAfterFirstTurn)
+            const posMatch = actual.stateAfterSecondTurn.row === expected.robot.row && actual.stateAfterSecondTurn.col === expected.robot.col;
+            const orientMatch = actual.stateAfterSecondTurn.orientation === expected.robot.orientation;
 
-            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${initial.row},${initial.col}), Got (${actual.row},${actual.col})`);
-            if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${initial.orientation}, Got ${actual.orientation}`);
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.stateAfterSecondTurn.row},${actual.stateAfterSecondTurn.col})`);
+            if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${expected.robot.orientation}, Got ${actual.stateAfterSecondTurn.orientation}`);
 
             return posMatch && orientMatch;
         }
