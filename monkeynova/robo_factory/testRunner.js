@@ -11,6 +11,7 @@ import * as GameLoop from './gameLoop.js';
 import * as Logger from './logger.js';
 import * as Config from './config.js'; // May need for constants like MAX_HEALTH
 import { createDemonstrationBoard } from './main.js'; // NEW: Import createDemonstrationBoard
+import * as Cards from './cards.js'; // NEW: Import Cards module
 
 /**
  * Defines a test scenario.
@@ -119,6 +120,256 @@ const testScenarios = [
     ),
 
     // --- Add More Test Scenarios Here ---
+
+    defineTest(
+        "Power Down: State transitions (intent -> powered down -> normal)",
+        async () => {
+            const boardData = new Board([[{}]]); // Minimal board
+            const robot = new Robot(0, 0, 'north');
+            robot.setPowerDownIntent(true); // Set intent for next turn
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Simulate one turn (robot is not yet powered down, but intent is set)
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot); // This triggers endOfTurnCleanup
+            const stateAfterTurn1 = setupData.robot.getRobotState();
+
+            // Simulate second turn (robot should now be powered down)
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot); // This triggers endOfTurnCleanup
+            const stateAfterTurn2 = setupData.robot.getRobotState();
+
+            // Simulate third turn (robot should power back up)
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot); // This triggers endOfTurnCleanup
+            const stateAfterTurn3 = setupData.robot.getRobotState();
+
+            return { stateAfterTurn1, stateAfterTurn2, stateAfterTurn3 };
+        },
+        {
+            stateAfterTurn1: { powerDownIntent: false, isPoweredDown: true },
+            stateAfterTurn2: { powerDownIntent: false, isPoweredDown: false },
+            stateAfterTurn3: { powerDownIntent: false, isPoweredDown: false },
+        },
+        (actual, expected) => {
+            let pass = true;
+            if (actual.stateAfterTurn1.powerDownIntent !== expected.stateAfterTurn1.powerDownIntent ||
+                actual.stateAfterTurn1.isPoweredDown !== expected.stateAfterTurn1.isPoweredDown) {
+                Logger.error(`   FAIL: Turn 1 state mismatch. Expected intent: ${expected.stateAfterTurn1.powerDownIntent}, poweredDown: ${expected.stateAfterTurn1.isPoweredDown}. Got intent: ${actual.stateAfterTurn1.powerDownIntent}, poweredDown: ${actual.stateAfterTurn1.isPoweredDown}`);
+                pass = false;
+            }
+            if (actual.stateAfterTurn2.powerDownIntent !== expected.stateAfterTurn2.powerDownIntent ||
+                actual.stateAfterTurn2.isPoweredDown !== expected.stateAfterTurn2.isPoweredDown) {
+                Logger.error(`   FAIL: Turn 2 state mismatch. Expected intent: ${expected.stateAfterTurn2.powerDownIntent}, poweredDown: ${expected.stateAfterTurn2.isPoweredDown}. Got intent: ${actual.stateAfterTurn2.powerDownIntent}, poweredDown: ${actual.stateAfterTurn2.isPoweredDown}`);
+                pass = false;
+            }
+            if (actual.stateAfterTurn3.powerDownIntent !== expected.stateAfterTurn3.powerDownIntent ||
+                actual.stateAfterTurn3.isPoweredDown !== expected.stateAfterTurn3.isPoweredDown) {
+                Logger.error(`   FAIL: Turn 3 state mismatch. Expected intent: ${expected.stateAfterTurn3.powerDownIntent}, poweredDown: ${expected.stateAfterTurn3.isPoweredDown}. Got intent: ${actual.stateAfterTurn3.powerDownIntent}, poweredDown: ${actual.stateAfterTurn3.isPoweredDown}`);
+                pass = false;
+            }
+            return pass;
+        }
+    ),
+
+    defineTest(
+        "Power Down: Robot skips programmed actions when powered down",
+        async () => {
+            const boardData = new Board([[{}]]); // Minimal board
+            const robot = new Robot(0, 0, 'north');
+            robot.setPowerDownIntent(true); // Set intent for next turn
+
+            // Program some actions that would normally move/turn the robot
+            const programCards = [
+                { type: 'move1', text: 'Move 1', instanceId: 'card-p1' },
+                { type: 'turnR', text: 'Turn R', instanceId: 'card-p2' },
+                { type: 'move2', text: 'Move 2', instanceId: 'card-p3' },
+                { type: 'uturn', text: 'U-Turn', instanceId: 'card-p4' },
+                { type: 'back1', text: 'Back 1', instanceId: 'card-p5' },
+            ];
+            robot.setProgram(programCards);
+
+            return { boardData, robot, initialRobotState: robot.getRobotState() };
+        },
+        async (setupData) => {
+            // Run one turn to transition to powered down state
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            // Run the powered down turn
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        (actual, expected) => {
+            // Expected: Robot should be in the same position and orientation as initial state
+            const initial = expected.initialRobotState;
+            const posMatch = actual.row === initial.row && actual.col === initial.col;
+            const orientMatch = actual.orientation === initial.orientation;
+
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${initial.row},${initial.col}), Got (${actual.row},${actual.col})`);
+            if (!orientMatch) Logger.error(`   FAIL: Orientation mismatch. Expected ${initial.orientation}, Got ${actual.orientation}`);
+
+            return posMatch && orientMatch;
+        }
+    ),
+
+    defineTest(
+        "Power Down: Board effects (conveyor, laser) still apply when robot is powered down",
+        async () => {
+            // Setup: Robot on a conveyor that moves it into a laser path.
+            // Robot starts at (0,0) facing east. Conveyor at (0,0) moves east.
+            // Laser at (0,1) fires west (attached to east wall).
+            const testBoardDef = [
+                [
+                    { floorDevice: { type: 'conveyor', direction: 'east', speed: 1 }, walls: ['north', 'west'] },
+                    { walls: ['north', 'east'], wallDevices: [{ type: 'laser', direction: 'west' }] }
+                ],
+                [
+                    { walls: ['south', 'west'] },
+                    { walls: ['south', 'east'] }
+                ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 0, 'east');
+            robot.setPowerDownIntent(true); // Set intent for next turn
+            robot.takeDamage(); // Damage robot so we can see if laser applies damage
+            robot.setProgram([]); // Empty program for powered down turn
+
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Run one turn to transition to powered down state
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            // Run the powered down turn (robot should move and take damage)
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        {
+            // Expected: Robot moves to (0,1) and takes damage from laser
+            robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH - 2 } // Initial damage + laser damage
+        },
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const healthMatch = actual.health === expected.robot.health;
+
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+
+            return posMatch && healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Power Down: Robot heals to full health after powered-down turn completes",
+        async () => {
+            const boardData = new Board([[{}]]); // Minimal board
+            const robot = new Robot(0, 0, 'north');
+            robot.takeDamage(); // Damage robot
+            robot.takeDamage(); // Damage robot more
+            robot.setPowerDownIntent(true); // Set intent for next turn
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Run one turn to transition to powered down state
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            // Run the powered down turn (robot should heal after this turn)
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        {
+            // Expected: Robot's health is restored to MAX_HEALTH
+            robot: { health: Config.MAX_HEALTH }
+        },
+        (actual, expected) => {
+            const healthMatch = actual.health === expected.robot.health;
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            return healthMatch;
+        }
+    ),
+
+    defineTest(
+        "Power Down: No new cards are drawn after a powered-down turn",
+        async () => {
+            const boardData = new Board([[{}]]); // Minimal board
+            const robot = new Robot(0, 0, 'north');
+            robot.setPowerDownIntent(true); // Set intent for next turn
+            robot.setProgram([]); // Empty program for powered down turn
+
+            // Ensure hand is full initially for consistent testing
+            Cards.initDeckAndHand(); // Reset deck/hand
+            Cards.draw(Config.PROGRAM_SIZE); // Draw initial hand
+
+            return { boardData, robot, initialHandSize: Cards.getHandSize() };
+        },
+        async (setupData) => {
+            // Run one turn to transition to powered down state
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            // Run the powered down turn
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            return { finalHandSize: Cards.getHandSize() };
+        },
+        {
+            // Expected: Hand size remains the same as initialHandSize
+            finalHandSize: Config.PROGRAM_SIZE // Should be 5 cards
+        },
+        (actual, expected) => {
+            const pass = actual.finalHandSize === expected.finalHandSize;
+            if (!pass) Logger.error(`   FAIL: Hand size mismatch. Expected ${expected.finalHandSize}, Got ${actual.finalHandSize}`);
+            return pass;
+        }
+    ),
+
+    defineTest(
+        "Power Down: Robot loses life and respawns with full health while powered down",
+        async () => {
+            // Setup: Robot at (0,0) with 1 health, on a tile with a laser firing at it.
+            const testBoardDef = [
+                [
+                    { walls: ['north', 'west'] },
+                    { walls: ['north', 'east'], wallDevices: [{ type: 'laser', direction: 'west' }] }
+                ],
+                [
+                    { walls: ['south', 'west'] },
+                    { walls: ['south', 'east'] }
+                ]
+            ];
+            const boardData = new Board(testBoardDef);
+            const robot = new Robot(0, 1, 'east'); // Robot starts at (0,1) in laser path
+            robot.setLastVisitedStation('0-1'); // Set respawn point
+            robot.takeDamage(); // Damage robot to 9 health
+            robot.takeDamage(); // Damage robot to 8 health
+            robot.takeDamage(); // Damage robot to 7 health
+            robot.takeDamage(); // Damage robot to 6 health
+            robot.takeDamage(); // Damage robot to 5 health
+            robot.takeDamage(); // Damage robot to 4 health
+            robot.takeDamage(); // Damage robot to 3 health
+            robot.takeDamage(); // Damage robot to 2 health
+            robot.takeDamage(); // Damage robot to 1 health
+
+            robot.setPowerDownIntent(true); // Set intent for next turn
+            robot.setProgram([]); // Empty program for powered down turn
+
+            return { boardData, robot };
+        },
+        async (setupData) => {
+            // Run one turn to transition to powered down state
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            // Run the powered down turn (robot should take damage, lose life, respawn)
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            return setupData.robot.getRobotState();
+        },
+        {
+            // Expected: Robot loses a life, respawns at (0,1) with full health
+            robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH, lives: 2 }
+        },
+        (actual, expected) => {
+            const posMatch = actual.row === expected.robot.row && actual.col === expected.robot.col;
+            const healthMatch = actual.health === expected.robot.health;
+            const livesMatch = actual.lives === expected.robot.lives;
+
+            if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expected.robot.row},${expected.robot.col}), Got (${actual.row},${actual.col})`);
+            if (!healthMatch) Logger.error(`   FAIL: Health mismatch. Expected ${expected.robot.health}, Got ${actual.health}`);
+            if (!livesMatch) Logger.error(`   FAIL: Lives mismatch. Expected ${expected.robot.lives}, Got ${actual.lives}`);
+
+            return posMatch && healthMatch && livesMatch;
+        }
+    ),
 
     defineTest(
         "Push Panel: Basic push north",

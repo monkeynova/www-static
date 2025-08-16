@@ -152,7 +152,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
 export async function runProgramExecution(boardData, robot) {
     if (!boardData) {
         Logger.error("Cannot run program: Board data not set.");
-        emit('programExecutionFinished'); // EMIT EVENT
+        endOfTurnCleanup(robot);
         return;
     }
     Logger.log("--- Starting Program Execution ---");
@@ -162,7 +162,7 @@ export async function runProgramExecution(boardData, robot) {
 
     if (!isRobotPoweredDown && programCards.length !== Config.PROGRAM_SIZE) {
         Logger.error("Program is not full!");
-        emit('programExecutionFinished'); // EMIT EVENT
+        endOfTurnCleanup(robot);
         return;
     }
 
@@ -174,7 +174,7 @@ export async function runProgramExecution(boardData, robot) {
 Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData ? cardData.text : 'No Card')}`);
         Logger.log(`  Current robot powered down state: ${isRobotPoweredDown}`);
         Logger.log(`  Card data for this step: ${JSON.stringify(cardData)}`);
-        let cardMoved = false;
+        let cardActionTaken = false; // Track if a card action was performed
 
         // --- 1. Execute Card Action (only if not powered down) ---
         if (isRobotPoweredDown) {
@@ -183,12 +183,15 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
         } else if (cardData) { // Only execute if cardData exists (program is full)
             if (cardData.type === 'turnL') {
                 robot.turn(TURN_LEFT); // Update state
+                cardActionTaken = true;
             } else if (cardData.type === 'turnR') {
                 robot.turn(TURN_RIGHT); // Update state
+                cardActionTaken = true;
             }
             // --- Handle U-Turn ---
             else if (cardData.type === 'uturn') {
                 robot.uTurn(); // Update state & emit event
+                cardActionTaken = true;
             }
             else { // Movement cards (move1, move2, back1)
                 let steps = 0;
@@ -207,9 +210,9 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
                         // No need for extra obstacle check here, calculateMoveTarget did it
                         Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
                         robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
-                        cardMoved = true;
+                        cardActionTaken = true;
                         if (moveCount > 1) await sleep(500);
-                    } else { // Move failed boundary or wall check
+                    } else {
                         if (moveTarget.blockedByWall) {
                             Logger.log("   Move failed: Hit wall.");
                         } else {
@@ -221,13 +224,16 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
             }
         }
 
-        await sleep(cardMoved ? 200 : 500);
+        await sleep(cardActionTaken ? 200 : 500); // Use cardActionTaken for sleep duration
 
         const boardResult = await applyBoardEffects(boardData, robot, i + 1);
 
         if (boardResult.gameEnded) {
-            Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
-            emit('programExecutionFinished');
+            // Discard cards only if not powered down, as they weren't used
+            if (!isRobotPoweredDown) {
+                Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
+            }
+            endOfTurnCleanup(robot);
             Logger.log("Game ended during board effects phase.");
             return;
         }
@@ -243,20 +249,18 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
     if (!isRobotPoweredDown) {
         Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
     }
-    emit('programExecutionFinished');
+    endOfTurnCleanup(robot);
     // Only draw new cards if robot was NOT powered down
     if (!isRobotPoweredDown) {
         Cards.draw(Config.PROGRAM_SIZE);
-    }
-
+    }    
 }
-
 
 /**
  * Performs end-of-turn cleanup, including power down state transitions.
  * @param {Robot} robot - The robot instance.
  */
-export function endOfTurnCleanup(robot) {
+function endOfTurnCleanup(robot) { // No longer exported
     Logger.log("--- Performing End of Turn Cleanup ---");
     const robotState = robot.getRobotState();
 
@@ -274,5 +278,6 @@ export function endOfTurnCleanup(robot) {
         Logger.log("Robot is now powered down for this turn (due to previous intent).");
     }
     Logger.log("--- End of Turn Cleanup Complete ---");
+    emit('programExecutionFinished'); // EMIT EVENT
 }
 

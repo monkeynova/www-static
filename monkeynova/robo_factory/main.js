@@ -179,11 +179,6 @@ if (typeof document !== 'undefined') {
             // and AFTER model init if listeners need initial state immediately (less common).
             UI.setupUIListeners(() => GameLoop.runProgramExecution(board, robot), board, robot);
 
-            // NEW: Listen for program execution to finish to trigger end-of-turn cleanup
-            on('programExecutionFinished', () => {
-                GameLoop.endOfTurnCleanup(robot);
-            });
-
             // 6. Initialize Deck and Hand State
             Cards.initDeckAndHand(); // Emits events
 
