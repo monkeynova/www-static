@@ -108,6 +108,10 @@ To maintain a clean, predictable, and maintainable codebase, the following princ
 
 *  **Timeless Comments** Comments should be written in the present tense and should not be written in reference to the current changes being performed to the code. Comments should be written to prefer helping future readers understand behavior and choices rather than to describe the current code deltas. Specicifcally, the use of "NEW: <code change>" should be avoided, with a more timeless description of the code. 
 
+*  **Readable Code** Code should be written in a readable manner. Comments should reflect decisions and understanding beyond the details of the code. Comments that simply repeat the code (e.g. "i++; // Increment i") should be avoided. A comment that is a short synopsis at the beginning of a loop or function describing it's purpose and a high level description of the actions can provide value. Especially if the loop is long and hard to take in at a glance. But even then a well named, extracted function is often a better option for readability.
+
+*  **Reduce Cyclomatic Complexity** Cyclomatic complexity is a measure of the number of paths through a piece of code. Loops and conditionals increase the complexity. A heuristic for cyclomatic complexity is around how deeply indented a piece of code gets. We generally want to try to keep the number of branches within a function to be under 10 or so and should start considering refactorings as we get to that point.
+
 ## 4. Future Work & Potential Enhancements
 
 *   **More Card Types:**
