@@ -106,11 +106,12 @@ To maintain a clean, predictable, and maintainable codebase, the following princ
 
 *   **Data Validation for String-based Enums:** When string literals are used to represent a fixed set of predefined values (acting as an "enum"), robust validation mechanisms should be in place. This validation should occur as early as possible in the data's lifecycle, ideally at data parsing or module boundaries, to provide immediate and useful error feedback. This ensures that only expected values are processed, preventing subtle bugs caused by typos or unexpected input. For instance, if robot orientations are "north", "east", "south", "west", any function accepting an orientation string should validate it against this allowed set.
 
+*  **Timeless Comments** Comments should be written in the present tense and should not be written in reference to the current changes being performed to the code. Comments should be written to prefer helping future readers understand behavior and choices rather than to describe the current code deltas. Specicifcally, the use of "NEW: <code change>" should be avoided, with a more timeless description of the code. 
+
 ## 4. Future Work & Potential Enhancements
 
 *   **More Card Types:**
     *   **"Again":** Repeats the previous card's action.
-    *   **"Power Down":** Robot skips the next card but regains some health.
     *   **Conditional Cards:** "If-Then" logic (e.g., "If on a blue tile, move 2").
 *   **Improved UI/UX:**
     *   Add sound effects for movement, collisions, and card plays.
