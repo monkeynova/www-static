@@ -296,24 +296,26 @@ const testScenarios = [
             const boardData = new Board([[{}]]); // Minimal board
             const robot = new Robot(0, 0, 'north');
             robot.setPowerDownIntent(true); // Set intent for next turn
-            robot.setProgram([]); // Empty program for powered down turn
 
             // Ensure hand is full initially for consistent testing
-            Cards.initDeckAndHand(); // Reset deck/hand
-            Cards.draw(Config.PROGRAM_SIZE); // Draw initial hand
+            Cards.initDeckAndHand(); // Resets deck and hand, and draws HAND_SIZE (7) cards
+            const initialHandCards = Cards.getHandCards(); // Get the cards currently in hand
+            // Take the first PROGRAM_SIZE (5) cards to be the robot's program
+            const programCards = initialHandCards.slice(0, Config.PROGRAM_SIZE);
+            robot.setProgram(programCards);
 
-            return { boardData, robot, initialHandSize: Cards.getHandSize() };
+            return { boardData, robot };
         },
         async (setupData) => {
-            // Run one turn to transition to powered down state
+            // Run one turn to transition to powered down state (robot executes program, discards cards, draws new ones)
             await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
-            // Run the powered down turn
+            // Run the powered down turn (robot skips actions, no new cards drawn)
             await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
             return { finalHandSize: Cards.getHandSize() };
         },
         {
-            // Expected: Hand size remains the same as initialHandSize
-            finalHandSize: Config.PROGRAM_SIZE // Should be 5 cards
+            // Expected: Hand size should be HAND_SIZE (7) after the first turn, and remain 7 after the powered-down turn
+            finalHandSize: Config.HAND_SIZE // Should be 7 cards
         },
         (actual, expected) => {
             const pass = actual.finalHandSize === expected.finalHandSize;
