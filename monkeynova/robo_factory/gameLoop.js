@@ -90,37 +90,10 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
 
 
     // --- NEW: 3. Laser Firing ---
-    if (!gameEnded) { // Only fire lasers if game hasn't ended from previous effects
-        Logger.log("   Checking for laser fire...");
-        // Iterate through all tiles to find lasers
-        for (let r = 0; r < boardData.rows; r++) {
-            for (let c = 0; c < boardData.cols; c++) {
-                const tile = boardData.getTileData(r, c);
-                const laserDevice = tile ? tile.getWallDevice('laser') : null;
-                if (laserDevice) {
-                    // Check if robot is on the laser emitter tile itself
-                    const robotOnEmitter = (robot.row === r && robot.col === c);
-
-                    const laserPath = boardData.getLaserPath(r, c, laserDevice.direction, robot.getRobotState());
-                    // Check if robot is on any tile in the laser's path
-                    const robotInLaserPath = laserPath.some(
-                        pathTile => pathTile.row === robot.row && pathTile.col === robot.col
-                    );
-
-                    if (robotOnEmitter || robotInLaserPath) {
-                        Logger.log(`   Robot hit by laser from (${r},${c}) firing ${laserDevice.direction}!`);
-                        Logger.log(`   Robot health BEFORE damage: ${robot.getRobotState().health}`);
-                        robot.takeDamage();
-                        Logger.log(`   Robot health AFTER damage: ${robot.getRobotState().health}`);
-                        await sleep(300); // Small delay for visual feedback of damage
-                        if (robot.isDestroyed()) {
-                            gameEnded = true; // Game ended due to no lives left
-                            return { gameEnded, boardMoved, fellInHole }; // Exit early if game over
-                        }
-                    }
-                }
-            }
-        }
+    const laserGameEnded = await boardData.applyLasers(robot, sleep);
+    if (laserGameEnded) {
+        gameEnded = true;
+        return { gameEnded, boardMoved, fellInHole }; // Exit early if game over
     }
     // --- End Laser Firing ---
 

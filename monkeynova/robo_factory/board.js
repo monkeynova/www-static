@@ -203,4 +203,46 @@ export class Board {
 
         return path;
     }
+
+    /**
+     * Applies damage to the robot if it is in the path of any laser on the board.
+     * @param {Robot} robot - The robot instance.
+     * @param {Function} sleep - The sleep utility function from gameLoop.js.
+     * @returns {Promise<boolean>} True if the game ended due to laser damage, false otherwise.
+     */
+    async applyLasers(robot, sleep) {
+        Logger.log("   Checking for laser fire...");
+        let gameEnded = false;
+
+        // Iterate through all tiles to find lasers
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const tile = this.getTileData(r, c);
+                const laserDevice = tile ? tile.getWallDevice('laser') : null;
+                if (laserDevice) {
+                    // Check if robot is on the laser emitter tile itself
+                    const robotOnEmitter = (robot.row === r && robot.col === c);
+
+                    const laserPath = this.getLaserPath(r, c, laserDevice.direction, robot.getRobotState());
+                    // Check if robot is on any tile in the laser's path
+                    const robotInLaserPath = laserPath.some(
+                        pathTile => pathTile.row === robot.row && pathTile.col === robot.col
+                    );
+
+                    if (robotOnEmitter || robotInLaserPath) {
+                        Logger.log(`   Robot hit by laser from (${r},${c}) firing ${laserDevice.direction}!`);
+                        Logger.log(`   Robot health BEFORE damage: ${robot.getRobotState().health}`);
+                        robot.takeDamage();
+                        Logger.log(`   Robot health AFTER damage: ${robot.getRobotState().health}`);
+                        await sleep(300); // Small delay for visual feedback of damage
+                        if (robot.isDestroyed()) {
+                            gameEnded = true; // Game ended due to no lives left
+                            return true; // Exit early if game over
+                        }
+                    }
+                }
+            }
+        }
+        return gameEnded;
+    }
 }
