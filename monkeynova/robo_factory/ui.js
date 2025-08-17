@@ -84,7 +84,7 @@ import * as Config from './config.js';
 import { Board } from './board.js'; // Need this for tile/wall data
 import { on } from './eventEmitter.js';
 import * as Logger from './logger.js';
-import { getOppositeWallSide } from './tile.js'; // NEW: Import getOppositeWallSide
+import { getOppositeWallSide } from './tile.js'; // Imports utility for wall side calculations
 // Card imports remain if needed for drag/drop state updates
 import { getCardData, removeFromHandData, addToHandData } from './cards.js';
 import * as TestRunner from './testRunner.js'; // Import the test runner
@@ -97,9 +97,9 @@ let runProgramButton = null;
 let flagStatusContainer = null;
 let healthValueEl = null;
 let maxHealthValueEl = null;
-let livesValueEl = null; // NEW: Element for lives display
-let powerDownButton = null; // NEW: Power Down Button
-let powerDownStatusEl = null; // NEW: Power Down Status Element
+let livesValueEl = null; // Element for lives display
+let powerDownButton = null; // Power Down Button
+let powerDownStatusEl = null; // Power Down Status Element
 let modal = null;
 let modalTitleEl = null;
 let modalMessageEl = null;
@@ -131,9 +131,9 @@ function cacheDOMElements() {
     flagStatusContainer = document.getElementById('flag-status');
     healthValueEl = document.getElementById('health-value');
     maxHealthValueEl = document.getElementById('max-health-value');
-    livesValueEl = document.getElementById('lives-value'); // NEW: Cache lives element
-    powerDownButton = document.getElementById('power-down-button'); // NEW: Cache power down button
-    powerDownStatusEl = document.getElementById('power-down-status'); // NEW: Cache power down status element
+    livesValueEl = document.getElementById('lives-value'); // Cache lives element
+    powerDownButton = document.getElementById('power-down-button'); // Cache power down button
+    powerDownStatusEl = document.getElementById('power-down-status'); // Cache power down status element
     modal = document.getElementById('end-game-modal');
     modalTitleEl = document.getElementById('modal-title');
     modalMessageEl = document.getElementById('modal-message');
@@ -161,7 +161,7 @@ let ctx = null; // Canvas 2D context
 let robotElement = null; // Reference to the robot DOM element
 let draggedCardElement = null; // Track dragged DOM element during drag event
 let wallStripePattern = null; // Store the created pattern
-let zoomLevel = 1.0; // NEW: Zoom level state
+let zoomLevel = 1.0; // Current zoom level of the board
 const ZOOM_INCREMENT = 0.1;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.0;
@@ -179,9 +179,9 @@ export function initializeUI(boardData, initialRobotState) {
     renderStaticBoardElements(boardData);   // Draw static board elements
     createFlagIndicatorsUI(boardData.flags); // Create flag DOM elements (now uses boardData.flags) // Create flag DOM elements (now uses boardData.flags)
     createRobotElement();                   // Create robot DOM element
-    applyZoom();                            // NEW: Apply initial zoom
+    applyZoom();                            // Apply initial zoom
     drawLaserBeams(boardData, initialRobotState); // Initial draw of laser beams
-    updateLivesUI(initialRobotState.lives); // NEW: Set initial lives display
+    updateLivesUI(initialRobotState.lives); // Set initial lives display
     Logger.log("UI Initialization complete.");
     return true;
 }
@@ -392,7 +392,7 @@ function renderStaticBoardElements(boardData) {
     const styles = getComputedStyle(document.documentElement);
     const plainColor = styles.getPropertyValue('--tile-plain-color').trim() || '#eee';
     const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
-    const checkpointColor = styles.getPropertyValue('--tile-checkpoint-color').trim() || '#ffcc00'; // NEW: Checkpoint color
+    const checkpointColor = styles.getPropertyValue('--tile-checkpoint-color').trim() || '#ffcc00'; // Checkpoint color
     const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
     const gearColor = styles.getPropertyValue('--tile-gear-color').trim() || '#d8bfd8';
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
@@ -412,10 +412,10 @@ function renderStaticBoardElements(boardData) {
             // 1. Draw Tile Background Color
             switch (tileData.floorDevice.type) {
                 case 'repair-station': ctx.fillStyle = repairColor; break;
-                case 'checkpoint': ctx.fillStyle = checkpointColor; break; // NEW: Checkpoint color
+                case 'checkpoint': ctx.fillStyle = checkpointColor; break; // Checkpoint color
                 case 'hole': ctx.fillStyle = holeColor; break;
-                case 'gear': ctx.fillStyle = gearColor; break; // NEW: Gear color
-                case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break; // NEW: Conveyor base color
+                case 'gear': ctx.fillStyle = gearColor; break; // Gear color
+                case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break; // Conveyor base color
                 case 'none': default: ctx.fillStyle = plainColor; break;
             }
             ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
@@ -434,7 +434,7 @@ function renderStaticBoardElements(boardData) {
                 case 'repair-station':
                     symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
                     break;
-                case 'checkpoint': // NEW: Checkpoint symbol
+                case 'checkpoint': // Checkpoint symbol
                     symbol = Config.TILE_SYMBOLS['checkpoint'] || '🚩';
                     ctx.fillText(symbol, centerX, centerY - 8); // Draw flag symbol slightly higher
 
@@ -495,7 +495,7 @@ function renderStaticBoardElements(boardData) {
                ctx.fillText(symbol, centerX, centerY);
             }
 
-            // NEW: Draw Laser Symbol (if present, on top of other tile visuals)
+            // Draw Laser Symbol (if present, on top of other tile visuals)
             const laserDevice = tileData.getWallDevice('laser');
             if (laserDevice) {
                 const laserSymbol = Config.TILE_SYMBOLS[laserDevice.direction] || '';
@@ -525,7 +525,7 @@ function renderStaticBoardElements(boardData) {
                 }
             }
 
-            // NEW: Draw Push Panel Visual (if present, on top of other tile visuals)
+            // Draw Push Panel Visual (if present, on top of other tile visuals)
             const pusherDevice = tileData.getWallDevice('pusher');
             if (pusherDevice) {
                 const pushDirection = pusherDevice.direction;
@@ -712,7 +712,7 @@ function createFlagIndicatorsUI(flags) {
         const indicator = document.createElement('div');
         indicator.classList.add('flag-indicator');
         indicator.dataset.stationKey = flagKey; // Link indicator to station data
-        indicator.dataset.order = flag.order; // NEW: Store order for sorting/marking
+        indicator.dataset.order = flag.order; // Store order for sorting/marking
         // Use symbol from config based on flag type
         let displayContent = Config.TILE_SYMBOLS[flag.type] || '❓';
         if (flag.type === 'checkpoint') {
@@ -818,7 +818,7 @@ function updateHealthUI(health, maxHealth) {
     }
 }
 
-/** NEW: Updates the lives display. */
+/** Updates the lives display. */
 function updateLivesUI(lives) {
     if (livesValueEl) {
         livesValueEl.textContent = lives;
@@ -826,7 +826,7 @@ function updateLivesUI(lives) {
     }
 }
 
-/** NEW: Updates the power down status display. */
+/** Updates the power down status display. */
 function updatePowerDownStatusUI(powerDownIntent, isPoweredDown) {
     if (powerDownStatusEl) {
         if (isPoweredDown) {
@@ -910,7 +910,7 @@ function updateButtonStateUI(isEnabled) {
     runProgramButton.disabled = !isEnabled;
 }
 
-/** NEW: Enables or disables the programming UI (card dragging, slot dropping). */
+/** Enables or disables the programming UI (card dragging, slot dropping). */
 function setProgrammingUIEnabled(isEnabled) {
     // Toggle draggable attribute on cards in hand
     if (cardHandContainer) {
@@ -934,7 +934,7 @@ function setProgrammingUIEnabled(isEnabled) {
 
 // --- UI Helpers ---
 
-/** NEW: Applies the current zoom level to the board container */
+/** Applies the current zoom level to the board container */
 function applyZoom() {
     if (boardContainer && zoomLevelDisplay) {
         boardContainer.style.transform = `scale(${zoomLevel})`;
@@ -1119,7 +1119,7 @@ export function setupUIListeners(runProgramCallback, boardData, robot) { // Pass
         }
     });
 
-    // NEW: Attach Power Down Button Listener
+    // Attach Power Down Button Listener
     if (powerDownButton) {
         powerDownButton.addEventListener('click', () => {
             const currentIntent = robot.getPowerDownIntent();
@@ -1178,7 +1178,7 @@ export function setupUIListeners(runProgramCallback, boardData, robot) { // Pass
         Logger.warn("Run Tests button not found.");
     }
 
-    // NEW: Attach Zoom Listeners
+    // Attach Zoom Listeners
     if (zoomInButton) {
         zoomInButton.addEventListener('click', () => {
             zoomLevel = Math.min(MAX_ZOOM, zoomLevel + ZOOM_INCREMENT);
@@ -1224,13 +1224,13 @@ function subscribeToModelEvents(boardData, robot) { // Pass needed static data l
     on('healthChanged', ({ health, maxHealth }) => {
         updateHealthUI(health, maxHealth);
     });
-    on('livesChanged', (lives) => { // NEW: Listen for lives changes
+    on('livesChanged', (lives) => { // Listen for lives changes
         updateLivesUI(lives);
     });
-    on('powerDownIntentChanged', (intent) => { // NEW: Listen for power down intent changes
+    on('powerDownIntentChanged', (intent) => { // Listen for power down intent changes
         updatePowerDownStatusUI(intent, robot.getIsPoweredDown());
     });
-    on('isPoweredDownChanged', (isPoweredDown) => { // NEW: Listen for isPoweredDown changes
+    on('isPoweredDownChanged', (isPoweredDown) => { // Listen for isPoweredDown changes
         updatePowerDownStatusUI(robot.getPowerDownIntent(), isPoweredDown);
         setProgrammingUIEnabled(!isPoweredDown); // Disable programming when powered down
     });

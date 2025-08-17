@@ -103,7 +103,7 @@ export function createDemonstrationBoard(rows, cols) {
     board[10][5].wallDevices = [{ type: 'laser', direction: 'east' }];
     board[10][5].walls.push('west'); // Changed from 'east' to 'west'
 
-    // NEW: Laser near start for testing (at 1,2 firing south, attached to its north wall)
+    // Laser near start for testing (at 1,2 firing south, attached to its north wall)
     board[1][2].wallDevices = [{ type: 'laser', direction: 'south' }];
     board[1][2].walls.push('north');
 
@@ -198,7 +198,7 @@ if (typeof document !== 'undefined') {
                 health: initialRobotState.health,
                 maxHealth: Config.MAX_HEALTH
             });
-            // NEW: Emit initial lives
+            // Emit initial lives
             emit('livesChanged', robot.lives);
             // Emit starting flag visit status (if applicable)
             if (initialRobotState.lastVisitedStationKey) {

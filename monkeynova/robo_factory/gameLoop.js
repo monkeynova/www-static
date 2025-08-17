@@ -4,10 +4,10 @@ import { Board } from './board.js';
 import * as Cards from './cards.js'; 
 import * as Logger from './logger.js';
 import { emit } from './eventEmitter.js';
-import { TURN_LEFT, TURN_RIGHT } from './config.js'; // NEW: Import laser constants
+import { TURN_LEFT, TURN_RIGHT } from './config.js'; // Import constants for robot turns
 
 // Simple sleep utility
-let isTesting = false; // NEW: Flag to indicate if tests are running
+let isTesting = false; // Flag to indicate if tests are running
 
 export function setTestingMode(mode) {
     isTesting = mode;
@@ -58,7 +58,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     }
     // --- End Conveyor Movement ---
 
-    // --- NEW: 2. Push Panel Movement ---
+    // --- 2. Push Panel Movement ---
     Logger.log("      Phase 3: Checking Push Panels");
     finalTileData = boardData.getTileData(robot.row, robot.col); // Re-fetch after conveyor movement
     const pushPanelResult = finalTileData.tryPushPanel(robot.getRobotState(), boardData, currentProgramStep);
@@ -72,7 +72,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     // Ensure robotState reflects the final position after push panels
     // No need to re-assign finalTileData here, it's updated by robotState
 
-    // --- NEW: 3. Gear Rotation ---
+    // --- 3. Gear Rotation ---
     finalTileData = boardData.getTileData(robot.row, robot.col); // Re-fetch after potential movement
     if (finalTileData.floorDevice.type === 'gear' && finalTileData.floorDevice.direction === 'cw') {
         Logger.log(`   On clockwise gear. Turning right.`);
@@ -89,7 +89,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     // --- End Gear Rotation ---
 
 
-    // --- NEW: 3. Laser Firing ---
+    // --- 3. Laser Firing ---
     const laserGameEnded = await boardData.applyLasers(robot, sleep);
     if (laserGameEnded) {
         gameEnded = true;
@@ -104,7 +104,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
         gameEnded = true;
     }
 
-    // --- NEW: Checkpoint ---
+    // --- Checkpoint ---
     const checkpointResult = finalTileData.tryApplyCheckpoint(robot, boardData);
     if (checkpointResult.gameEnded) {
         gameEnded = true;
@@ -211,7 +211,7 @@ function endOfTurnCleanup(robot) { // No longer exported
     // Step 1: If robot was powered down last turn, power it back up now.
     if (robotState.isPoweredDown) {
         robot.setIsPoweredDown(false); // Robot powers back up
-        robot.restoreFullHealth(); // NEW: Heal robot when powering back up
+        robot.restoreFullHealth(); // Heal robot when powering back up
         Logger.log("Robot is powering back up from a powered-down turn.");
     }
 

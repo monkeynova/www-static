@@ -15,10 +15,10 @@ class Robot {
     col;
     orientation;
     health;
-    lives; // NEW: Number of lives
+    lives; // Number of lives
     lastVisitedStationKey;
     highestVisitedCheckpointOrder;
-    program; // NEW: Array to store the program cards
+    program; // Array to store the program cards
 
     /**
      * Initializes a new Robot instance.
@@ -38,8 +38,8 @@ class Robot {
         this.lastVisitedStationKey = null;
         this.highestVisitedCheckpointOrder = 0;
         this.program = []; // Initialize program as an empty array
-        this.powerDownIntent = false; // NEW: Player intends to power down next turn
-        this.isPoweredDown = false;   // NEW: Robot is currently powered down
+        this.powerDownIntent = false; // Player intends to power down next turn
+        this.isPoweredDown = false;   // Robot is currently powered down
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
     }
 
@@ -73,8 +73,8 @@ class Robot {
             health: this.health,
             lives: this.lives, // Include lives in the state
             lastVisitedStationKey: this.lastVisitedStationKey,
-            powerDownIntent: this.powerDownIntent, // NEW: Include powerDownIntent
-            isPoweredDown: this.isPoweredDown,     // NEW: Include isPoweredDown
+            powerDownIntent: this.powerDownIntent, // Include powerDownIntent
+            isPoweredDown: this.isPoweredDown,     // Include isPoweredDown
         };
     }
 

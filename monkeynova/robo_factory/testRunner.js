@@ -8,11 +8,11 @@ import './main.js';
 import { Board } from './board.js';
 import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';
-import { setTestingMode } from './gameLoop.js'; // NEW: Import setTestingMode
+import { setTestingMode } from './gameLoop.js'; // Import setTestingMode
 import * as Logger from './logger.js';
 import * as Config from './config.js'; // May need for constants like MAX_HEALTH
-import { createDemonstrationBoard } from './main.js'; // NEW: Import createDemonstrationBoard
-import * as Cards from './cards.js'; // NEW: Import Cards module
+import { createDemonstrationBoard } from './main.js'; // Import createDemonstrationBoard
+import * as Cards from './cards.js'; // Import Cards module
 
 /**
  * Defines a test scenario.
@@ -605,7 +605,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         }
     ),
 
-    // --- NEW: Gear Tests ---
+    // --- Gear Tests ---
     defineTest(
         "Gears: Clockwise gear rotates robot right",
         async () => {
@@ -694,7 +694,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         }
     ),
 
-    // --- NEW: Laser Tests ---
+    // --- Laser Tests ---
     defineTest(
         "Laser: Robot takes damage from a stationary laser",
         async () => {
@@ -863,7 +863,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         }
     ),
 
-    // NEW: Test for main board definition parsing
+    // Test for main board definition parsing
     defineTest(
         "Main Board: createDemonstrationBoard parses successfully",
         async () => {

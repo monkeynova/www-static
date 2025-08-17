@@ -29,9 +29,9 @@ export const ALLOWED_EVENT_NAMES = new Set([
     'handUpdated',
     'cardCountsUpdated',
     'programExecutionFinished',
-    'livesChanged', // NEW: Event for lives changing
-    'powerDownIntentChanged', // NEW: Event for power down intent changing
-    'isPoweredDownChanged',   // NEW: Event for robot being powered down
+    'livesChanged', // Event for lives changing
+    'powerDownIntentChanged', // Event for power down intent changing
+    'isPoweredDownChanged',   // Event for robot being powered down
 ]);
 
 export const ALLOWED_LOG_LEVELS = new Set([
@@ -43,12 +43,12 @@ export const ALLOWED_LOG_LEVELS = new Set([
 export const TURN_LEFT = 'left';
 export const TURN_RIGHT = 'right';
 
-export const CHECKPOINT_ORDER_PROPERTY = 'order'; // NEW: Property name for checkpoint order
+export const CHECKPOINT_ORDER_PROPERTY = 'order'; // Property name for checkpoint order
 
 // Optional: Mapping for symbols if needed beyond CSS ::after
 export const TILE_SYMBOLS = {
     'repair-station': '🔧',
-    'checkpoint': '🚩', // NEW: Symbol for checkpoint
+    'checkpoint': '🚩', // Symbol for checkpoint
     'hole': '🕳️',
     // Conveyor Arrows
     'conveyor-east': '→',
@@ -64,12 +64,12 @@ export const TILE_SYMBOLS = {
     'gear-ccw': '↺',
 };
 
-// NEW: Push Panel Colors
+// Push Panel Colors
 export const PUSH_PANEL_BASE_COLOR = '#8B4513'; // SaddleBrown
 export const PUSH_PANEL_ACTIVE_COLOR = '#FFD700'; // Gold
 export const PUSH_PANEL_TEXT_COLOR = '#FFFFFF'; // White
 
-// NEW: Conveyor Colors
+// Conveyor Colors
 export const CONVEYOR_BASE_COLOR = '#aaddff'; // Light blue
 export const CONVEYOR_STRIPE_COLOR = '#77bbee'; // Slightly darker blue for stripes
 
