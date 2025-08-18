@@ -8,11 +8,11 @@ import './main.js';
 import { Board } from './board.js';
 import Robot from './robot.js';
 import * as GameLoop from './gameLoop.js';
-import { setTestingMode } from './gameLoop.js'; // Import setTestingMode
+import { setTestingMode } from './gameLoop.js';
 import * as Logger from './logger.js';
-import * as Config from './config.js'; // May need for constants like MAX_HEALTH
-import { createDemonstrationBoard } from './main.js'; // Import createDemonstrationBoard
-import * as Cards from './cards.js'; // Import Cards module
+import * as Config from './config.js';
+import { createDemonstrationBoard } from './main.js';
+import * as Cards from './cards.js';
 
 /**
  * Defines a test scenario.
@@ -63,7 +63,6 @@ const testScenarios = [
             robot: { row: 0, col: 2, orientation: 'east' }
         },
         (actualState, expectedState) => {
-            // Assert: Check final robot position and orientation
             const posMatch = actualState.row === expectedState.robot.row && actualState.col === expectedState.robot.col;
             const orientMatch = actualState.orientation === expectedState.robot.orientation;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expectedState.robot.row},${expectedState.robot.col}), Got (${actualState.row},${actualState.col})`);
@@ -206,7 +205,6 @@ const testScenarios = [
             robot: { row: 0, col: 0, orientation: 'west' } // This is the state after the first turn's program execution
         },
         (actual, expected) => {
-            // Compare stateAfterSecondTurn with the expected state (which is stateAfterFirstTurn)
             const posMatch = actual.stateAfterSecondTurn.row === expected.robot.row && actual.stateAfterSecondTurn.col === expected.robot.col;
             const orientMatch = actual.stateAfterSecondTurn.orientation === expected.robot.orientation;
 
@@ -596,7 +594,6 @@ Executing Card 1: ${cardData.type} (${cardData.text})
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Robot remains at (0,1) facing East
         (actualState, expectedState) => {
-            // Assert: Check final robot position and orientation
             const posMatch = actualState.row === expectedState.robot.row && actualState.col === expectedState.robot.col;
             const orientMatch = actualState.orientation === expectedState.robot.orientation;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expectedState.robot.row},${expectedState.robot.col}), Got (${actualState.row},${actualState.col})`);
@@ -685,7 +682,6 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             robot: { row: 0, col: 1, orientation: 'east' }
         },
         (actualState, expectedState) => {
-            // Assert: Check final position and orientation
             const posMatch = actualState.row === expectedState.robot.row && actualState.col === expectedState.robot.col;
             const orientMatch = actualState.orientation === expectedState.robot.orientation;
             if (!posMatch) Logger.error(`   FAIL: Position mismatch. Expected (${expectedState.robot.row},${expectedState.robot.col}), Got (${actualState.row},${actualState.col})`);
@@ -1156,7 +1152,6 @@ export async function runAllTests() {
                 Logger.log(`   Health before assertion: ${actual.health}`);
             }
 
-            // 4. Assert the result
             if (test.assert(actual, test.expected)) {
                 Logger.log("   Result: PASS");
                 passed++;
@@ -1177,6 +1172,5 @@ export async function runAllTests() {
     Logger.log(`Passed: ${passed}, Failed: ${failed}`);
     Logger.log("==========================");
 
-    // Optional: Reset game state after tests? Or assume page reload.
-    // Logger.log("Note: Game state may have been altered by tests.");
+    
 }

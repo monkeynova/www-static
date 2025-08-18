@@ -13,11 +13,61 @@ export function setTestingMode(mode) {
     isTesting = mode;
 }
 
-function sleep(ms) { 
+function sleep(ms) {
     if (isTesting) {
         return Promise.resolve(); // Resolve immediately during tests
     }
     return new Promise(resolve => setTimeout(resolve, ms)); 
+}
+
+/**
+ * Executes a single programmed card action.
+ * @param {Robot} robot - The robot instance.
+ * @param {object} cardData - The card data object to execute.
+ * @param {object} boardData - The parsed board data.
+ * @param {Function} sleep - The sleep utility function.
+ * @returns {Promise<boolean>} True if a card action was performed, false otherwise.
+ */
+async function tryExecuteSingleCard(robot, cardData, boardData, sleep) {
+    if (!cardData) {
+        return false;
+    }
+
+    let cardActionTaken = false;
+    if (cardData.type === 'turnL') {
+        robot.turn(TURN_LEFT);
+        cardActionTaken = true;
+    } else if (cardData.type === 'turnR') {
+        robot.turn(TURN_RIGHT);
+        cardActionTaken = true;
+    }
+    else if (cardData.type === 'uturn') {
+        robot.uTurn();
+        cardActionTaken = true;
+    }
+    else { // Movement cards (move1, move2, back1)
+        const moveCount = cardData.type === 'move2' ? 2 : 1;
+        const stepType = cardData.type === 'back1' ? -1 : 1;
+
+        for (let moveStep = 0; moveStep < moveCount; moveStep++) {
+            const moveTarget = robot.calculateMoveTarget(stepType, boardData);
+
+            if (moveTarget.success) {
+                Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
+                robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
+                cardActionTaken = true;
+                if (moveCount > 1) await sleep(500);
+            } else {
+                if (moveTarget.blockedByWall) {
+                    Logger.log("   Move failed: Hit wall.");
+                } else {
+                    Logger.log("   Move failed: Hit boundary.");
+                }
+                if (moveCount > 1) break;
+            }
+        }
+    }
+    return cardActionTaken;
 }
 
 /**
@@ -86,9 +136,6 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     // --- End Gear Rotation ---
 
 
-    // --- End Gear Rotation ---
-
-
     // --- 3. Laser Firing ---
     const laserGameEnded = await boardData.applyLasers(robot, sleep);
     if (laserGameEnded) {
@@ -125,7 +172,7 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
         }
     }
 
-    return { gameEnded, boardMoved, fellInHole }; // Return final status
+    return { gameEnded, boardMoved, fellInHole };
 }
 
 /**
@@ -142,7 +189,7 @@ export async function runProgramExecution(boardData, robot) {
     Logger.log("--- Starting Program Execution ---");
 
     const isRobotPoweredDown = robot.getIsPoweredDown();
-    const programCards = robot.getProgram(); // Get program from robot
+    const programCards = robot.getProgram();
 
     if (!isRobotPoweredDown && programCards.length !== Config.PROGRAM_SIZE) {
         Logger.error("Program is not full!");
@@ -175,7 +222,7 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
         if (boardResult.gameEnded) {
             // Discard cards only if not powered down, as they weren't used
             if (!isRobotPoweredDown) {
-                Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
+                Cards.discard(programCards.map(card => card.instanceId));
             }
             endOfTurnCleanup(robot);
             Logger.log("Game ended during board effects phase.");
@@ -191,7 +238,7 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
     Logger.log("\n--- Program Finished ---");
     // Only discard cards if robot was NOT powered down (i.e., cards were actually used)
     if (!isRobotPoweredDown) {
-        Cards.discard(programCards.map(card => card.instanceId)); // Discard by instanceId
+        Cards.discard(programCards.map(card => card.instanceId));
     }
     endOfTurnCleanup(robot);
     // Only draw new cards if robot was NOT powered down
@@ -210,8 +257,8 @@ function endOfTurnCleanup(robot) { // No longer exported
 
     // Step 1: If robot was powered down last turn, power it back up now.
     if (robotState.isPoweredDown) {
-        robot.setIsPoweredDown(false); // Robot powers back up
-        robot.restoreFullHealth(); // Heal robot when powering back up
+        robot.setIsPoweredDown(false);
+        robot.restoreFullHealth();
         Logger.log("Robot is powering back up from a powered-down turn.");
     }
 
@@ -222,56 +269,5 @@ function endOfTurnCleanup(robot) { // No longer exported
         Logger.log("Robot is now powered down for this turn (due to previous intent).");
     }
     Logger.log("--- End of Turn Cleanup Complete ---");
-    emit('programExecutionFinished'); // EMIT EVENT
+    emit('programExecutionFinished');
 }
-
-/**
- * Executes a single programmed card action.
- * @param {Robot} robot - The robot instance.
- * @param {object} cardData - The card data object to execute.
- * @param {object} boardData - The parsed board data.
- * @param {Function} sleep - The sleep utility function.
- * @returns {Promise<boolean>} True if a card action was performed, false otherwise.
- */
-async function tryExecuteSingleCard(robot, cardData, boardData, sleep) {
-    if (!cardData) {
-        return false;
-    }
-
-    let cardActionTaken = false;
-    if (cardData.type === 'turnL') {
-        robot.turn(TURN_LEFT);
-        cardActionTaken = true;
-    } else if (cardData.type === 'turnR') {
-        robot.turn(TURN_RIGHT);
-        cardActionTaken = true;
-    }
-    else if (cardData.type === 'uturn') {
-        robot.uTurn();
-        cardActionTaken = true;
-    }
-    else { // Movement cards (move1, move2, back1)
-        const moveCount = cardData.type === 'move2' ? 2 : 1;
-        const stepType = cardData.type === 'back1' ? -1 : 1;
-
-        for (let moveStep = 0; moveStep < moveCount; moveStep++) {
-            const moveTarget = robot.calculateMoveTarget(stepType, boardData);
-
-            if (moveTarget.success) {
-                Logger.log(`   Attempting move step ${moveStep + 1} to (${moveTarget.targetRow}, ${moveTarget.targetCol})`);
-                robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
-                cardActionTaken = true;
-                if (moveCount > 1) await sleep(500);
-            } else {
-                if (moveTarget.blockedByWall) {
-                    Logger.log("   Move failed: Hit wall.");
-                } else {
-                    Logger.log("   Move failed: Hit boundary.");
-                }
-                if (moveCount > 1) break;
-            }
-        }
-    }
-    return cardActionTaken;
-}
-

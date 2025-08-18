@@ -92,7 +92,7 @@ export function draw(count) {
 
     // Emit events AFTER the draw loop is complete
     if (drawn.length > 0) {
-        emit('handUpdated', [...handCards]); // Emit new hand state
+        emit('handUpdated', [...handCards]);
     }
     // Always emit counts if anything changed (draw happened or reshuffle)
     if (drawn.length > 0 || reshuffled) {
@@ -112,8 +112,8 @@ export function removeFromHandData(instanceId) {
     if (indexToRemove > -1) {
         handCards.splice(indexToRemove, 1);
         Logger.log(`Removed ${instanceId} from hand data. Hand size: ${handCards.length}`);
-        emit('handUpdated', [...handCards]); // Emit updated hand
-        emitCounts(); // Emit updated counts
+        emit('handUpdated', [...handCards]);
+        emitCounts();
         return true;
     }
     Logger.warn(`Card ${instanceId} not found in hand data to remove.`);
@@ -130,8 +130,8 @@ export function addToHandData(instanceId) {
     if (cardData && !handCards.some(card => card.instanceId === instanceId)) {
         handCards.push(cardData);
         Logger.log(`Added ${instanceId} back to hand data. Hand size: ${handCards.length}`);
-        emit('handUpdated', [...handCards]); // Emit updated hand
-        emitCounts(); // Emit updated counts
+        emit('handUpdated', [...handCards]);
+        emitCounts();
         return true;
     }
     return false;
@@ -152,7 +152,7 @@ export function discard(instanceIds) {
             if (handIndex > -1) {
                 Logger.warn(`Card ${id} found in hand during discard phase. Removing.`);
                 handCards.splice(handIndex, 1);
-                changed = true; // Hand changed unexpectedly
+                changed = true;
             }
             discardPile.push(cardData);
             count++;
@@ -162,10 +162,10 @@ export function discard(instanceIds) {
     });
     Logger.log(`Discarded ${count} cards. Discard size: ${discardPile.length}`);
     if (count > 0) {
-        emitCounts(); // Emit updated counts
+        emitCounts();
     }
     if (changed) {
-         emit('handUpdated', [...handCards]); // Emit hand update if it changed
+         emit('handUpdated', [...handCards]);
     }
 }
 

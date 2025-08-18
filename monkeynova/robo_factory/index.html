@@ -11,7 +11,7 @@
             margin-top: 20px;
         }
             
-        /* NEW: Game Container Styles */
+        /* Game Container Styles */
         #game-container {
             display: flex; /* Arrange left-panel and factory-floor horizontally */
             justify-content: center; /* Center the game horizontally if space allows */
@@ -21,7 +21,7 @@
             margin: 0 auto; /* Center the container itself */
         }
 
-        /* NEW: Left Panel Styles */
+        /* Left Panel Styles */
         #left-panel {
             display: flex;
             flex-direction: column; /* Stack status and controls vertically */
@@ -62,7 +62,7 @@
         .conveyor-south::after { transform: translate(-50%, -50%) rotate(90deg);  }
         .conveyor-west::after  { transform: translate(-50%, -50%) rotate(180deg); }
 
-        /* NEW: Repair Station Tile */
+        /* Repair Station Tile */
         .repair-station {
             background-color: #90ee90; /* Light green for repair stations */
             border: 1px solid #66cd66;
@@ -73,13 +73,13 @@
             color: #333;
         }
 
-        /* NEW: Gear Tile Styles */
+        /* Gear Tile Styles */
         .gear-cw, .gear-ccw {
             background-color: #d8bfd8; /* Light purple for gears */
             border: 1px solid #b09ab0;
         }
 
-        /* NEW: Laser Tile Styles */
+        /* Laser Tile Styles */
         .laser-north, .laser-east, .laser-south, .laser-west {
             background-color: #ffcccc; /* Light red for lasers */
             border: 1px solid #ff0000;
@@ -139,7 +139,7 @@
             transition: transform 0.3s ease; /* Smooth rotation */
         }
 
-        /* NEW: Rotate indicator based on facing class */
+        /* Rotate indicator based on facing class */
         .robot.facing-north::before {
             transform: translate(-50%, -50%) rotate(-90deg);
             left: 50%; /* Adjust position for north */
@@ -174,7 +174,7 @@
             --tile-conveyor-color: #aaddff;
             --tile-repair-color: #90ee90;
             --tile-hole-color: #222;
-            --tile-gear-color: #d8bfd8; /* NEW */
+            --tile-gear-color: #d8bfd8;
             --wall-solid-color: #663300; /* Fallback/alternative */
         }
 
@@ -382,7 +382,7 @@
             margin-bottom: 10px; /* Add some space below flags */
         }
 
-        /* NEW: Health Status Styles */
+        /* Health Status Styles */
         #health-status {
             font-size: 16px;
             font-weight: bold;
@@ -395,7 +395,7 @@
              color: #5cb85c; /* Green when full */
         }
 
-        /* NEW: Zoom Control Styles */
+        /* Zoom Control Styles */
         #zoom-controls {
             display: flex;
             align-items: center;
@@ -514,10 +514,10 @@
 
     <h1>Robot Factory Floor</h1>
 
-    <!-- NEW: Main Game Container -->
+    <!-- Main Game Container -->
     <div id="game-container">
 
-        <!-- NEW: Left Panel for Status and Controls -->
+        <!-- Left Panel for Status and Controls -->
         <div id="left-panel">
 
             <div id="status-area">
@@ -527,18 +527,18 @@
                     <span>Flags Visited:</span>
                     <!-- Flag indicators will be generated here -->
                 </div>
-                <!-- NEW: Health Display -->
+                <!-- Health Display -->
                 <div id="health-status">
                     <span>Health:</span>
                     <span id="health-value">--</span> / <span id="max-health-value">--</span>
                     <!-- Optional: Add a health bar later -->
                 </div>
-                <!-- NEW: Lives Display -->
+                <!-- Lives Display -->
                 <div id="lives-status">
                     <span>Lives:</span>
                     <span id="lives-value">--</span>
                 </div>
-                <!-- NEW: Zoom Controls -->
+                <!-- Zoom Controls -->
                 <div id="zoom-controls">
                     <button id="zoom-out-button" title="Zoom Out">-</button>
                     <span id="zoom-level">100%</span>
@@ -559,8 +559,8 @@
                         <div class="program-slot">5</div>
                     </div>
                     <button id="run-program">Run Program</button>
-            <button id="power-down-button">Power Down</button> <!-- NEW: Power Down Button -->
-            <div id="power-down-status" class="status-indicator"></div> <!-- NEW: Power Down Status -->
+            <button id="power-down-button">Power Down</button> <!-- Power Down Button -->
+            <div id="power-down-status" class="status-indicator"></div> <!-- Power Down Status -->
                 </div>
 
                 <div id="card-hand-area">

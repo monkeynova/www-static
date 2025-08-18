@@ -42,7 +42,7 @@ export class Tile {
 
         this.row = r;
         this.col = c;
-        this.walls = Array.isArray(walls) ? walls : []; // ADDED THIS LINE
+        this.walls = Array.isArray(walls) ? walls : [];
         this.floorDevice = floorDevice;
         this.wallDevices = Array.isArray(wallDevices) ? wallDevices : [];
 

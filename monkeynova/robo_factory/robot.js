@@ -15,10 +15,10 @@ class Robot {
     col;
     orientation;
     health;
-    lives; // Number of lives
+    lives;
     lastVisitedStationKey;
     highestVisitedCheckpointOrder;
-    program; // Array to store the program cards
+    program;
 
     /**
      * Initializes a new Robot instance.
@@ -34,10 +34,10 @@ class Robot {
         this.col = startCol;
         this.orientation = startOrientation;
         this.health = MAX_HEALTH;
-        this.lives = 3; // Initialize with 3 lives
+        this.lives = 3;
         this.lastVisitedStationKey = null;
         this.highestVisitedCheckpointOrder = 0;
-        this.program = []; // Initialize program as an empty array
+        this.program = [];
         this.powerDownIntent = false; // Player intends to power down next turn
         this.isPoweredDown = false;   // Robot is currently powered down
         Logger.log("Robot instance created and initialized:", { ...this.getRobotState() });
@@ -87,7 +87,7 @@ class Robot {
             this.powerDownIntent = intent;
             Logger.log(`Robot power down intent set to: ${this.powerDownIntent}`);
             Logger.log(`Emitting powerDownIntentChanged: ${this.powerDownIntent}`);
-            emit('powerDownIntentChanged', this.powerDownIntent); // Emit event
+            emit('powerDownIntentChanged', this.powerDownIntent);
         }
     }
 
@@ -107,7 +107,7 @@ class Robot {
         if (this.isPoweredDown !== poweredDown) {
             this.isPoweredDown = poweredDown;
             Logger.log(`Robot isPoweredDown set to: ${this.isPoweredDown}`);
-            emit('isPoweredDownChanged', this.isPoweredDown); // Emit event
+            emit('isPoweredDownChanged', this.isPoweredDown);
         }
     }
 
@@ -164,7 +164,7 @@ class Robot {
     turn(direction) {
         if (direction !== TURN_LEFT && direction !== TURN_RIGHT) {
             Logger.error(`Invalid turn direction: ${direction}. Must be '${TURN_LEFT}' or '${TURN_RIGHT}'.`);
-            return this.orientation; // Return current orientation, do not turn
+            return this.orientation;
         }
 
         const currentIndex = orientations.indexOf(this.orientation);
@@ -187,14 +187,14 @@ class Robot {
         const newIndex = (currentIndex + 2) % orientations.length;
         this.orientation = orientations[newIndex];
         Logger.log(`Robot performed U-Turn. New orientation: ${this.orientation}`);
-        // Emit event with current state AFTER update
         emit('robotTurned', { row: this.row, col: this.col, orientation: this.orientation });
         return this.orientation;
     }
 
     /**
      * Calculates the target coordinates for a move attempt based on current state.
-     * Checks boundaries and walls. Does NOT change the robot's state.
+     * This function determines where the robot *would* move, considering board boundaries and walls,
+     * without actually changing the robot's position. It's used for validating moves.
      * @param {number} steps - Number of steps (+ve forward, -ve backward).
      * @param {object} boardData - Parsed board data for boundary/wall checks.
      * @returns {object} { targetRow, targetCol, success: boolean, blockedByWall: boolean }
@@ -202,8 +202,6 @@ class Robot {
     calculateMoveTarget(steps, boardData) {
         let dr = 0, dc = 0;
         const moveDir = steps > 0 ? 1 : -1;
-
-        // Use current instance orientation
         switch (this.orientation) {
             case 'north': dr = -moveDir; break;
             case 'east':  dc = moveDir;  break;
@@ -229,7 +227,6 @@ class Robot {
             return { targetRow: this.row, targetCol: this.col, success: false, blockedByWall: false }; // Should not happen
         }
 
-        // Use current instance position
         const targetRow = this.row + dr;
         const targetCol = this.col + dc;
 
@@ -264,7 +261,6 @@ class Robot {
             this.row = row;
             this.col = col;
             Logger.log(`Robot position set to (${this.row}, ${this.col})`);
-            // Emit event with current state AFTER update
             emit('robotMoved', { row: this.row, col: this.col, orientation: this.orientation });
         }
     }

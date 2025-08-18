@@ -3,8 +3,6 @@ import * as Logger from './logger.js';
 import { ALLOWED_WALL_SIDES, TILE_SYMBOLS } from './config.js'; // Import for validation and laser constants
 import { Tile, getOppositeWallSide } from './tile.js';
 
-
-
 export class Board {
     /**
      * Represents the game board, managing a 2D grid of Tile objects.
@@ -13,6 +11,7 @@ export class Board {
      */
     /**
      * Creates a new Board instance from a board definition.
+     * Parses the raw board definition into a grid of Tile objects, validating tile properties.
      * @param {object[][]} boardDefinition - 2D array of tile objects {type, walls}.
      */
     constructor(boardDefinition) {
@@ -22,9 +21,7 @@ export class Board {
         this.rows = boardDefinition.length;
         this.cols = boardDefinition[0].length;
         this.flags = [];
-        this.tiles = []; // Store processed data for each tile
-
-        
+        this.tiles = [];
 
         Logger.log(`Parsing ${this.rows}x${this.cols} object board definition...`);
 
@@ -35,22 +32,12 @@ export class Board {
             const rowTiles = [];
             for (let c = 0; c < this.cols; c++) {
                 const tileDef = boardDefinition[r][c];
-                // Default floorDevice to 'none' if not provided
                 const floorDevice = tileDef.floorDevice || { type: 'none' };
 
-                // Validate that floorDevice has a type
                 if (!floorDevice.type) {
                     throw new Error(`Tile at (${r}, ${c}) is missing floorDevice type.`);
                 }
 
-                // Ensure only one floor device type is defined (this check is now redundant if we assume floorDevice is already structured)
-                // const floorDeviceTypes = ['hole', 'repair-station', 'conveyor', 'gear'];
-                // const definedFloorDevices = floorDeviceTypes.filter(type => floorDevice.type === type);
-                // if (definedFloorDevices.length > 1) {
-                //     throw new Error(`Tile at (${r}, ${c}) has multiple floor device definitions.`);
-                // }
-
-                // Validate specific floor device properties
                 if (floorDevice.type === 'gear') {
                     if (floorDevice.direction !== 'cw' && floorDevice.direction !== 'ccw') {
                         throw new Error(`Invalid gear direction '${floorDevice.direction}' at (${r}, ${c}). Must be 'cw' or 'ccw'.`);
@@ -118,13 +105,9 @@ export class Board {
         }
         const tileData = this.getTileData(r, c);
         if (!tileData || !tileData.walls) {
-            // If tile doesn't exist or has no wall data, assume no wall for safety? Or throw error?
-            // Let's assume no wall if tile data is missing, but log a warning.
-            // Logger.warn(`Checking wall on non-existent tile or tile without wall data at (${r}, ${c})`);
             return false;
         }
 
-        // Direct check on the specified tile's wall array
         return tileData.hasWall(side);
 
         // Note: This assumes the definition is consistent. E.g., if tile A has 'east' wall,
@@ -147,8 +130,8 @@ export class Board {
         let currentC = startC;
 
         let dr = 0, dc = 0;
-        let exitWallSide = ''; // Wall on the current tile that blocks the laser's exit
-        let entryWallSide = ''; // Wall on the next tile that blocks the laser's entry
+        let exitWallSide = '';
+        let entryWallSide = '';
 
         switch (laserDirection) {
             case 'north': dr = -1; exitWallSide = 'north'; entryWallSide = 'south'; break;
@@ -186,15 +169,13 @@ export class Board {
                 }
             }
 
-            // Check for a wall on the *next* tile (which the laser is trying to enter)
+            // Laser hit a wall on the next tile's entry side, so it stops *before* entering this tile.
             if (this.getTileData(nextR, nextC).hasWall(entryWallSide)) {
-                // Laser hit a wall on the next tile's entry side, so it stops *before* entering this tile.
-                break; // Laser stops here, do not include this tile in path
+                break;
             }
 
             path.push({ row: nextR, col: nextC });
 
-            // Move to the next tile for the next iteration
             currentR = nextR;
             currentC = nextC;
             nextR += dr;
@@ -236,8 +217,8 @@ export class Board {
                         Logger.log(`   Robot health AFTER damage: ${robot.getRobotState().health}`);
                         await sleep(300); // Small delay for visual feedback of damage
                         if (robot.isDestroyed()) {
-                            gameEnded = true; // Game ended due to no lives left
-                            return true; // Exit early if game over
+                            gameEnded = true;
+                            return true;
                         }
                     }
                 }
