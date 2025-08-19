@@ -380,278 +380,373 @@ function drawLaserBeams(boardData, robotState) {
     }
 }
 
-/** Renders only the static board elements (tiles, walls, grid) onto the canvas */
-function renderStaticBoardElements(boardData) {
-    if (!ctx || !boardData) {
-        Logger.error("Cannot render static board elements: Missing context or board data.");
-        return;
-    }
-    // Logger.log("Rendering static board elements to canvas..."); // Avoid excessive logging
-
-    // --- Get computed styles for colors (more robust than hardcoding) ---
-    const styles = getComputedStyle(document.documentElement);
+/**
+ * Draws the background color of a single tile.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {object} styles - Computed CSS styles.
+ */
+function drawTileBackground(ctx, tileData, x, y, styles) {
     const plainColor = styles.getPropertyValue('--tile-plain-color').trim() || '#eee';
     const repairColor = styles.getPropertyValue('--tile-repair-color').trim() || '#90ee90';
-    const checkpointColor = styles.getPropertyValue('--tile-checkpoint-color').trim() || '#ffcc00'; // Checkpoint color
+    const checkpointColor = styles.getPropertyValue('--tile-checkpoint-color').trim() || '#ffcc00';
     const holeColor = styles.getPropertyValue('--tile-hole-color').trim() || '#222';
     const gearColor = styles.getPropertyValue('--tile-gear-color').trim() || '#d8bfd8';
+
+    switch (tileData.floorDevice.type) {
+        case 'repair-station': ctx.fillStyle = repairColor; break;
+        case 'checkpoint': ctx.fillStyle = checkpointColor; break;
+        case 'hole': ctx.fillStyle = holeColor; break;
+        case 'gear': ctx.fillStyle = gearColor; break;
+        case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break;
+        case 'none': default: ctx.fillStyle = plainColor; break;
+    }
+    ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
+}
+
+/**
+ * Draws the symbol for a repair station.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} centerX - X-coordinate (pixel) of the tile's center.
+ * @param {number} centerY - Y-coordinate (pixel) of the tile's center.
+ */
+function drawRepairStationSymbol(ctx, tileData, centerX, centerY) {
+    const symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
+    ctx.fillText(symbol, centerX, centerY);
+}
+
+/**
+ * Draws the visuals for a checkpoint tile (flag and order number).
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} centerX - X-coordinate (pixel) of the tile's center.
+ * @param {number} centerY - Y-coordinate (pixel) of the tile's center.
+ */
+function drawCheckpointVisuals(ctx, tileData, centerX, centerY) {
+    const symbol = Config.TILE_SYMBOLS['checkpoint'] || '🚩';
+    ctx.fillText(symbol, centerX, centerY - 8); // Draw flag symbol slightly higher
+
+    ctx.fillStyle = 'white'; // Color for the number
+    ctx.font = 'bold 14px Arial'; // Smaller, bold font for the number
+    ctx.fillText(tileData.floorDevice.order.toString(), centerX, centerY + 12); // Offset slightly for better visibility
+}
+
+/**
+ * Draws the symbol for a hole.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} centerX - X-coordinate (pixel) of the tile's center.
+ * @param {number} centerY - Y-coordinate (pixel) of the tile's center.
+ */
+function drawHoleSymbol(ctx, tileData, centerX, centerY) {
+    const symbol = Config.TILE_SYMBOLS['hole'] || '🕳️';
+    ctx.fillText(symbol, centerX, centerY);
+}
+
+/**
+ * Draws the visuals for a gear tile.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} centerX - X-coordinate (pixel) of the tile's center.
+ * @param {number} centerY - Y-coordinate (pixel) of the tile's center.
+ */
+function drawGearVisuals(ctx, tileData, centerX, centerY) {
+    const symbol = Config.TILE_SYMBOLS[`gear-${tileData.floorDevice.direction}`] || '';
+    if (symbol) {
+        ctx.fillText(symbol, centerX, centerY);
+    }
+}
+
+/**
+ * Draws the visuals for a conveyor belt tile (stripes and speed indicator).
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} centerX - X-coordinate (pixel) of the tile's center.
+ * @param {number} centerY - Y-coordinate (pixel) of the tile's center.
+ */
+function drawConveyorVisuals(ctx, tileData, x, y, centerX, centerY) {
+    ctx.strokeStyle = Config.CONVEYOR_STRIPE_COLOR;
+    ctx.lineWidth = 2; // Stripe thickness
+    ctx.beginPath();
+
+    const stripeSpacing = Config.TILE_SIZE / 4;
+
+    switch (tileData.floorDevice.direction) {
+        case 'north':
+        case 'south':
+            for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                ctx.moveTo(x, y + i);
+                ctx.lineTo(x + Config.TILE_SIZE, y + i);
+            }
+            break;
+        case 'east':
+        case 'west':
+            for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
+                ctx.moveTo(x + i, y);
+                ctx.lineTo(x + i, y + Config.TILE_SIZE);
+            }
+            break;
+    }
+    ctx.stroke();
+
+    if (tileData.floorDevice.speed === 2) {
+        const symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.floorDevice.direction}-speed-2x`] || '2x';
+        ctx.fillStyle = '#FF0000'; // Red color for 2x indicator
+        ctx.font = '16px Arial'; // Smaller font for 2x
+        ctx.fillText(symbol, centerX, centerY + Config.TILE_SIZE / 4);
+    }
+}
+
+/**
+ * Orchestrates drawing of floor device visuals.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {object} styles - Computed CSS styles.
+ */
+function drawFloorDeviceVisuals(ctx, tileData, x, y, styles) {
+    ctx.fillStyle = '#333'; // Default symbol color
+    ctx.font = '24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const centerX = x + Config.TILE_SIZE / 2;
+    const centerY = y + Config.TILE_SIZE / 2;
+
+    switch (tileData.floorDevice.type) {
+        case 'repair-station':
+            drawRepairStationSymbol(ctx, tileData, centerX, centerY);
+            break;
+        case 'checkpoint':
+            drawCheckpointVisuals(ctx, tileData, centerX, centerY);
+            break;
+        case 'hole':
+            drawHoleSymbol(ctx, tileData, centerX, centerY);
+            break;
+        case 'gear':
+            drawGearVisuals(ctx, tileData, centerX, centerY);
+            break;
+        case 'conveyor':
+            drawConveyorVisuals(ctx, tileData, x, y, centerX, centerY);
+            break;
+        case 'none':
+        default:
+            // No symbol for plain tiles
+            break;
+    }
+}
+
+/**
+ * Draws the walls for a single tile.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {object} styles - Computed CSS styles.
+ */
+function drawWallVisuals(ctx, tileData, x, y, styles) {
     const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
-    // Use pattern if available, otherwise fallback color
     const wallFill = wallStripePattern || styles.getPropertyValue('--wall-solid-color').trim() || '#630';
-    const gridLineColor = '#cccccc'; // Define light grey for grid lines
+    ctx.fillStyle = wallFill;
 
-    // --- Draw Tiles ---
-    for (let r = 0; r < boardData.rows; r++) {
-        for (let c = 0; c < boardData.cols; c++) {
-            const tileData = boardData.getTileData(r, c);
-            if (!tileData) continue;
+    if (tileData.walls.includes('north')) {
+        ctx.fillRect(x, y, Config.TILE_SIZE, wallThickness);
+    }
+    if (tileData.walls.includes('south')) {
+        ctx.fillRect(x, y + Config.TILE_SIZE - wallThickness, Config.TILE_SIZE, wallThickness);
+    }
+    if (tileData.walls.includes('west')) {
+        ctx.fillRect(x, y, wallThickness, Config.TILE_SIZE);
+    }
+    if (tileData.walls.includes('east')) {
+        ctx.fillRect(x + Config.TILE_SIZE - wallThickness, y, wallThickness, Config.TILE_SIZE);
+    }
+}
 
-            const x = c * Config.TILE_SIZE;
-            const y = r * Config.TILE_SIZE;
+/**
+ * Draws the symbol for a laser emitter.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} laserDevice - The laser device object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} centerX - X-coordinate (pixel) of the tile's center.
+ * @param {number} centerY - Y-coordinate (pixel) of the tile's center.
+ */
+function drawLaserSymbol(ctx, laserDevice, x, y, centerX, centerY) {
+    const laserSymbol = Config.TILE_SYMBOLS[laserDevice.direction] || '';
+    if (laserSymbol) {
+        ctx.fillStyle = '#FFFF00'; // Bright yellow for laser symbol
+        ctx.font = '30px sans-serif'; // Larger font size
 
-            // 1. Draw Tile Background Color
-            switch (tileData.floorDevice.type) {
-                case 'repair-station': ctx.fillStyle = repairColor; break;
-                case 'checkpoint': ctx.fillStyle = checkpointColor; break; // Checkpoint color
-                case 'hole': ctx.fillStyle = holeColor; break;
-                case 'gear': ctx.fillStyle = gearColor; break; // Gear color
-                case 'conveyor': ctx.fillStyle = Config.CONVEYOR_BASE_COLOR; break; // Conveyor base color
-                case 'none': default: ctx.fillStyle = plainColor; break;
-            }
-            ctx.fillRect(x, y, Config.TILE_SIZE, Config.TILE_SIZE);
+        let symbolX = centerX;
+        let symbolY = centerY;
 
-            // 2. Draw Symbols (Optional - can be kept in CSS if preferred)
-            ctx.fillStyle = '#333'; // Symbol color
-            ctx.font = '24px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const centerX = x + Config.TILE_SIZE / 2;
-            const centerY = y + Config.TILE_SIZE / 2;
-
-            let symbol = '';
-
-            switch (tileData.floorDevice.type) {
-                case 'repair-station':
-                    symbol = Config.TILE_SYMBOLS['repair-station'] || '🔧';
-                    break;
-                case 'checkpoint': // Checkpoint symbol
-                    symbol = Config.TILE_SYMBOLS['checkpoint'] || '🚩';
-                    ctx.fillText(symbol, centerX, centerY - 8); // Draw flag symbol slightly higher
-
-                    // Draw order number on top of the flag
-                    ctx.fillStyle = 'white'; // Color for the number
-                    ctx.font = 'bold 14px Arial'; // Smaller, bold font for the number
-                    ctx.fillText(tileData.floorDevice.order.toString(), centerX, centerY + 12); // Offset slightly for better visibility
-                    break;
-                case 'hole':
-                    symbol = Config.TILE_SYMBOLS['hole'] || '🕳️';
-                    break;
-                case 'gear':
-                    symbol = Config.TILE_SYMBOLS[`gear-${tileData.floorDevice.direction}`] || '';
-                    break;
-                case 'conveyor':
-                    // Draw conveyor stripes
-                    ctx.strokeStyle = Config.CONVEYOR_STRIPE_COLOR;
-                    ctx.lineWidth = 2; // Stripe thickness
-                    ctx.beginPath();
-
-                    const stripeSpacing = Config.TILE_SIZE / 4; // Adjust as needed
-
-                    switch (tileData.floorDevice.direction) {
-                        case 'north':
-                        case 'south':
-                            for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
-                                ctx.moveTo(x, y + i);
-                                ctx.lineTo(x + Config.TILE_SIZE, y + i);
-                            }
-                            break;
-                        case 'east':
-                        case 'west':
-                            for (let i = 0; i <= Config.TILE_SIZE; i += stripeSpacing) {
-                                ctx.moveTo(x + i, y);
-                                ctx.lineTo(x + i, y + Config.TILE_SIZE);
-                            }
-                            break;
-                    }
-                    ctx.stroke();
-
-                    // Add speed indicator for 2x conveyors
-                    if (tileData.floorDevice.speed === 2) {
-                        symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.floorDevice.direction}-speed-2x`] || '2x';
-                        ctx.fillStyle = '#FF0000'; // Red color for 2x indicator
-                        ctx.font = '16px Arial'; // Smaller font for 2x
-                        ctx.fillText(symbol, centerX, centerY + Config.TILE_SIZE / 4); // Offset slightly
-                    } else {
-                        symbol = Config.TILE_SYMBOLS[`conveyor-${tileData.floorDevice.direction}`] || '';
-                    }
-                    break;
-                case 'none':
-                default:
-                    symbol = ''; // No symbol for plain tiles
-                    break;
-            }
-
-            if (symbol) {
-               ctx.fillText(symbol, centerX, centerY);
-            }
-
-            // Draw Laser Symbol (if present, on top of other tile visuals)
-            const laserDevice = tileData.getWallDevice('laser');
-            if (laserDevice) {
-                const laserSymbol = Config.TILE_SYMBOLS[laserDevice.direction] || '';
-                if (laserSymbol) {
-                    ctx.fillStyle = '#FFFF00'; // Bright yellow for laser symbol
-                    ctx.font = '30px sans-serif'; // Larger font size
-
-                    let symbolX = centerX;
-                    let symbolY = centerY;
-
-                    // Adjust symbol position to be on the wall it's attached to
-                    switch (laserDevice.direction) {
-                        case 'north': // Attached to south wall
-                            symbolY = y + Config.TILE_SIZE - (Config.TILE_SIZE / 4); // Near bottom edge
-                            break;
-                        case 'south': // Attached to north wall
-                            symbolY = y + (Config.TILE_SIZE / 4); // Near top edge
-                            break;
-                        case 'east': // Attached to west wall
-                            symbolX = x + (Config.TILE_SIZE / 4); // Near left edge
-                            break;
-                        case 'west': // Attached to east wall
-                            symbolX = x + Config.TILE_SIZE - (Config.TILE_SIZE / 4); // Near right edge
-                            break;
-                    }
-                    ctx.fillText(laserSymbol, symbolX, symbolY);
-                }
-            }
-
-            // Draw Push Panel Visual (if present, on top of other tile visuals)
-            const pusherDevice = tileData.getWallDevice('pusher');
-            if (pusherDevice) {
-                const pushDirection = pusherDevice.direction;
-                const attachmentWallSide = getOppositeWallSide(pushDirection);
-
-                const panelSize = Config.TILE_SIZE * 0.25; // 25% of tile size
-
-                let panelX, panelY, panelW, panelH;
-
-                // Determine panel position and dimensions based on attachment wall
-                switch (attachmentWallSide) {
-                    case 'north':
-                        panelX = x; panelY = y; panelW = Config.TILE_SIZE; panelH = panelSize;
-                        break;
-                    case 'south':
-                        panelX = x; panelY = y + Config.TILE_SIZE - panelSize; panelW = Config.TILE_SIZE; panelH = panelSize;
-                        break;
-                    case 'west':
-                        panelX = x; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
-                        break;
-                    case 'east':
-                        panelX = x + Config.TILE_SIZE - panelSize; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
-                        break;
-                }
-
-                // Draw the base panel (a simple rectangle for now)
-                ctx.fillStyle = Config.PUSH_PANEL_BASE_COLOR;
-                ctx.fillRect(panelX, panelY, panelW, panelH);
-
-                // Draw stripes and numbers
-                ctx.font = `${Math.floor(panelSize * 0.8)}px Arial`; // Adjust font size based on panel thickness
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                for (let i = 0; i < Config.PROGRAM_SIZE; i++) {
-                    const step = i + 1;
-                    const isActiveStep = pusherDevice.steps.has(step);
-
-                    let stripeX, stripeY, stripeW, stripeH;
-                    let textX, textY;
-
-                    if (attachmentWallSide === 'north' || attachmentWallSide === 'south') {
-                        // Horizontal stripes
-                        stripeW = Config.TILE_SIZE / Config.PROGRAM_SIZE;
-                        stripeH = panelSize;
-                        stripeX = panelX + (i * stripeW);
-                        stripeY = panelY;
-                        textX = stripeX + stripeW / 2;
-                        textY = panelY + panelSize / 2;
-                    } else {
-                        // Vertical stripes
-                        stripeW = panelSize;
-                        stripeH = Config.TILE_SIZE / Config.PROGRAM_SIZE;
-                        stripeX = panelX;
-                        stripeY = panelY + (i * stripeH);
-                        textX = panelX + panelSize / 2;
-                        textY = stripeY + stripeH / 2;
-                    }
-
-                    ctx.fillStyle = isActiveStep ? Config.PUSH_PANEL_ACTIVE_COLOR : Config.PUSH_PANEL_BASE_COLOR;
-                    ctx.fillRect(stripeX, stripeY, stripeW, stripeH);
-
-                    if (isActiveStep) {
-                        ctx.fillStyle = Config.PUSH_PANEL_BASE_COLOR;
-                        ctx.fillText(step.toString(), textX, textY);
-                    }
-                }
-            }
+        switch (laserDevice.direction) {
+            case 'north':
+                symbolY = y + Config.TILE_SIZE - (Config.TILE_SIZE / 4);
+                break;
+            case 'south':
+                symbolY = y + (Config.TILE_SIZE / 4);
+                break;
+            case 'east':
+                symbolX = x + (Config.TILE_SIZE / 4);
+                break;
+            case 'west':
+                symbolX = x + Config.TILE_SIZE - (Config.TILE_SIZE / 4);
+                break;
         }
+        ctx.fillText(laserSymbol, symbolX, symbolY);
+    }
+}
+
+/**
+ * Draws the visuals for a push panel.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} pusherDevice - The push panel device object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ */
+function drawPushPanelVisuals(ctx, pusherDevice, x, y) {
+    const pushDirection = pusherDevice.direction;
+    const attachmentWallSide = getOppositeWallSide(pushDirection);
+
+    const panelSize = Config.TILE_SIZE * 0.25;
+
+    let panelX, panelY, panelW, panelH;
+
+    switch (attachmentWallSide) {
+        case 'north':
+            panelX = x; panelY = y; panelW = Config.TILE_SIZE; panelH = panelSize;
+            break;
+        case 'south':
+            panelX = x; panelY = y + Config.TILE_SIZE - panelSize; panelW = Config.TILE_SIZE; panelH = panelSize;
+            break;
+        case 'west':
+            panelX = x; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
+            break;
+        case 'east':
+            panelX = x + Config.TILE_SIZE - panelSize; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
+            break;
     }
 
-    // Reset fillStyle and font for subsequent drawings (grid lines, walls)
-    ctx.fillStyle = '#333'; // Default symbol color
-    ctx.font = '24px sans-serif'; // Default font size
+    ctx.fillStyle = Config.PUSH_PANEL_BASE_COLOR;
+    ctx.fillRect(panelX, panelY, panelW, panelH);
 
+    ctx.font = `${Math.floor(panelSize * 0.8)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < Config.PROGRAM_SIZE; i++) {
+        const step = i + 1;
+        const isActiveStep = pusherDevice.steps.has(step);
+
+        let stripeX, stripeY, stripeW, stripeH;
+        let textX, textY;
+
+        if (attachmentWallSide === 'north' || attachmentWallSide === 'south') {
+            stripeW = Config.TILE_SIZE / Config.PROGRAM_SIZE;
+            stripeH = panelSize;
+            stripeX = panelX + (i * stripeW);
+            stripeY = panelY;
+            textX = stripeX + stripeW / 2;
+            textY = panelY + panelSize / 2;
+        } else {
+            stripeW = panelSize;
+            stripeH = Config.TILE_SIZE / Config.PROGRAM_SIZE;
+            stripeX = panelX;
+            stripeY = panelY + (i * stripeH);
+            textX = panelX + panelSize / 2;
+            textY = stripeY + stripeH / 2;
+        }
+
+        ctx.fillStyle = isActiveStep ? Config.PUSH_PANEL_ACTIVE_COLOR : Config.PUSH_PANEL_BASE_COLOR;
+        ctx.fillRect(stripeX, stripeY, stripeW, stripeH);
+
+        if (isActiveStep) {
+            ctx.fillStyle = Config.PUSH_PANEL_BASE_COLOR;
+            ctx.fillText(step.toString(), textX, textY);
+        }
+    }
+}
+
+/**
+ * Orchestrates drawing of wall device visuals.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {object} styles - Computed CSS styles.
+ */
+function drawWallDeviceVisuals(ctx, tileData, x, y, styles) {
+    const centerX = x + Config.TILE_SIZE / 2;
+    const centerY = y + Config.TILE_SIZE / 2;
+
+    tileData.wallDevices.forEach(device => {
+        if (device.type === 'laser') {
+            drawLaserSymbol(ctx, device, x, y, centerX, centerY);
+        } else if (device.type === 'pusher') {
+            drawPushPanelVisuals(ctx, device, x, y);
+        }
+    });
+}
+
+/**
+ * Renders a single tile, including its background, floor device, walls, and wall devices.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} tileData - The tile data object.
+ * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
+ * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
+ * @param {object} styles - Computed CSS styles.
+ */
+function renderTile(ctx, tileData, x, y, styles) {
+    if (!tileData) return;
+
+    drawTileBackground(ctx, tileData, x, y, styles);
+    drawFloorDeviceVisuals(ctx, tileData, x, y, styles);
+    drawWallVisuals(ctx, tileData, x, y, styles);
+    drawWallDeviceVisuals(ctx, tileData, x, y, styles);
+}
+
+/**
+ * Draws the grid lines for the entire board.
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} boardData - The parsed board data.
+ * @param {object} styles - Computed CSS styles.
+ */
+function drawGridLines(ctx, boardData, styles) {
+    const gridLineColor = styles.getPropertyValue('--grid-line-color') || '#cccccc'; // Assuming a CSS variable for grid line color
     ctx.strokeStyle = gridLineColor;
     ctx.lineWidth = 1;
-    ctx.beginPath(); // Start a new path for all grid lines
+    ctx.beginPath();
 
-    // Draw horizontal lines (skip first row)
     for (let r = 1; r < boardData.rows; r++) {
         const y = r * Config.TILE_SIZE;
-        ctx.moveTo(0, y - 0.5); // Use -0.5 for sharper lines on some displays
+        ctx.moveTo(0, y - 0.5);
         ctx.lineTo(boardCanvas.width, y - 0.5);
     }
 
-    // Draw vertical lines (skip first column)
     for (let c = 1; c < boardData.cols; c++) {
         const x = c * Config.TILE_SIZE;
         ctx.moveTo(x - 0.5, 0);
         ctx.lineTo(x - 0.5, boardCanvas.height);
     }
+    ctx.stroke();
+}
 
-    ctx.stroke(); // Draw all the lines added to the path
-
-    // --- Draw Walls (Draw AFTER all tiles for correct layering) ---
-    ctx.fillStyle = wallFill;
-    for (let r = 0; r < boardData.rows; r++) {
-        for (let c = 0; c < boardData.cols; c++) {
-             const tileData = boardData.getTileData(r, c);
-             if (!tileData || !tileData.walls) continue;
-
-             const x = c * Config.TILE_SIZE;
-             const y = r * Config.TILE_SIZE;
-
-             if (tileData.walls.includes('north')) {
-                 ctx.fillRect(x, y, Config.TILE_SIZE, wallThickness);
-             }
-             if (tileData.walls.includes('south')) {
-                 // Draw slightly offset so it doesn't overlap tile below's north wall
-                 ctx.fillRect(x, y + Config.TILE_SIZE - wallThickness, Config.TILE_SIZE, wallThickness);
-             }
-             if (tileData.walls.includes('west')) {
-                 ctx.fillRect(x, y, wallThickness, Config.TILE_SIZE);
-             }
-             if (tileData.walls.includes('east')) {
-                 // Draw slightly offset
-                 ctx.fillRect(x + Config.TILE_SIZE - wallThickness, y, wallThickness, Config.TILE_SIZE);
-             }
-        }
-    }
-    Logger.log("Board rendering complete.");
-
-    // --- Draw Laser Emitters (Draw AFTER walls for correct layering) ---
+/**
+ * Draws the laser emitters (the physical device, not the beam).
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * @param {object} boardData - The parsed board data.
+ * @param {object} styles - Computed CSS styles.
+ */
+function drawLaserEmitters(ctx, boardData, styles) {
     ctx.fillStyle = '#8B0000'; // Dark red for the emitter
-    const emitterSize = Config.TILE_SIZE / 4; // Size of the emitter square
+    const emitterSize = Config.TILE_SIZE / 4;
 
     for (let r = 0; r < boardData.rows; r++) {
         for (let c = 0; c < boardData.cols; c++) {
@@ -666,21 +761,20 @@ function renderStaticBoardElements(boardData) {
 
             let emitterX = x, emitterY = y;
 
-            // Position the emitter on the wall it's attached to, which is opposite the firing direction.
             switch (laserDevice.direction) {
-                case 'north': // Laser fires north, emitter is on the south wall of this tile
+                case 'north':
                     emitterX = centerX - emitterSize / 2;
                     emitterY = y + Config.TILE_SIZE - emitterSize;
                     break;
-                case 'south': // Laser fires south, emitter is on the north wall of this tile
+                case 'south':
                     emitterX = centerX - emitterSize / 2;
                     emitterY = y;
                     break;
-                case 'east': // Laser fires east, emitter is on the west wall of this tile
+                case 'east':
                     emitterX = x;
                     emitterY = centerY - emitterSize / 2;
                     break;
-                case 'west': // Laser fires west, emitter is on the east wall of this tile
+                case 'west':
                     emitterX = x + Config.TILE_SIZE - emitterSize;
                     emitterY = centerY - emitterSize / 2;
                     break;
@@ -688,6 +782,29 @@ function renderStaticBoardElements(boardData) {
             ctx.fillRect(emitterX, emitterY, emitterSize, emitterSize);
         }
     }
+}
+
+/** Renders only the static board elements (tiles, walls, grid) onto the canvas */
+function renderStaticBoardElements(boardData) {
+    if (!ctx || !boardData) {
+        Logger.error("Cannot render static board elements: Missing context or board data.");
+        return;
+    }
+
+    const styles = getComputedStyle(document.documentElement);
+
+    for (let r = 0; r < boardData.rows; r++) {
+        for (let c = 0; c < boardData.cols; c++) {
+            const tileData = boardData.getTileData(r, c);
+            const x = c * Config.TILE_SIZE;
+            const y = r * Config.TILE_SIZE;
+            renderTile(ctx, tileData, x, y, styles);
+        }
+    }
+
+    drawGridLines(ctx, boardData, styles);
+    drawLaserEmitters(ctx, boardData, styles);
+    Logger.log("Board rendering complete.");
 }
 
 /** Creates the flag indicator DOM elements */
