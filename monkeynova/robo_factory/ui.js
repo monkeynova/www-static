@@ -611,26 +611,39 @@ function drawLaserSymbol(ctx, laserDevice, x, y, centerX, centerY) {
  * @param {number} x - X-coordinate (pixel) of the tile's top-left corner.
  * @param {number} y - Y-coordinate (pixel) of the tile's top-left corner.
  */
-function drawPushPanelVisuals(ctx, pusherDevice, x, y) {
+function drawPushPanelVisuals(ctx, pusherDevice, x, y, styles) {
     const pushDirection = pusherDevice.direction;
     const attachmentWallSide = getOppositeWallSide(pushDirection);
 
     const panelSize = Config.TILE_SIZE * 0.25;
+    const wallThickness = parseInt(styles.getPropertyValue('--wall-thickness').trim()) || 3;
 
     let panelX, panelY, panelW, panelH;
 
     switch (attachmentWallSide) {
         case 'north':
-            panelX = x; panelY = y; panelW = Config.TILE_SIZE; panelH = panelSize;
+            panelX = x;
+            panelY = y + wallThickness; // Start after the north wall
+            panelW = Config.TILE_SIZE;
+            panelH = panelSize;
             break;
         case 'south':
-            panelX = x; panelY = y + Config.TILE_SIZE - panelSize; panelW = Config.TILE_SIZE; panelH = panelSize;
+            panelX = x;
+            panelY = y + Config.TILE_SIZE - panelSize - wallThickness; // End before the south wall
+            panelW = Config.TILE_SIZE;
+            panelH = panelSize;
             break;
         case 'west':
-            panelX = x; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
+            panelX = x + wallThickness; // Start after the west wall
+            panelY = y;
+            panelW = panelSize;
+            panelH = Config.TILE_SIZE;
             break;
         case 'east':
-            panelX = x + Config.TILE_SIZE - panelSize; panelY = y; panelW = panelSize; panelH = Config.TILE_SIZE;
+            panelX = x + Config.TILE_SIZE - panelSize - wallThickness; // End before the east wall
+            panelY = y;
+            panelW = panelSize;
+            panelH = Config.TILE_SIZE;
             break;
     }
 
@@ -690,7 +703,7 @@ function drawWallDeviceVisuals(ctx, tileData, x, y, styles) {
         if (device.type === 'laser') {
             drawLaserSymbol(ctx, device, x, y, centerX, centerY);
         } else if (device.type === 'pusher') {
-            drawPushPanelVisuals(ctx, device, x, y);
+            drawPushPanelVisuals(ctx, device, x, y, styles);
         }
     });
 }
