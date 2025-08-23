@@ -160,6 +160,7 @@ function cacheDOMElements() {
 let ctx = null; // Canvas 2D context
 let robotElement = null; // Reference to the robot DOM element
 let draggedCardElement = null; // Track dragged DOM element during drag event
+let originProgramSlot = null; // Track the program slot a card was dragged from
 let wallStripePattern = null; // Store the created pattern
 let zoomLevel = 1.0; // Current zoom level of the board
 const ZOOM_INCREMENT = 0.1;
@@ -933,10 +934,20 @@ function updateHandUI(handCardsData, robot) {
 /** Clears program slots and shows numbers. */
 function resetProgramSlotsUI() {
     programSlots.forEach((slot, index) => {
-        slot.innerHTML = `${index + 1}`;
-        slot.className = 'program-slot'; // Remove drop-zone, setProgrammingUIEnabled will add it
+        resetSingleProgramSlotUI(slot, index);
     });
     // Logger.log("Program slots UI reset.");
+}
+
+/**
+ * Resets a single program slot to display its number.
+ * @param {HTMLElement} slotElement - The program slot DOM element.
+ * @param {number} index - The 0-based index of the slot.
+ */
+function resetSingleProgramSlotUI(slotElement, index) {
+    slotElement.innerHTML = `${index + 1}`;
+    // Ensure classes are correct, setProgrammingUIEnabled will handle drop-zone/disabled
+    slotElement.className = 'program-slot';
 }
 
 /** Updates the health display. */
@@ -1083,6 +1094,15 @@ function addDragHandlersToCardElement(cardElement) {
 function handleDragStart(e) {
     draggedCardElement = e.target; // Store the element being dragged
     e.dataTransfer.setData('text/plain', draggedCardElement.id); // Use instanceId
+
+    // If the card is dragged from a program slot, store a reference to that slot
+    const parentSlot = draggedCardElement.parentElement;
+    if (parentSlot && parentSlot.classList.contains('program-slot')) {
+        originProgramSlot = parentSlot;
+    } else {
+        originProgramSlot = null; // Ensure it's reset if dragging from hand
+    }
+
     // Use timeout to ensure drag image is created before style change
     setTimeout(() => {
         if(draggedCardElement) draggedCardElement.classList.add('dragging');
@@ -1095,6 +1115,7 @@ function handleDragEnd(e) {
         draggedCardElement.classList.remove('dragging');
     }
     draggedCardElement = null; // Clear reference
+    originProgramSlot = null; // Clear origin slot reference
 }
 
 function handleDragOver(e) {
@@ -1154,8 +1175,6 @@ function handleDrop(e, robot) {
     const originWasHand = cardElement.parentElement.id === 'card-hand';
 
     // --- Logic for dropping ---
-
-    // --- Logic for dropping ---
     if (dropTarget.classList.contains('program-slot')) {
         const existingCard = dropTarget.querySelector('.card');
         if (!existingCard || existingCard === cardElement) {
@@ -1166,6 +1185,13 @@ function handleDrop(e, robot) {
                 if (originWasHand) {
                     removeFromHandData(cardInstanceId); // Let cards.js emit events
                 }
+                // If the card was moved from another program slot, reset that slot
+                if (originProgramSlot && originProgramSlot !== dropTarget) {
+                    const originIndex = Array.from(programSlots).indexOf(originProgramSlot);
+                    if (originIndex !== -1) {
+                        resetSingleProgramSlotUI(originProgramSlot, originIndex);
+                    }
+                }
             }
         } else {
             Logger.log('Slot occupied by a different card, drop prevented.');
@@ -1175,6 +1201,14 @@ function handleDrop(e, robot) {
             cardHandContainer.appendChild(cardElement); // Move element visually
             // Update card data state (add back to hand) - This will trigger events
             addToHandData(cardInstanceId); // Let cards.js emit events
+
+            // If the card was moved from a program slot, reset that slot
+            if (originProgramSlot) {
+                const originIndex = Array.from(programSlots).indexOf(originProgramSlot);
+                if (originIndex !== -1) {
+                    resetSingleProgramSlotUI(originProgramSlot, originIndex);
+                }
+            }
         } else {
             cardHandContainer.appendChild(cardElement); // Ensure visually back
         }

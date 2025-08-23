@@ -134,4 +134,3 @@ To maintain a clean, predictable, and maintainable codebase, the following princ
 
 * When robot's health goes to 0, lives decrement, but they don't go back to last checkpoint.
 * Speaking of checkpoints, we probably should have an indication of the respawn point (ghost robot?).
-* Undragging cards back to hand doesn't put the position indicator (number) back.
