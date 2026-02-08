@@ -149,24 +149,24 @@ if (typeof document !== 'undefined') {
 
             // 2. Initialize Robot State
             const robot = new Robot(startRobotRow, startRobotCol, startRobotOrientation);
-            const initialRobotState = robot.getRobotState(); // Define initialRobotState here
 
             // --- 3. Perform Initial Station Check (Moved from setBoardData) ---
-            // Use the newly defined initialRobotState
-            const startTileData = board.getTileData(initialRobotState.row, initialRobotState.col);
+            const startTileData = board.getTileData(robot.row, robot.col);
             if (startTileData && startTileData.floorDevice.type === 'checkpoint') {
-                const key = `${initialRobotState.row}-${initialRobotState.col}`;
+                const key = `${robot.row}-${robot.col}`;
                 const order = startTileData.floorDevice.order;
                 Logger.log(`Robot starts on checkpoint ${order}. Updating state.`);
                 robot.visitFlag(key, order);
                 robot.setLastVisitedStation(key);
                 // UI update for this will happen via initial event emission later
             } else if (startTileData && startTileData.floorDevice.type === 'repair-station') {
-                const key = `${initialRobotState.row}-${initialRobotState.col}`;
+                const key = `${robot.row}-${robot.col}`;
                 Logger.log(`Robot starts on repair station ${key}. Updating state.`);
                 robot.setLastVisitedStation(key);
             }
             // --- End Initial Station Check ---
+
+            const initialRobotState = robot.getRobotState(); // Define initialRobotState here
 
             // 4. Initialize the UI (Canvas, Board, Flags, Robot Element)
             // This replaces initCanvas, renderBoard, createFlags, createRobot
@@ -177,7 +177,7 @@ if (typeof document !== 'undefined') {
             // 5. Setup UI Listeners (Subscribes UI to future events)
             // This MUST happen AFTER initializeUI if listeners need DOM elements created by it,
             // and AFTER model init if listeners need initial state immediately (less common).
-            UI.setupUIListeners(() => GameLoop.runProgramExecution(board, robot), board, robot);
+            UI.setupUIListeners(() => GameLoop.runProgramExecution(board, robot, initialRobotState), board, robot);
 
             // 6. Initialize Deck and Hand State
             Cards.initDeckAndHand(); // Emits events

@@ -52,10 +52,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         {
@@ -81,10 +82,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves only 1 space
@@ -105,10 +107,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves 1 space (phase 1), blocked in phase 2
@@ -127,19 +130,20 @@ const testScenarios = [
             const boardData = new Board([[{}]]); // Minimal board
             const robot = new Robot(0, 0, 'north');
             robot.setPowerDownIntent(true); // Set intent for next turn
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Simulate one turn (robot is not yet powered down, but intent is set)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot); // This triggers endOfTurnCleanup
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState); // This triggers endOfTurnCleanup
             const stateAfterTurn1 = setupData.robot.getRobotState();
 
             // Simulate second turn (robot should now be powered down)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot); // This triggers endOfTurnCleanup
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState); // This triggers endOfTurnCleanup
             const stateAfterTurn2 = setupData.robot.getRobotState();
 
             // Simulate third turn (robot should power back up)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot); // This triggers endOfTurnCleanup
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState); // This triggers endOfTurnCleanup
             const stateAfterTurn3 = setupData.robot.getRobotState();
 
             return { stateAfterTurn1, stateAfterTurn2, stateAfterTurn3 };
@@ -186,16 +190,17 @@ const testScenarios = [
                 { type: 'back1', text: 'Back 1', instanceId: 'card-p5' },
             ];
             robot.setProgram(programCards);
+            const initialRobotState = robot.getRobotState();
 
-            return { boardData, robot };
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Run one turn to transition to powered down state (robot executes program)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             const stateAfterFirstTurn = setupData.robot.getRobotState();
 
             // Run the powered down turn (robot skips actions)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             const stateAfterSecondTurn = setupData.robot.getRobotState();
 
             return { stateAfterFirstTurn, stateAfterSecondTurn };
@@ -235,14 +240,15 @@ const testScenarios = [
             robot.setPowerDownIntent(true); // Set intent for next turn
             // No initial damage, no laser
             robot.setProgram([]); // Empty program for powered down turn
+            const initialRobotState = robot.getRobotState();
 
-            return { boardData, robot };
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Run one turn to transition to powered down state
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             // Run the powered down turn (robot should move, but not take damage)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         {
@@ -268,13 +274,14 @@ const testScenarios = [
             robot.takeDamage(); // Damage robot
             robot.takeDamage(); // Damage robot more
             robot.setPowerDownIntent(true); // Set intent for next turn
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Run one turn to transition to powered down state
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             // Run the powered down turn (robot should heal after this turn)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         {
@@ -301,14 +308,15 @@ const testScenarios = [
             // Take the first PROGRAM_SIZE (5) cards to be the robot's program
             const programCards = initialHandCards.slice(0, Config.PROGRAM_SIZE);
             robot.setProgram(programCards);
+            const initialRobotState = robot.getRobotState();
 
-            return { boardData, robot };
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Run one turn to transition to powered down state (robot executes program, discards cards, draws new ones)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             // Run the powered down turn (robot skips actions, no new cards drawn)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             return { finalHandSize: Cards.getHandSize() };
         },
         {
@@ -351,14 +359,15 @@ const testScenarios = [
 
             robot.setPowerDownIntent(true); // Set intent for next turn
             robot.setProgram([]); // Empty program for powered down turn
+            const initialRobotState = robot.getRobotState();
 
-            return { boardData, robot };
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Run one turn to transition to powered down state
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             // Run the powered down turn (robot should take damage, lose life, respawn)
-            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot);
+            await GameLoop.runProgramExecution(setupData.boardData, setupData.robot, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         {
@@ -388,10 +397,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(1, 1, 'north'); // Robot starts on push panel
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1); // Pass step 1
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState); // Pass step 1
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, lives: setupData.robot.lives };
         },
@@ -412,10 +422,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(1, 0, 'east'); // Robot starts on push panel
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 1, col: 0, orientation: 'east' } }, // Expected: Stays at (1,0)
@@ -436,10 +447,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(1, 1, 'north'); // Robot starts on push panel
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState(); // Capture initial state
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1); // Pass step 1
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState); // Pass initialRobotState
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'north', health: Config.MAX_HEALTH }, lives: 2 }, // Expected: Moves to (0,1), loses a life, health resets
@@ -464,10 +476,11 @@ const testScenarios = [
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(1, 0, 'east'); // Robot starts on conveyor
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1); // Pass a dummy step, as this test doesn't rely on steps
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState); // Pass a dummy step, as this test doesn't rely on steps
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east' } }, // Expected: Moves from (1,0) to (1,1) by conveyor, then to (0,1) by push panel
@@ -498,8 +511,9 @@ const testScenarios = [
                 { type: 'move1', text: 'Move 1', instanceId: 'card-5' },
             ];
             robot.setProgram(programCards);
+            const initialRobotState = robot.getRobotState();
 
-            return { boardData, robot };
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Only run the first step of the program
@@ -517,7 +531,7 @@ Executing Card 1: ${cardData.type} (${cardData.text})
                 robot.turn(Config.TURN_LEFT);
             }
 
-            await GameLoop.applyBoardEffects(boardData, robot, 1); // Pass step 1
+            await GameLoop.applyBoardEffects(boardData, robot, 1, setupData.initialRobotState); // Pass step 1
 
             return robot.getRobotState();
         },
@@ -538,13 +552,14 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east');
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Pass boardData from setup
             const moveTarget = setupData.robot.calculateMoveTarget(1, setupData.boardData);
             if (moveTarget.success) {
-                setupData.robot.setPosition(moveTarget.targetRow, moveTarget.targetCol); // Simulate move if calc succeeded (it shouldn't)
+                setupData.robot.setPosition(moveTarget.targetRow, moveTarget.targetCol);
             }
             return setupData.robot.getRobotState(); // Return robot state for assertion
         },
@@ -577,7 +592,8 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             const boardData = new Board(testBoardDef);
             // Start robot at (0,1) facing East. Moving Back 1 would try to go West into the wall.
             const robot = new Robot(0, 1, 'east');
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Action: Simulate calculating and attempting a "Back 1" move (steps = -1)
@@ -612,10 +628,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'north'); // Start facing North
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 0, orientation: 'east' } }, // Expected: Robot faces East
@@ -635,10 +652,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'north'); // Start facing North
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 0, orientation: 'west' } }, // Expected: Robot faces West
@@ -670,11 +688,12 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'north'); // Initial orientation is North
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Action: Apply board effects, which should move the robot then rotate it.
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         {
@@ -701,10 +720,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'east'); // Robot starts in laser path
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, lives: setupData.robot.lives };
         },
@@ -728,10 +748,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 2, 'east'); // Robot starts behind the wall
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 2, orientation: 'east', health: Config.MAX_HEALTH } }, // Expected: Robot takes no damage
@@ -752,10 +773,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 0, 'east'); // Robot starts on conveyor
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             return setupData.robot.getRobotState();
         },
         { robot: { row: 0, col: 1, orientation: 'east', health: Config.MAX_HEALTH } }, // Expected: Robot moves to (0,1) but takes no damage
@@ -807,11 +829,12 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'east'); // Robot starts on conveyor with laser
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Simulate one program card execution to trigger board effects
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, lives: setupData.robot.lives };
         },
@@ -837,11 +860,12 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             ];
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'north'); // Robot starts on gear with laser
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Simulate one program card execution to trigger board effects
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, lives: setupData.robot.lives };
         },
@@ -895,10 +919,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             const robot = new Robot(0, 1, 'east'); // Robot starts on checkpoint
             robot.takeDamage(); // Make robot take damage
             robot.takeDamage(); // Make robot take more damage
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
         },
@@ -923,10 +948,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             const robot = new Robot(0, 1, 'east'); // Robot starts on repair station
             robot.takeDamage(); // Make robot take damage
             robot.takeDamage(); // Make robot take more damage
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
         },
@@ -950,10 +976,11 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 2, 'east'); // Robot starts on checkpoint 2
             robot.takeDamage(); // Make robot take damage
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState);
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
         },
@@ -977,15 +1004,16 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             const boardData = new Board(testBoardDef);
             const robot = new Robot(0, 1, 'east'); // Robot starts on checkpoint 1
             robot.takeDamage(); // Make robot take damage
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState();
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Visit checkpoint 1
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot); // Robot is on (0,1) (order 1)
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState); // Robot is on (0,1) (order 1)
             // Manually move robot to checkpoint 3 (0,3)
             setupData.robot.setPosition(0, 3);
             setupData.robot.takeDamage(); // Take damage again before visiting checkpoint 3
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot); // Robot is on (0,3) (order 3)
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState); // Robot is on (0,3) (order 3)
 
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, highestVisitedCheckpointOrder: setupData.robot.getVisitedFlagCount() };
@@ -1017,11 +1045,12 @@ Executing Card 1: ${cardData.type} (${cardData.text})
             for (let i = 0; i < 9; i++) {
                 robot.takeDamage();
             }
-            return { boardData, robot };
+            const initialRobotState = robot.getRobotState(); // Capture initial state AFTER setting last visited station
+            return { boardData, robot, initialRobotState };
         },
         async (setupData) => {
             // Robot takes 1 more damage from laser, health drops to 0, loses a life, respawns
-            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot);
+            await GameLoop.applyBoardEffects(setupData.boardData, setupData.robot, 1, setupData.initialRobotState); // Pass initialRobotState
             const robotState = setupData.robot.getRobotState();
             return { ...robotState, lives: setupData.robot.lives };
         },

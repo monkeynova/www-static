@@ -77,7 +77,7 @@ async function tryExecuteSingleCard(robot, cardData, boardData, sleep) {
  * @param {number} currentProgramStep - The current step number of the program execution.
  * @returns {Promise<object>} { gameEnded, boardMoved, fellInHole }
  */
-export async function applyBoardEffects(boardData, robot, currentProgramStep) {
+export async function applyBoardEffects(boardData, robot, currentProgramStep, initialRobotState) {
     Logger.log("   Checking board actions...");
     let boardMoved = false; // Track if ANY movement happened this phase
     let gameEnded = false;
@@ -140,6 +140,11 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
     const laserGameEnded = await boardData.applyLasers(robot, sleep);
     if (laserGameEnded) {
         gameEnded = true;
+        // If game didn't end, but a life was lost, handle respawn
+        if (!robot.isDestroyed()) {
+            const respawnGameEnded = await handleRobotRespawn(robot, initialRobotState, sleep);
+            if (respawnGameEnded) gameEnded = true;
+        }
         return { gameEnded, boardMoved, fellInHole }; // Exit early if game over
     }
     // --- End Laser Firing ---
@@ -165,9 +170,11 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
         }
         if (holeResult.fellInHole) {
             fellInHole = true;
-            // Delay for robot return to station is handled in Tile.tryApplyHole
-            if (!gameEnded) { // Only sleep if game didn't end
-                await sleep(600); // Wait for robot to return to station
+            // If game didn't end, but a life was lost, handle respawn
+            if (!robot.isDestroyed()) {
+                Logger.log(`   DEBUG: applyBoardEffects passing initialRobotState to handleRobotRespawn: ${JSON.stringify(initialRobotState)}`);
+                const respawnGameEnded = await handleRobotRespawn(robot, initialRobotState, sleep);
+                if (respawnGameEnded) gameEnded = true;
             }
         }
     }
@@ -176,11 +183,43 @@ export async function applyBoardEffects(boardData, robot, currentProgramStep) {
 }
 
 /**
+ * Handles robot respawn logic after losing a life.
+ * @param {Robot} robot - The robot instance.
+ * @param {object} initialRobotState - The initial starting state of the robot.
+ * @param {Function} sleep - The sleep utility function.
+ * @returns {Promise<boolean>} True if the game ended, false otherwise.
+ */
+async function handleRobotRespawn(robot, initialRobotState, sleep) {
+    if (robot.isDestroyed()) {
+        return true; // Game ended
+    }
+
+    let respawnRow = initialRobotState.row;
+    let respawnCol = initialRobotState.col;
+
+    // Prioritize respawning at the last visited station (checkpoint or repair station)
+    if (robot.lastVisitedStationKey) {
+        const [r, c] = robot.lastVisitedStationKey.split('-').map(Number);
+        respawnRow = r;
+        respawnCol = c;
+        Logger.log(`Respawning at last visited station: (${respawnRow}, ${respawnCol})`);
+    } else {
+        Logger.log(`No checkpoint/repair station visited yet. Respawning at initial position: (${respawnRow}, ${respawnCol})`);
+    }
+
+    robot.setPosition(respawnRow, respawnCol);
+    Logger.log(`Robot respawned at (${respawnRow}, ${respawnCol}) with full health.`);
+    await sleep(600); // Wait for robot to return to station
+    return false; // Game not ended
+}
+
+/**
  * Executes the sequence of programmed cards and board actions.
  * @param {object} boardData - The parsed board data.
  * @param {Robot} robot - The robot instance.
+ * @param {object} initialRobotState - The initial starting state of the robot for the turn.
  */
-export async function runProgramExecution(boardData, robot) {
+export async function runProgramExecution(boardData, robot, initialRobotState) {
     if (!boardData) {
         Logger.error("Cannot run program: Board data not set.");
         endOfTurnCleanup(robot);
@@ -217,7 +256,7 @@ Executing Step ${i + 1}: ${isRobotPoweredDown ? 'Robot Powered Down' : (cardData
 
         await sleep(cardActionTaken ? 200 : 500); // Use cardActionTaken for sleep duration
 
-        const boardResult = await applyBoardEffects(boardData, robot, i + 1);
+        const boardResult = await applyBoardEffects(boardData, robot, i + 1, initialRobotState);
 
         if (boardResult.gameEnded) {
             // Discard cards only if not powered down, as they weren't used
