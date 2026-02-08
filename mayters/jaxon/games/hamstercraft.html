@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HamsterCraft - Survive 100 Days!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #000;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            border: 3px solid #ffcc00;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            max-width: 350px;
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffcc00;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 24px;
+            display: none;
+            text-align: center;
+            border: 4px solid #ffcc00;
+        }
+        
+        .key-indicator {
+            display: inline-block;
+            background: #333;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+            border: 1px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div><strong>🐹 WHISKERS THE HAMSTER</strong></div>
+        <div>Floor: <span id="floor">1</span></div>
+        <div>Keys: <span id="keys">0</span>/3 🔑</div>
+    </div>
+    
+    <div id="controls">
+        <strong>🎮 CONTROLS:</strong><br>
+        <span class="key-indicator">ARROW KEYS</span> Move<br>
+        <span class="key-indicator">SPACE</span> Jump<br>
+        <span class="key-indicator">CLICK</span> Bite Block<br>
+        <span class="key-indicator">MOUSE</span> Look Around<br>
+        <span class="key-indicator">E</span> Use Door/Key/Wheel
+    </div>
+    
+    <div id="message"></div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game setup
+        const canvas = document.getElementById('gameCanvas');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x1a1a1a, 20, 60);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        
+        // Game state
+        let gameState = {
+            keys: 0,
+            currentFloor: 1,
+            playerPos: { x: 2, y: 1, z: 2 },
+            playerVel: { x: 0, y: 0, z: 0 },
+            isJumping: false,
+            keysPressed: {},
+            mouseX: 0,
+            mouseY: 0,
+            rotationY: 0,
+            rotationX: 0,
+            blocks: [],
+            wheels: [],
+            animals: [],
+            doors: [],
+            foundKeys: new Set(),
+            nearDoor: null,
+            nearWheel: null,
+            onWheel: false
+        };
+        
+        // Block size
+        const BLOCK_SIZE = 1;
+        const HAMSTER_SIZE = 0.8;
+        
+        // Hamster wheels array
+        const wheels = [];
+        
+        // Create smoother textures with slight variation
+        function createPixelTexture(color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, 64, 64);
+            
+            // Add subtle variation for depth
+            for (let i = 0; i < 20; i++) {
+                const brightness = Math.random() * 15 - 7;
+                const r = parseInt(color.slice(1, 3), 16) + brightness;
+                const g = parseInt(color.slice(3, 5), 16) + brightness;
+                const b = parseInt(color.slice(5, 7), 16) + brightness;
+                ctx.fillStyle = `rgb(${Math.max(0, Math.min(255, r))}, ${Math.max(0, Math.min(255, g))}, ${Math.max(0, Math.min(255, b))})`;
+                ctx.fillRect(Math.random() * 64, Math.random() * 64, 4, 4);
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearFilter;
+            return texture;
+        }
+        
+        // Room colors
+        const roomColors = {
+            entrance: '#8B4513',
+            kitchen: '#98FB98',
+            livingRoom: '#FFB6C1',
+            bedroom1: '#87CEEB',
+            bedroom2: '#DDA0DD',
+            bathroom: '#F0E68C',
+            secretRoom: '#8B0000',
+            basement: '#2F4F4F',
+            hallway: '#D2691E',
+            stairs: '#A0522D'
+        };
+        
+        // Create block
+        function createBlock(x, y, z, color, type = 'wall') {
+            const texture = createPixelTexture(color);
+            const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            const material = new THREE.MeshLambertMaterial({ map: texture });
+            const block = new THREE.Mesh(geometry, material);
+            block.position.set(x, y, z);
+            block.castShadow = true;
+            block.receiveShadow = true;
+            block.userData = { type, breakable: type === 'wall', color };
+            scene.add(block);
+            gameState.blocks.push(block);
+            return block;
+        }
+        
+        // Create hamster wheel
+        function createHamsterWheel(x, y, z) {
+            const wheel = new THREE.Group();
+            
+            // Wheel rim (circular)
+            const rimGeometry = new THREE.TorusGeometry(0.6, 0.1, 8, 16);
+            const rimMaterial = new THREE.MeshLambertMaterial({ color: 0xFF69B4 });
+            const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+            rim.rotation.y = Math.PI / 2;
+            wheel.add(rim);
+            
+            // Wheel spokes
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const spokeGeometry = new THREE.BoxGeometry(0.05, 1.2, 0.05);
+                const spokeMaterial = new THREE.MeshLambertMaterial({ color: 0xFFB6C1 });
+                const spoke = new THREE.Mesh(spokeGeometry, spokeMaterial);
+                spoke.position.set(Math.cos(angle) * 0.6, Math.sin(angle) * 0.6, 0);
+                spoke.rotation.z = angle;
+                wheel.add(spoke);
+            }
+            
+            // Stand
+            const standGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
+            const standMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const leftStand = new THREE.Mesh(standGeometry, standMaterial);
+            leftStand.position.set(0, -0.1, -0.7);
+            const rightStand = new THREE.Mesh(standGeometry, standMaterial);
+            rightStand.position.set(0, -0.1, 0.7);
+            wheel.add(leftStand, rightStand);
+            
+            wheel.position.set(x, y, z);
+            wheel.userData = { 
+                type: 'wheel', 
+                rotation: 0,
+                spinning: false
+            };
+            
+            scene.add(wheel);
+            gameState.wheels.push(wheel);
+            return wheel;
+        }
+        
+        // Create door
+        function createDoor(x, y, z, locked, keyId, toFloor, color = '#654321') {
+            const texture = createPixelTexture(color);
+            const geometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE * 2, 0.2);
+            const material = new THREE.MeshLambertMaterial({ map: texture });
+            const door = new THREE.Mesh(geometry, material);
+            door.position.set(x, y + 0.5, z);
+            door.userData = { 
+                type: 'door', 
+                locked, 
+                keyId, 
+                toFloor,
+                breakable: false 
+            };
+            scene.add(door);
+            gameState.doors.push(door);
+            
+            // Add lock indicator
+            if (locked) {
+                const lockGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.25);
+                const lockMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+                const lock = new THREE.Mesh(lockGeometry, lockMaterial);
+                lock.position.set(x, y + 0.5, z + 0.15);
+                scene.add(lock);
+                door.userData.lock = lock;
+            }
+            
+            return door;
+        }
+        
+        // Create key
+        function createKey(x, y, z, keyId) {
+            const geometry = new THREE.BoxGeometry(0.3, 0.1, 0.3);
+            const material = new THREE.MeshLambertMaterial({ 
+                color: 0xFFD700,
+                emissive: 0xFFD700,
+                emissiveIntensity: 0.5
+            });
+            const key = new THREE.Mesh(geometry, material);
+            key.position.set(x, y, z);
+            key.userData = { type: 'key', keyId };
+            scene.add(key);
+            
+            // Rotating animation
+            key.userData.animate = () => {
+                key.rotation.y += 0.05;
+                key.position.y = y + Math.sin(Date.now() * 0.003) * 0.1;
+            };
+            
+            gameState.blocks.push(key);
+            return key;
+        }
+        
+        // Create hamster wheel
+        function createWheel(x, y, z) {
+            const wheelGroup = new THREE.Group();
+            
+            // Wheel rim (circular ring)
+            const rimGeometry = new THREE.TorusGeometry(1, 0.15, 8, 20);
+            const rimMaterial = new THREE.MeshLambertMaterial({ color: 0xA0522D });
+            const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+            rim.rotation.y = Math.PI / 2;
+            wheelGroup.add(rim);
+            
+            // Wheel spokes (rungs)
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const spokeGeo = new THREE.BoxGeometry(0.1, 0.1, 1.8);
+                const spokeMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                const spoke = new THREE.Mesh(spokeGeo, spokeMat);
+                spoke.position.set(
+                    Math.cos(angle) * 0.85,
+                    Math.sin(angle) * 0.85,
+                    0
+                );
+                spoke.rotation.z = angle;
+                wheelGroup.add(spoke);
+            }
+            
+            // Create running hamster inside wheel
+            const hamsterInWheel = new THREE.Group();
+            
+            // Body
+            const bodyGeo = new THREE.BoxGeometry(0.4, 0.25, 0.5);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0xD2691E });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = -0.5;
+            hamsterInWheel.add(body);
+            
+            // Head
+            const headGeo = new THREE.BoxGeometry(0.25, 0.25, 0.25);
+            const head = new THREE.Mesh(headGeo, bodyMat);
+            head.position.set(0, -0.35, 0.3);
+            hamsterInWheel.add(head);
+            
+            // Eyes
+            const eyeGeo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+            const eyeMat = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.08, -0.3, 0.42);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.08, -0.3, 0.42);
+            hamsterInWheel.add(leftEye, rightEye);
+            
+            // Ears
+            const earGeo = new THREE.BoxGeometry(0.1, 0.12, 0.03);
+            const earMat = new THREE.MeshLambertMaterial({ color: 0xFFB6C1 });
+            const leftEar = new THREE.Mesh(earGeo, earMat);
+            leftEar.position.set(-0.1, -0.25, 0.3);
+            const rightEar = new THREE.Mesh(earGeo, earMat);
+            rightEar.position.set(0.1, -0.25, 0.3);
+            hamsterInWheel.add(leftEar, rightEar);
+            
+            // Legs (will animate)
+            const legGeo = new THREE.BoxGeometry(0.08, 0.15, 0.08);
+            const legMat = new THREE.MeshLambertMaterial({ color: 0xD2691E });
+            
+            const frontLeftLeg = new THREE.Mesh(legGeo, legMat);
+            frontLeftLeg.position.set(-0.12, -0.65, 0.15);
+            const frontRightLeg = new THREE.Mesh(legGeo, legMat);
+            frontRightLeg.position.set(0.12, -0.65, 0.15);
+            const backLeftLeg = new THREE.Mesh(legGeo, legMat);
+            backLeftLeg.position.set(-0.12, -0.65, -0.1);
+            const backRightLeg = new THREE.Mesh(legGeo, legMat);
+            backRightLeg.position.set(0.12, -0.65, -0.1);
+            
+            hamsterInWheel.add(frontLeftLeg, frontRightLeg, backLeftLeg, backRightLeg);
+            
+            hamsterInWheel.visible = false; // Hidden by default
+            wheelGroup.add(hamsterInWheel);
+            
+            // Stand supports
+            const standGeo = new THREE.BoxGeometry(0.2, 2, 0.2);
+            const standMat = new THREE.MeshLambertMaterial({ color: 0x654321 });
+            
+            const leftStand = new THREE.Mesh(standGeo, standMat);
+            leftStand.position.set(0, -1, -1);
+            wheelGroup.add(leftStand);
+            
+            const rightStand = new THREE.Mesh(standGeo, standMat);
+            rightStand.position.set(0, -1, 1);
+            wheelGroup.add(rightStand);
+            
+            // Base platform
+            const baseGeo = new THREE.BoxGeometry(0.4, 0.2, 2.5);
+            const baseMat = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.set(0, -2, 0);
+            wheelGroup.add(base);
+            
+            wheelGroup.position.set(x, y, z);
+            scene.add(wheelGroup);
+            
+            wheels.push({
+                group: wheelGroup,
+                isRunning: false,
+                position: new THREE.Vector3(x, y, z),
+                rim: rim,
+                hamster: hamsterInWheel,
+                legs: [frontLeftLeg, frontRightLeg, backLeftLeg, backRightLeg]
+            });
+            
+            return wheelGroup;
+        }
+        
+        // Build house - Floor 1
+        function buildHouse() {
+            const floor1Y = 0;
+            const floor2Y = 4;
+            
+            // FLOOR 1
+            // Entrance Hall (brown)
+            for (let x = 0; x < 6; x++) {
+                for (let z = 0; z < 4; z++) {
+                    createBlock(x, floor1Y - 0.5, z, roomColors.entrance, 'floor');
+                }
+            }
+            
+            // Entrance walls
+            for (let x = 0; x < 6; x++) {
+                createBlock(x, floor1Y, 0, roomColors.entrance);
+                createBlock(x, floor1Y + 1, 0, roomColors.entrance);
+                if (x < 2 || x > 3) {
+                    createBlock(x, floor1Y, 3, roomColors.entrance);
+                    createBlock(x, floor1Y + 1, 3, roomColors.entrance);
+                }
+            }
+            for (let z = 0; z < 4; z++) {
+                createBlock(0, floor1Y, z, roomColors.entrance);
+                createBlock(0, floor1Y + 1, z, roomColors.entrance);
+            }
+            
+            // Kitchen (green) - connected to entrance
+            for (let x = 6; x < 12; x++) {
+                for (let z = 0; z < 4; z++) {
+                    createBlock(x, floor1Y - 0.5, z, roomColors.kitchen, 'floor');
+                }
+            }
+            
+            for (let z = 0; z < 4; z++) {
+                createBlock(12, floor1Y, z, roomColors.kitchen);
+                createBlock(12, floor1Y + 1, z, roomColors.kitchen);
+            }
+            for (let x = 6; x < 12; x++) {
+                if (x !== 9) {
+                    createBlock(x, floor1Y, 0, roomColors.kitchen);
+                    createBlock(x, floor1Y + 1, 0, roomColors.kitchen);
+                }
+            }
+            
+            // Living Room (pink) - locked door
+            for (let x = 0; x < 6; x++) {
+                for (let z = 4; z < 9; z++) {
+                    createBlock(x, floor1Y - 0.5, z, roomColors.livingRoom, 'floor');
+                }
+            }
+            
+            for (let x = 0; x < 6; x++) {
+                createBlock(x, floor1Y, 9, roomColors.livingRoom);
+                createBlock(x, floor1Y + 1, 9, roomColors.livingRoom);
+            }
+            for (let z = 4; z < 9; z++) {
+                createBlock(0, floor1Y, z, roomColors.livingRoom);
+                createBlock(0, floor1Y + 1, z, roomColors.livingRoom);
+            }
+            
+            // Door to living room (locked - key 1)
+            createDoor(2.5, floor1Y, 3.5, true, 1, 1, '#8B0000');
+            
+            // Bathroom (yellow) - connected to living room
+            for (let x = 6; x < 10; x++) {
+                for (let z = 4; z < 9; z++) {
+                    createBlock(x, floor1Y - 0.5, z, roomColors.bathroom, 'floor');
+                }
+            }
+            
+            for (let x = 6; x < 10; x++) {
+                if (x !== 7) {
+                    createBlock(x, floor1Y, 4, roomColors.bathroom);
+                    createBlock(x, floor1Y + 1, 4, roomColors.bathroom);
+                }
+                createBlock(x, floor1Y, 9, roomColors.bathroom);
+                createBlock(x, floor1Y + 1, 9, roomColors.bathroom);
+            }
+            for (let z = 4; z < 9; z++) {
+                createBlock(10, floor1Y, z, roomColors.bathroom);
+                createBlock(10, floor1Y + 1, z, roomColors.bathroom);
+            }
+            
+            // Hallway between kitchen and bathroom
+            for (let z = 1; z < 3; z++) {
+                createBlock(6, floor1Y, z, roomColors.hallway);
+                createBlock(6, floor1Y + 1, z, roomColors.hallway);
+            }
+            
+            // Stairs to floor 2
+            for (let i = 0; i < 4; i++) {
+                createBlock(9, floor1Y + i * 0.5, 1 + i * 0.5, roomColors.stairs, 'stairs');
+                createBlock(10, floor1Y + i * 0.5, 1 + i * 0.5, roomColors.stairs, 'stairs');
+            }
+            
+            // Key 1 in kitchen
+            createKey(8, floor1Y + 0.5, 2, 1);
+            
+            // FLOOR 2
+            // Bedroom 1 (blue)
+            for (let x = 0; x < 6; x++) {
+                for (let z = 0; z < 5; z++) {
+                    createBlock(x, floor2Y - 0.5, z, roomColors.bedroom1, 'floor');
+                }
+            }
+            
+            for (let x = 0; x < 6; x++) {
+                createBlock(x, floor2Y, 0, roomColors.bedroom1);
+                createBlock(x, floor2Y + 1, 0, roomColors.bedroom1);
+                if (x < 2 || x > 3) {
+                    createBlock(x, floor2Y, 5, roomColors.bedroom1);
+                    createBlock(x, floor2Y + 1, 5, roomColors.bedroom1);
+                }
+            }
+            for (let z = 0; z < 5; z++) {
+                createBlock(0, floor2Y, z, roomColors.bedroom1);
+                createBlock(0, floor2Y + 1, z, roomColors.bedroom1);
+            }
+            
+            // Bedroom 2 (purple) - locked (key 2)
+            for (let x = 0; x < 6; x++) {
+                for (let z = 6; z < 11; z++) {
+                    createBlock(x, floor2Y - 0.5, z, roomColors.bedroom2, 'floor');
+                }
+            }
+            
+            for (let x = 0; x < 6; x++) {
+                createBlock(x, floor2Y, 11, roomColors.bedroom2);
+                createBlock(x, floor2Y + 1, 11, roomColors.bedroom2);
+            }
+            for (let z = 6; z < 11; z++) {
+                createBlock(0, floor2Y, z, roomColors.bedroom2);
+                createBlock(0, floor2Y + 1, z, roomColors.bedroom2);
+            }
+            
+            createDoor(2.5, floor2Y, 5.5, true, 2, 2, '#4B0082');
+            
+            // Secret room (dark red) - locked (key 3) - leads to basement
+            for (let x = 7; x < 13; x++) {
+                for (let z = 0; z < 6; z++) {
+                    createBlock(x, floor2Y - 0.5, z, roomColors.secretRoom, 'floor');
+                }
+            }
+            
+            for (let x = 7; x < 13; x++) {
+                createBlock(x, floor2Y, 0, roomColors.secretRoom);
+                createBlock(x, floor2Y + 1, 0, roomColors.secretRoom);
+                createBlock(x, floor2Y, 6, roomColors.secretRoom);
+                createBlock(x, floor2Y + 1, 6, roomColors.secretRoom);
+            }
+            for (let z = 0; z < 6; z++) {
+                createBlock(13, floor2Y, z, roomColors.secretRoom);
+                createBlock(13, floor2Y + 1, z, roomColors.secretRoom);
+            }
+            
+            createDoor(6.5, floor2Y, 3, true, 3, 2, '#000000');
+            
+            // Hallway floor 2
+            for (let x = 6; x < 7; x++) {
+                for (let z = 1; z < 6; z++) {
+                    createBlock(x, floor2Y - 0.5, z, roomColors.hallway, 'floor');
+                    if (z === 1 || z === 5) {
+                        createBlock(x, floor2Y, z, roomColors.hallway);
+                        createBlock(x, floor2Y + 1, z, roomColors.hallway);
+                    }
+                }
+            }
+            
+            // Stairs continuation
+            for (let i = 0; i < 4; i++) {
+                createBlock(9, floor2Y + i * 0.5 - 2, 3.5 + i * 0.5, roomColors.stairs, 'stairs');
+                createBlock(10, floor2Y + i * 0.5 - 2, 3.5 + i * 0.5, roomColors.stairs, 'stairs');
+            }
+            
+            // Key 2 in bedroom 1
+            createKey(3, floor2Y + 0.5, 2, 2);
+            
+            // Key 3 in bedroom 2 (need key 2 to access)
+            createKey(3, floor2Y + 0.5, 8, 3);
+            
+            // Add hamster wheels in various rooms
+            createHamsterWheel(4, floor1Y + 0.6, 1.5); // Entrance
+            createHamsterWheel(9, floor1Y + 0.6, 2); // Kitchen
+            createHamsterWheel(3, floor1Y + 0.6, 6); // Living room
+            createHamsterWheel(3, floor2Y + 0.6, 2); // Bedroom 1
+            createHamsterWheel(11, floor2Y + 0.6, 3); // Secret room
+            
+            // Basement stairs in secret room
+            for (let i = 0; i < 6; i++) {
+                createBlock(10, floor2Y - i * 0.5 - 0.5, 3, roomColors.basement, 'stairs');
+            }
+            
+            // Basement
+            const basementY = -3;
+            for (let x = 8; x < 14; x++) {
+                for (let z = 0; z < 8; z++) {
+                    createBlock(x, basementY - 0.5, z, roomColors.basement, 'floor');
+                }
+            }
+            
+            // Basement walls
+            for (let x = 8; x < 14; x++) {
+                createBlock(x, basementY, 0, roomColors.basement);
+                createBlock(x, basementY + 1, 0, roomColors.basement);
+                createBlock(x, basementY, 8, roomColors.basement);
+                createBlock(x, basementY + 1, 8, roomColors.basement);
+            }
+            for (let z = 0; z < 8; z++) {
+                createBlock(8, basementY, z, roomColors.basement);
+                createBlock(8, basementY + 1, z, roomColors.basement);
+                createBlock(14, basementY, z, roomColors.basement);
+                createBlock(14, basementY + 1, z, roomColors.basement);
+            }
+        }
+        
+        // Create hamster player (pixelated but more detailed)
+        function createHamster() {
+            const hamster = new THREE.Group();
+            
+            // Body
+            const bodyGeo = new THREE.BoxGeometry(0.6, 0.4, 0.8);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0xD2691E });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.2;
+            hamster.add(body);
+            
+            // Head
+            const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            const head = new THREE.Mesh(headGeo, bodyMat);
+            head.position.set(0, 0.4, 0.4);
+            hamster.add(head);
+            
+            // Eyes
+            const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const eyeMat = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.1, 0.45, 0.6);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.1, 0.45, 0.6);
+            hamster.add(leftEye, rightEye);
+            
+            // Ears
+            const earGeo = new THREE.BoxGeometry(0.15, 0.2, 0.05);
+            const earMat = new THREE.MeshLambertMaterial({ color: 0xFFB6C1 });
+            const leftEar = new THREE.Mesh(earGeo, earMat);
+            leftEar.position.set(-0.15, 0.6, 0.4);
+            const rightEar = new THREE.Mesh(earGeo, earMat);
+            rightEar.position.set(0.15, 0.6, 0.4);
+            hamster.add(leftEar, rightEar);
+            
+            hamster.position.set(gameState.playerPos.x, gameState.playerPos.y, gameState.playerPos.z);
+            scene.add(hamster);
+            return hamster;
+        }
+        
+        // Hamster is invisible - first person view!
+        // const hamster = createHamster();
+        
+        // Create wild animals
+        function createAnimal(x, y, z, type) {
+            const animal = new THREE.Group();
+            
+            let color, size;
+            if (type === 'rat') {
+                color = 0x696969;
+                size = { w: 0.5, h: 0.3, d: 0.7 };
+            } else if (type === 'snake') {
+                color = 0x228B22;
+                size = { w: 0.3, h: 0.3, d: 1.2 };
+            } else { // spider
+                color = 0x000000;
+                size = { w: 0.6, h: 0.2, d: 0.6 };
+            }
+            
+            const bodyGeo = new THREE.BoxGeometry(size.w, size.h, size.d);
+            const bodyMat = new THREE.MeshLambertMaterial({ color });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            animal.add(body);
+            
+            // Eyes
+            const eyeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+            const eyeMat = new THREE.MeshLambertMaterial({ color: 0xFF0000, emissive: 0xFF0000, emissiveIntensity: 0.5 });
+            const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+            eye1.position.set(-0.1, 0.1, size.d / 2);
+            const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+            eye2.position.set(0.1, 0.1, size.d / 2);
+            animal.add(eye1, eye2);
+            
+            animal.position.set(x, y, z);
+            animal.userData = {
+                type: 'animal',
+                animalType: type,
+                speed: 0.02 + Math.random() * 0.02,
+                detectionRange: 5 + Math.random() * 3,
+                wanderAngle: Math.random() * Math.PI * 2,
+                waitTime: 0,
+                chasing: false
+            };
+            
+            scene.add(animal);
+            gameState.animals.push(animal);
+            return animal;
+        }
+        
+        // Animals removed - peaceful exploration!
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0xffddaa, 1.2, 25);
+        scene.add(pointLight);
+        
+        // Camera setup
+        camera.position.set(gameState.playerPos.x, gameState.playerPos.y + 0.5, gameState.playerPos.z);
+        
+        // Input handlers
+        document.addEventListener('keydown', (e) => {
+            gameState.keysPressed[e.key.toLowerCase()] = true;
+            
+            if (e.key.toLowerCase() === ' ' && !gameState.isJumping) {
+                gameState.playerVel.y = 0.15;
+                gameState.isJumping = true;
+            }
+            
+            if (e.key.toLowerCase() === 'e') {
+                if (gameState.nearDoor) {
+                    useDoor(gameState.nearDoor);
+                } else if (gameState.nearWheel && gameState.nearWheel.isRunning !== undefined) {
+                    useWheel(gameState.nearWheel);
+                }
+            }
+            
+            if (e.key.toLowerCase() === 'e' && gameState.nearWheel && !gameState.onWheel) {
+                gameState.onWheel = true;
+                gameState.nearWheel.userData.spinning = true;
+                showMessage('🎡 Running on the wheel! Press E to stop.', 2000);
+            } else if (e.key.toLowerCase() === 'e' && gameState.onWheel) {
+                gameState.onWheel = false;
+                if (gameState.nearWheel) {
+                    gameState.nearWheel.userData.spinning = false;
+                }
+                showMessage('Hopped off the wheel!', 1500);
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            gameState.keysPressed[e.key.toLowerCase()] = false;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            gameState.mouseX += e.movementX * 0.002;
+            gameState.mouseY += e.movementY * 0.002;
+            gameState.mouseY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, gameState.mouseY));
+        });
+        
+        canvas.addEventListener('click', () => {
+            canvas.requestPointerLock();
+            biteBlock();
+        });
+        
+        // Bite block function
+        function biteBlock() {
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            const intersects = raycaster.intersectObjects(gameState.blocks);
+            
+            if (intersects.length > 0) {
+                const block = intersects[0].object;
+                if (block.userData.breakable && intersects[0].distance < 2) {
+                    scene.remove(block);
+                    gameState.blocks = gameState.blocks.filter(b => b !== block);
+                    showMessage('*Bite* Block broken!', 1000);
+                } else if (block.userData.type === 'key') {
+                    const keyId = block.userData.keyId;
+                    if (!gameState.foundKeys.has(keyId)) {
+                        gameState.foundKeys.add(keyId);
+                        gameState.keys++;
+                        scene.remove(block);
+                        gameState.blocks = gameState.blocks.filter(b => b !== block);
+                        showMessage(`🔑 Found Key ${keyId}!`, 2000);
+                    }
+                }
+            }
+        }
+        
+        // Use door
+        function useDoor(door) {
+            if (door.userData.locked) {
+                if (gameState.foundKeys.has(door.userData.keyId)) {
+                    door.userData.locked = false;
+                    if (door.userData.lock) {
+                        scene.remove(door.userData.lock);
+                    }
+                    showMessage('🔓 Door unlocked! You can walk through now.', 2000);
+                } else {
+                    showMessage('🔒 This door is locked! Need Key #' + door.userData.keyId, 2000);
+                }
+            }
+        }
+        
+        // Use hamster wheel
+        function useWheel(wheel) {
+            if (!wheel.isRunning) {
+                wheel.isRunning = true;
+                wheel.startTime = Date.now();
+                if (wheel.hamster) {
+                    wheel.hamster.visible = true; // Show hamster running
+                }
+                showMessage('🎡 Running in the wheel! Press E to stop.', 2000);
+            } else {
+                wheel.isRunning = false;
+                if (wheel.hamster) {
+                    wheel.hamster.visible = false; // Hide hamster
+                }
+                showMessage('Phew! That was fun!', 1500);
+            }
+        }
+        
+        // Show message
+        function showMessage(text, duration) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.display = 'block';
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, duration);
+        }
+        
+        // Check collision
+        function checkCollision(x, y, z) {
+            for (let block of gameState.blocks) {
+                if (block.userData.type === 'key') continue;
+                
+                const dx = Math.abs(block.position.x - x);
+                const dy = Math.abs(block.position.y - y);
+                const dz = Math.abs(block.position.z - z);
+                
+                if (dx < HAMSTER_SIZE / 2 + 0.5 && 
+                    dy < HAMSTER_SIZE / 2 + 0.5 && 
+                    dz < HAMSTER_SIZE / 2 + 0.5) {
+                    return true;
+                }
+            }
+            
+            // Check collision with locked doors
+            for (let door of gameState.doors) {
+                if (door.userData.locked) {
+                    const dx = Math.abs(door.position.x - x);
+                    const dy = Math.abs(door.position.y - y);
+                    const dz = Math.abs(door.position.z - z);
+                    
+                    if (dx < HAMSTER_SIZE / 2 + 0.5 && 
+                        dy < HAMSTER_SIZE / 2 + 1 && 
+                        dz < HAMSTER_SIZE / 2 + 0.5) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // Update animals
+        function updateAnimals() {
+            for (let animal of gameState.animals) {
+                const dx = gameState.playerPos.x - animal.position.x;
+                const dz = gameState.playerPos.z - animal.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                if (distance < animal.userData.detectionRange) {
+                    // Chase player
+                    animal.userData.chasing = true;
+                    const angle = Math.atan2(dz, dx);
+                    const newX = animal.position.x + Math.cos(angle) * animal.userData.speed;
+                    const newZ = animal.position.z + Math.sin(angle) * animal.userData.speed;
+                    
+                    if (!checkCollision(newX, animal.position.y, newZ)) {
+                        animal.position.x = newX;
+                        animal.position.z = newZ;
+                    }
+                    
+                    animal.rotation.y = angle;
+                } else {
+                    // Wander
+                    animal.userData.chasing = false;
+                    if (animal.userData.waitTime <= 0) {
+                        animal.userData.wanderAngle += (Math.random() - 0.5) * 0.5;
+                        const newX = animal.position.x + Math.cos(animal.userData.wanderAngle) * animal.userData.speed * 0.5;
+                        const newZ = animal.position.z + Math.sin(animal.userData.wanderAngle) * animal.userData.speed * 0.5;
+                        
+                        if (!checkCollision(newX, animal.position.y, newZ)) {
+                            animal.position.x = newX;
+                            animal.position.z = newZ;
+                        } else {
+                            animal.userData.wanderAngle += Math.PI;
+                        }
+                        
+                        if (Math.random() < 0.02) {
+                            animal.userData.waitTime = 60 + Math.random() * 120;
+                        }
+                    } else {
+                        animal.userData.waitTime--;
+                    }
+                    
+                    animal.rotation.y = animal.userData.wanderAngle;
+                }
+                
+                // Check if caught player
+                if (distance < 1) {
+                    showMessage('😱 An animal found you! Be more sneaky!', 2000);
+                }
+            }
+        }
+        
+        // Game loop
+        let lastTime = Date.now();
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const currentTime = Date.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            // Player movement
+            const moveSpeed = 0.1;
+            const forward = new THREE.Vector3(
+                Math.sin(gameState.mouseX),
+                0,
+                Math.cos(gameState.mouseX)
+            );
+            const right = new THREE.Vector3(
+                Math.cos(gameState.mouseX),
+                0,
+                -Math.sin(gameState.mouseX)
+            );
+            
+            let newX = gameState.playerPos.x;
+            let newZ = gameState.playerPos.z;
+            
+            if (gameState.keysPressed['arrowup']) {
+                newX += forward.x * moveSpeed;
+                newZ += forward.z * moveSpeed;
+            }
+            if (gameState.keysPressed['arrowdown']) {
+                newX -= forward.x * moveSpeed;
+                newZ -= forward.z * moveSpeed;
+            }
+            if (gameState.keysPressed['arrowleft']) {
+                newX -= right.x * moveSpeed;
+                newZ -= right.z * moveSpeed;
+            }
+            if (gameState.keysPressed['arrowright']) {
+                newX += right.x * moveSpeed;
+                newZ += right.z * moveSpeed;
+            }
+            
+            // Check collision before moving
+            if (!checkCollision(newX, gameState.playerPos.y, gameState.playerPos.z)) {
+                gameState.playerPos.x = newX;
+            }
+            if (!checkCollision(gameState.playerPos.x, gameState.playerPos.y, newZ)) {
+                gameState.playerPos.z = newZ;
+            }
+            
+            // Gravity and jumping
+            gameState.playerVel.y -= 0.01;
+            gameState.playerPos.y += gameState.playerVel.y;
+            
+            // Ground collision
+            const groundLevels = [-3.5, -0.5, 3.5]; // basement, floor 1, floor 2
+            for (let groundY of groundLevels) {
+                if (gameState.playerPos.y < groundY + 1 && gameState.playerPos.y > groundY) {
+                    gameState.playerPos.y = groundY + 1;
+                    gameState.playerVel.y = 0;
+                    gameState.isJumping = false;
+                    
+                    if (groundY === -3.5) gameState.currentFloor = 0;
+                    else if (groundY === -0.5) gameState.currentFloor = 1;
+                    else if (groundY === 3.5) gameState.currentFloor = 2;
+                }
+            }
+            
+            // Check near doors
+            gameState.nearDoor = null;
+            for (let door of gameState.doors) {
+                const dx = Math.abs(door.position.x - gameState.playerPos.x);
+                const dz = Math.abs(door.position.z - gameState.playerPos.z);
+                if (dx < 1.5 && dz < 1.5) {
+                    gameState.nearDoor = door;
+                    break;
+                }
+            }
+            
+            // Check near hamster wheels
+            gameState.nearWheel = null;
+            for (let wheel of wheels) {
+                const dx = Math.abs(wheel.position.x - gameState.playerPos.x);
+                const dz = Math.abs(wheel.position.z - gameState.playerPos.z);
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                if (distance < 3) {
+                    gameState.nearWheel = wheel;
+                    break;
+                }
+            }
+            
+            // Check near wheels
+            gameState.nearWheel = null;
+            for (let wheel of gameState.wheels) {
+                const dx = Math.abs(wheel.position.x - gameState.playerPos.x);
+                const dz = Math.abs(wheel.position.z - gameState.playerPos.z);
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                if (distance < 1.5) {
+                    gameState.nearWheel = wheel;
+                    break;
+                }
+            }
+            
+            // Animate wheels
+            for (let wheel of gameState.wheels) {
+                if (wheel.userData.spinning) {
+                    wheel.rotation.y += 0.1;
+                }
+            }
+            
+            // Hamster is invisible - first person view only!
+            
+            // Update camera
+            camera.position.set(
+                gameState.playerPos.x,
+                gameState.playerPos.y + 0.5,
+                gameState.playerPos.z
+            );
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = -gameState.mouseX;
+            camera.rotation.x = -gameState.mouseY;
+            
+            // Point light follows player
+            pointLight.position.set(gameState.playerPos.x, gameState.playerPos.y + 2, gameState.playerPos.z);
+            
+            // Animals removed - peaceful exploration!
+            
+            // Animate keys
+            for (let block of gameState.blocks) {
+                if (block.userData.animate) {
+                    block.userData.animate();
+                }
+            }
+            
+            // Animate hamster wheels
+            for (let wheel of wheels) {
+                if (wheel.isRunning) {
+                    wheel.rim.rotation.y += 0.1; // Spin the wheel
+                    
+                    // Animate hamster legs running
+                    if (wheel.legs && wheel.legs.length === 4) {
+                        const runSpeed = Date.now() * 0.01;
+                        wheel.legs[0].position.y = -0.65 + Math.sin(runSpeed) * 0.08; // front left
+                        wheel.legs[1].position.y = -0.65 + Math.sin(runSpeed + Math.PI) * 0.08; // front right
+                        wheel.legs[2].position.y = -0.65 + Math.sin(runSpeed + Math.PI) * 0.08; // back left
+                        wheel.legs[3].position.y = -0.65 + Math.sin(runSpeed) * 0.08; // back right
+                    }
+                }
+            }
+            
+            // Update UI
+            document.getElementById('floor').textContent = gameState.currentFloor === 0 ? 'Basement' : gameState.currentFloor;
+            document.getElementById('keys').textContent = gameState.keys;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Build and start
+        buildHouse();
+        
+        // Place hamster wheels in rooms
+        createWheel(3, 0.5, 2);      // Entrance Hall
+        createWheel(8, 0.5, 2);      // Kitchen
+        createWheel(3, 4.5, 2);      // Bedroom 1 (floor 2)
+        createWheel(3, 4.5, 8);      // Bedroom 2 (floor 2)
+        
+        showMessage('🐹 Welcome to HamsterCraft! Explore the house!', 3000);
+        animate();
+        
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
