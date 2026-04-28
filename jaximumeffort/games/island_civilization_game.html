@@ -1,0 +1,500 @@
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000}
+#wrap{width:680px;position:relative;font-family:monospace}
+#cv{display:block;background:#000;cursor:pointer}
+#hud{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.pill{background:rgba(0,0,0,0.7);color:#eee;font-size:11px;padding:3px 8px;border-radius:20px;border:1px solid rgba(255,255,255,0.15)}
+.pill b{color:#ffd080}
+#msg{position:absolute;bottom:8px;left:8px;right:8px;text-align:center;background:rgba(0,0,0,0.75);color:#ffd080;font-size:13px;padding:5px 10px;border-radius:20px;pointer-events:none}
+#btns{display:flex;gap:6px;padding:6px 0;flex-wrap:wrap}
+button{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid #444;background:#1a1a2a;color:#ccd;cursor:pointer}
+button:hover{background:#2a2a3a}
+</style>
+
+<div id="wrap">
+<div id="btns">
+  <button onclick="nextLevel()">Next Level ▶</button>
+  <button onclick="triggerVolcano()">Volcano!</button>
+  <button onclick="triggerDisaster()">Disaster!</button>
+  <button onclick="restartGame()">Restart</button>
+  <span id="lvlname" style="font-size:12px;color:#aac;align-self:center;margin-left:4px"></span>
+</div>
+<div style="position:relative">
+  <canvas id="cv" width="680" height="520"></canvas>
+  <div id="hud">
+    <div class="pill">Level: <b id="hLvl">1</b></div>
+    <div class="pill">People: <b id="hPop">2</b></div>
+    <div class="pill">Buildings: <b id="hBld">0</b></div>
+    <div class="pill">Year: <b id="hYr">10000 BC</b></div>
+  </div>
+  <div id="msg">The ice age begins... two survivors remain.</div>
+</div>
+</div>
+
+<script>
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+const W=680,H=520;
+
+let level=1,pop=2,buildings=[],particles=[],people=[],ticks=0;
+let volcano={x:340,y:200,erupting:false,eruptTimer:0};
+let iceAmount=1.0;
+let disasterActive=false,disasterTimer=0;
+let buildTimer=0;
+let gameMsg='';
+let msgTimer=0;
+
+const LEVELS=[
+  {name:'Ice Age',sky1:'#0a1a2e',sky2:'#0d2040',ground:'#b8d4f0',sea:'#0a2040',iceColor:'#cce8ff',pop:2,autoBuilds:[]},
+  {name:'Thaw',sky1:'#1a3050',sky2:'#2a5070',ground:'#6a9a5a',sea:'#1a4060',iceColor:'#aacce0',pop:4,autoBuilds:['hut']},
+  {name:'Stone Age',sky1:'#2a5080',sky2:'#4a8090',ground:'#5a8a4a',sea:'#1a6080',iceColor:'',pop:8,autoBuilds:['hut','hut','windmill']},
+  {name:'Bronze Age',sky1:'#4a80a0',sky2:'#5a90b0',ground:'#4a7a3a',sea:'#2a70a0',iceColor:'',pop:20,autoBuilds:['house','farm','well']},
+  {name:'Medieval',sky1:'#5a90b0',sky2:'#7ab0c0',ground:'#3a6a2a',sea:'#3a80b0',iceColor:'',pop:60,autoBuilds:['castle','church','market']},
+  {name:'Industrial',sky1:'#6a7a8a',sky2:'#7a8a9a',ground:'#3a4a3a',sea:'#3a5a7a',iceColor:'',pop:500,autoBuilds:['factory','smokestack','railway']},
+  {name:'Modern',sky1:'#3a4a6a',sky2:'#4a6a8a',ground:'#2a3a2a',sea:'#2a4a6a',iceColor:'',pop:5000,autoBuilds:['skyscraper','highway','airport']},
+  {name:'Mega City',sky1:'#1a1a2a',sky2:'#2a2a4a',ground:'#1a1a1a',sea:'#1a2a3a',iceColor:'',pop:50000,autoBuilds:['tower','dome','satellite']},
+];
+
+function getLvl(){return LEVELS[Math.min(level-1,LEVELS.length-1)];}
+
+const BLDG_DEF={
+  hut:{w:18,h:22,draw:(x,y)=>{
+    ctx.fillStyle='#c8a050';ctx.fillRect(x-9,y-14,18,14);
+    ctx.fillStyle='#a03010';ctx.beginPath();ctx.moveTo(x,y-28);ctx.lineTo(x+11,y-14);ctx.lineTo(x-11,y-14);ctx.fill();
+  }},
+  windmill:{w:14,h:40,draw:(x,y,t)=>{
+    ctx.fillStyle='#d0c090';ctx.fillRect(x-4,y-36,8,36);
+    ctx.strokeStyle='#a08030';ctx.lineWidth=3;
+    for(let i=0;i<4;i++){
+      ctx.save();ctx.translate(x,y-30);ctx.rotate(t*0.02+i*Math.PI/2);
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-14);ctx.stroke();
+      ctx.restore();
+    }
+  }},
+  house:{w:24,h:28,draw:(x,y)=>{
+    ctx.fillStyle='#e0cca0';ctx.fillRect(x-12,y-18,24,18);
+    ctx.fillStyle='#b02828';ctx.beginPath();ctx.moveTo(x,y-30);ctx.lineTo(x+14,y-18);ctx.lineTo(x-14,y-18);ctx.fill();
+    ctx.fillStyle='#8ab0d0';ctx.fillRect(x-4,y-14,8,8);
+  }},
+  farm:{w:30,h:16,draw:(x,y)=>{
+    ctx.fillStyle='#c8b060';ctx.fillRect(x-15,y-12,30,12);
+    ctx.fillStyle='#a09040';
+    for(let i=-12;i<12;i+=6)ctx.fillRect(x+i,y-18,3,6);
+  }},
+  well:{w:16,h:22,draw:(x,y)=>{
+    ctx.fillStyle='#888';ctx.fillRect(x-6,y-12,12,12);
+    ctx.fillStyle='#664';ctx.fillRect(x-8,y-16,3,16);ctx.fillRect(x+5,y-16,3,16);
+    ctx.fillStyle='#884';ctx.fillRect(x-9,y-18,18,4);
+  }},
+  castle:{w:34,h:44,draw:(x,y)=>{
+    ctx.fillStyle='#888a80';ctx.fillRect(x-17,y-36,34,36);
+    ctx.fillStyle='#777970';
+    for(let i=-15;i<=9;i+=8){ctx.fillRect(x+i,y-42,6,8);}
+    ctx.fillStyle='#555';ctx.fillRect(x-5,y-20,10,20);
+  }},
+  church:{w:22,h:42,draw:(x,y)=>{
+    ctx.fillStyle='#ccc8b8';ctx.fillRect(x-11,y-28,22,28);
+    ctx.fillStyle='#b8b4a4';ctx.beginPath();ctx.moveTo(x,y-44);ctx.lineTo(x+11,y-28);ctx.lineTo(x-11,y-28);ctx.fill();
+    ctx.fillStyle='#888';ctx.fillRect(x-2,y-50,4,12);ctx.fillRect(x-6,y-44,12,4);
+  }},
+  market:{w:30,h:22,draw:(x,y)=>{
+    ctx.fillStyle='#d09050';ctx.fillRect(x-15,y-16,30,16);
+    ctx.fillStyle='#e04040';ctx.fillRect(x-17,y-22,34,8);
+    ctx.fillStyle='rgba(255,200,100,0.3)';
+    for(let i=0;i<3;i++)ctx.fillRect(x-13+i*10,y-14,7,10);
+  }},
+  factory:{w:36,h:38,draw:(x,y)=>{
+    ctx.fillStyle='#606050';ctx.fillRect(x-18,y-30,36,30);
+    ctx.fillStyle='#444';ctx.fillRect(x-12,y-46,10,18);ctx.fillRect(x+4,y-42,8,14);
+    ctx.fillStyle='rgba(100,90,80,0.6)';
+    ctx.beginPath();ctx.arc(x-7,y-46,7,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+8,y-42,5,0,Math.PI*2);ctx.fill();
+  }},
+  smokestack:{w:14,h:50,draw:(x,y)=>{
+    ctx.fillStyle='#444';ctx.fillRect(x-7,y-48,14,48);
+    ctx.fillStyle='#333';ctx.fillRect(x-9,y-50,18,6);
+    ctx.fillStyle='rgba(80,75,70,0.5)';
+    ctx.beginPath();ctx.arc(x,y-52,10,0,Math.PI*2);ctx.fill();
+  }},
+  railway:{w:40,h:14,draw:(x,y)=>{
+    ctx.fillStyle='#888';ctx.fillRect(x-20,y-4,40,4);
+    ctx.fillStyle='#666';
+    for(let i=-18;i<18;i+=8)ctx.fillRect(x+i,y-8,5,10);
+  }},
+  skyscraper:{w:26,h:100,draw:(x,y)=>{
+    ctx.fillStyle='#5070a0';ctx.fillRect(x-13,y-90,26,90);
+    ctx.fillStyle='#6090c0';ctx.fillRect(x-11,y-88,22,86);
+    ctx.fillStyle='#aaddff';
+    for(let r=0;r<8;r++)for(let c=0;c<3;c++)ctx.fillRect(x-9+c*9,y-84+r*10,6,7);
+    ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(x,y-92,3,0,Math.PI*2);ctx.fill();
+  }},
+  highway:{w:50,h:12,draw:(x,y)=>{
+    ctx.fillStyle='#444';ctx.fillRect(x-25,y-6,50,6);
+    ctx.fillStyle='rgba(255,255,80,0.5)';ctx.fillRect(x-20,y-4,8,2);ctx.fillRect(x+8,y-4,8,2);
+  }},
+  airport:{w:48,h:24,draw:(x,y)=>{
+    ctx.fillStyle='#6080a0';ctx.fillRect(x-24,y-18,48,18);
+    ctx.fillStyle='#ccc';ctx.fillRect(x-22,y-20,44,4);
+    ctx.fillStyle='#fff';ctx.fillRect(x-4,y-22,8,8);
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x-20,y-14);ctx.lineTo(x-20,y-24);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+20,y-14);ctx.lineTo(x+20,y-24);ctx.stroke();
+  }},
+  tower:{w:22,h:130,draw:(x,y)=>{
+    ctx.fillStyle='#3a3a5a';ctx.fillRect(x-11,y-120,22,120);
+    ctx.fillStyle='#5a5a8a';ctx.fillRect(x-9,y-118,18,116);
+    ctx.fillStyle='#80c0ff';
+    for(let r=0;r<12;r++)for(let c=0;c<2;c++)ctx.fillRect(x-6+c*9,y-115+r*9,6,6);
+    ctx.fillStyle='#ff2222';ctx.beginPath();ctx.arc(x,y-123,4,0,Math.PI*2);ctx.fill();
+  }},
+  dome:{w:50,h:40,draw:(x,y)=>{
+    ctx.fillStyle='#a0c0e0';ctx.beginPath();ctx.arc(x,y,25,Math.PI,0);ctx.fill();
+    ctx.fillStyle='rgba(200,240,255,0.3)';ctx.beginPath();ctx.arc(x,y,22,Math.PI,0);ctx.fill();
+    ctx.fillStyle='#8090a0';ctx.fillRect(x-26,y-2,52,12);
+  }},
+  satellite:{w:30,h:20,draw:(x,y)=>{
+    ctx.fillStyle='#888';ctx.fillRect(x-8,y-14,16,10);
+    ctx.fillStyle='#3a6a9a';ctx.fillRect(x-22,y-12,12,6);ctx.fillRect(x+10,y-12,12,6);
+    ctx.fillStyle='#aaa';ctx.fillRect(x-3,y-20,6,8);
+  }},
+};
+
+function spawnPeople(){
+  people=[];
+  const n=Math.min(pop,12);
+  for(let i=0;i<n;i++){
+    const angle=Math.random()*Math.PI*2;
+    const r=40+Math.random()*80;
+    people.push({
+      x:W/2+Math.cos(angle)*r,
+      y:H/2+60+Math.sin(angle)*r*0.5,
+      vx:(Math.random()-0.5)*0.4,
+      vy:(Math.random()-0.5)*0.2,
+      frame:Math.floor(Math.random()*60)
+    });
+  }
+}
+
+function islandShape(x,y){
+  const cx=W/2,cy=H/2+60;
+  const dx=(x-cx)/200,dy=(y-cy)/130;
+  const d=dx*dx+dy*dy;
+  const noise=Math.sin(dx*8)*0.08+Math.cos(dy*6)*0.06;
+  return d+noise<1;
+}
+
+function drawIsland(){
+  const lvl=getLvl();
+  const iceAmt=iceAmount;
+  for(let y=60;y<H;y+=2){
+    for(let x=0;x<W;x+=2){
+      if(!islandShape(x,y))continue;
+      const dist=Math.sqrt(Math.pow((x-W/2)/200,2)+Math.pow((y-H/2-60)/130,2));
+      const nearVolcano=Math.sqrt(Math.pow(x-volcano.x,2)+Math.pow(y-volcano.y,2))<50;
+      let col;
+      if(nearVolcano){col='#4a3020';}
+      else if(iceAmt>0.1){
+        const mix=Math.min(iceAmt*1.2,1);
+        col=mixColor(lvl.ground,'#cce8ff',mix);
+      } else {col=lvl.ground;}
+      ctx.fillStyle=col;ctx.fillRect(x,y,2,2);
+    }
+  }
+}
+
+function mixColor(c1,c2,t){
+  const p1=parseHex(c1),p2=parseHex(c2);
+  const r=Math.round(p1[0]+(p2[0]-p1[0])*t);
+  const g=Math.round(p1[1]+(p2[1]-p1[1])*t);
+  const b=Math.round(p1[2]+(p2[2]-p1[2])*t);
+  return`rgb(${r},${g},${b})`;
+}
+function parseHex(h){
+  h=h.replace('#','');
+  return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+
+function drawSea(){
+  const lvl=getLvl();
+  ctx.fillStyle=lvl.sea;
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,0.04)';
+  for(let i=0;i<6;i++){
+    const y=100+i*70+(Math.sin(ticks*0.01+i)*8);
+    ctx.fillRect(0,y,W,2);
+  }
+}
+
+function drawSky(){
+  const lvl=getLvl();
+  ctx.fillStyle=lvl.sky1;
+  ctx.fillRect(0,0,W,90);
+  ctx.fillStyle=lvl.sky2;
+  ctx.fillRect(0,50,W,50);
+  if(iceAmount>0.3){
+    ctx.fillStyle='rgba(180,210,240,0.3)';
+    ctx.fillRect(0,0,W,90);
+  }
+}
+
+function drawStars(){
+  if(level>=6){
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    for(let i=0;i<40;i++){
+      const sx=(i*137)%W,sy=(i*89)%70;
+      ctx.fillRect(sx,sy,1,1);
+    }
+  }
+}
+
+function drawVolcano(){
+  const x=volcano.x,y=volcano.y;
+  ctx.fillStyle='#3a2810';
+  ctx.beginPath();ctx.moveTo(x,y-70);ctx.lineTo(x+80,y+10);ctx.lineTo(x-80,y+10);ctx.fill();
+  ctx.fillStyle='#2a1808';
+  ctx.beginPath();ctx.moveTo(x,y-70);ctx.lineTo(x+40,y+10);ctx.lineTo(x-40,y+10);ctx.fill();
+  if(volcano.erupting){
+    ctx.fillStyle='#ff6600';
+    ctx.beginPath();ctx.moveTo(x,y-70);ctx.lineTo(x+15,y-50);ctx.lineTo(x-15,y-50);ctx.fill();
+    ctx.fillStyle='#ff9900';
+    ctx.beginPath();ctx.arc(x,y-70,8+Math.sin(ticks*0.3)*4,0,Math.PI*2);ctx.fill();
+  } else {
+    ctx.fillStyle='rgba(60,50,40,0.6)';
+    ctx.beginPath();ctx.arc(x,y-70,14,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawIce(){
+  if(iceAmount<=0)return;
+  ctx.fillStyle=`rgba(180,220,255,${iceAmount*0.55})`;
+  ctx.fillRect(0,0,W,H);
+  if(iceAmount>0.5){
+    ctx.fillStyle=`rgba(220,240,255,${(iceAmount-0.5)*0.5})`;
+    for(let i=0;i<12;i++){
+      const ix=(i*137+50)%W,iy=80+(i*89)%360;
+      ctx.beginPath();ctx.moveTo(ix,iy);ctx.lineTo(ix+20,iy-30);ctx.lineTo(ix+40,iy);ctx.fill();
+    }
+  }
+}
+
+function drawBuildings(){
+  buildings.forEach(b=>{
+    const def=BLDG_DEF[b.type];
+    if(def)def.draw(b.x,b.y,ticks);
+    if(b.damaged){
+      ctx.fillStyle='rgba(255,100,0,0.4)';
+      ctx.beginPath();ctx.arc(b.x,b.y-10,12,0,Math.PI*2);ctx.fill();
+    }
+  });
+}
+
+function drawPeople(){
+  people.forEach(p=>{
+    p.frame++;
+    const bob=Math.sin(p.frame*0.15)*2;
+    ctx.fillStyle='#ffcc88';
+    ctx.beginPath();ctx.arc(p.x,p.y-14+bob,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4488cc';
+    ctx.fillRect(p.x-3,p.y-10+bob,6,8);
+    ctx.fillStyle='#ffcc88';
+    ctx.fillRect(p.x-5,p.y-8+bob,3,5);
+    ctx.fillRect(p.x+2,p.y-8+bob,3,5);
+    p.x+=p.vx;p.y+=p.vy;
+    if(!islandShape(p.x,p.y)){p.vx=-p.vx;p.vy=-p.vy;}
+    if(p.x<10||p.x>W-10)p.vx=-p.vx;
+    if(p.y<60||p.y>H-10)p.vy=-p.vy;
+  });
+}
+
+function drawParticles(){
+  particles=particles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=p.grav||0;p.life-=p.decay||0.02;
+    if(p.life<=0)return false;
+    ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.col;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+    return true;
+  });
+}
+
+function drawClouds(){
+  const base=level<=2?'rgba(255,255,255,0.55)':'rgba(160,140,130,0.4)';
+  ctx.fillStyle=base;
+  [[80,25],[220,18],[430,28],[570,20],[320,12]].forEach(([cx,cy],i)=>{
+    const ox=((cx+ticks*0.1*(i%2?1:-1))%W+W)%W;
+    ctx.beginPath();ctx.arc(ox,cy,16,0,Math.PI*2);ctx.arc(ox+20,cy-6,12,0,Math.PI*2);ctx.arc(ox+36,cy,14,0,Math.PI*2);ctx.fill();
+    if(ox+56<W){ctx.beginPath();ctx.arc(ox+56,cy,16,0,Math.PI*2);ctx.arc(ox+76,cy-6,12,0,Math.PI*2);ctx.arc(ox+92,cy,14,0,Math.PI*2);ctx.fill();}
+  });
+}
+
+function drawHUD(){
+  document.getElementById('hLvl').textContent=level;
+  document.getElementById('hPop').textContent=pop.toLocaleString();
+  document.getElementById('hBld').textContent=buildings.length;
+  const years=['10000 BC','8000 BC','5000 BC','2000 BC','1000 AD','1800 AD','2000 AD','2100 AD'];
+  document.getElementById('hYr').textContent=years[Math.min(level-1,7)];
+  document.getElementById('lvlname').textContent=getLvl().name;
+  if(msgTimer>0){msgTimer--;document.getElementById('msg').style.display='block';}
+  else document.getElementById('msg').style.display='none';
+}
+
+function setMsg(m,dur=200){
+  document.getElementById('msg').textContent=m;
+  msgTimer=dur;
+}
+
+function autoBuild(){
+  buildTimer++;
+  if(buildTimer<120)return;
+  buildTimer=0;
+  const lvl=getLvl();
+  if(lvl.autoBuilds.length===0)return;
+  if(buildings.length>50)return;
+  const type=lvl.autoBuilds[Math.floor(Math.random()*lvl.autoBuilds.length)];
+  placeBuilding(type);
+  pop=Math.min(pop+Math.floor(Math.random()*3)+1,getLvl().pop*2);
+  const msgs={hut:'People built a hut!',windmill:'A windmill rises!',house:'A house constructed!',castle:'A mighty castle!',skyscraper:'Skyscraper reaching the sky!',factory:'Factory belching smoke!',tower:'Mega tower complete!',dome:'Bio-dome sealed!'};
+  if(msgs[type])setMsg(msgs[type],120);
+}
+
+function placeBuilding(type){
+  let tries=0,placed=false;
+  while(tries<100&&!placed){
+    tries++;
+    const angle=Math.random()*Math.PI*2;
+    const r=30+Math.random()*130;
+    const bx=W/2+Math.cos(angle)*r;
+    const by=H/2+60+Math.sin(angle)*r*0.45;
+    if(!islandShape(bx,by))continue;
+    const dist=Math.sqrt(Math.pow(bx-volcano.x,2)+Math.pow(by-volcano.y,2));
+    if(dist<70)continue;
+    const tooClose=buildings.some(b=>Math.abs(b.x-bx)<22&&Math.abs(b.y-by)<22);
+    if(tooClose)continue;
+    buildings.push({x:bx,y:by,type,damaged:false});
+    placed=true;
+  }
+}
+
+function triggerVolcano(){
+  volcano.erupting=true;
+  volcano.eruptTimer=300;
+  setMsg('VOLCANO ERUPTS! Lava flows destroy buildings!',250);
+  for(let i=0;i<40;i++){
+    const angle=Math.random()*Math.PI*2;
+    const spd=2+Math.random()*5;
+    particles.push({x:volcano.x,y:volcano.y-70,vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd-3,grav:0.12,col:['#ff6600','#ff9900','#ffcc00','#dd2200'][Math.floor(Math.random()*4)],r:8+Math.random()*8,life:1,decay:0.008});
+  }
+  buildings.forEach(b=>{
+    const dist=Math.sqrt(Math.pow(b.x-volcano.x,2)+Math.pow(b.y-volcano.y,2));
+    if(dist<150)b.damaged=true;
+  });
+  if(iceAmount>0){iceAmount=0;setMsg('The volcano melts all the ice! Life begins!',300);}
+}
+
+function triggerDisaster(){
+  const disasters=['tsunami','meteor','earthquake','storm'];
+  const d=disasters[Math.floor(Math.random()*disasters.length)];
+  disasterActive=true;disasterTimer=200;
+  if(d==='meteor'){
+    setMsg('METEOR STRIKE!',200);
+    for(let i=0;i<6;i++){
+      const tx=100+Math.random()*(W-200),ty=80+Math.random()*200;
+      setTimeout(()=>{
+        for(let j=0;j<20;j++)particles.push({x:tx,y:ty,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4-2,grav:0.1,col:'#ff6030',r:6,life:1,decay:0.015});
+        buildings.forEach(b=>{if(Math.sqrt(Math.pow(b.x-tx,2)+Math.pow(b.y-ty,2))<60)b.damaged=true;});
+      },i*300);
+    }
+  } else if(d==='earthquake'){
+    setMsg('EARTHQUAKE!',200);
+    buildings.forEach(b=>{if(Math.random()<0.3)b.damaged=true;});
+    for(let i=0;i<30;i++)particles.push({x:Math.random()*W,y:200+Math.random()*300,vx:(Math.random()-0.5)*3,vy:-2-Math.random()*3,grav:0.08,col:'#a08060',r:5,life:1,decay:0.012});
+  } else if(d==='tsunami'){
+    setMsg('TSUNAMI!',200);
+    for(let i=0;i<60;i++)particles.push({x:0,y:150+Math.random()*200,vx:3+Math.random()*4,vy:(Math.random()-0.5)*2,grav:0,col:'#2060a0',r:10+Math.random()*8,life:0.8,decay:0.006});
+    buildings.forEach(b=>{if(b.y>300&&Math.random()<0.4)b.damaged=true;});
+  } else {
+    setMsg('STORM! Lightning strikes the island!',200);
+    for(let i=0;i<8;i++){
+      setTimeout(()=>{
+        const lx=150+Math.random()*380;
+        particles.push({x:lx,y:0,vx:0,vy:8,grav:0,col:'#ffffff',r:2,life:1,decay:0.04});
+        particles.push({x:lx,y:30,vx:0,vy:8,grav:0,col:'#ffffaa',r:3,life:0.9,decay:0.05});
+      },i*200);
+    }
+  }
+  buildings=buildings.filter(b=>!b.damaged);
+  setTimeout(()=>{buildings=buildings.filter(b=>!b.damaged);},1500);
+}
+
+function nextLevel(){
+  if(level<8){
+    level++;
+    const lvl=getLvl();
+    pop=lvl.pop;
+    spawnPeople();
+    if(level===2){
+      iceAmount=0.6;
+      setMsg('The ice begins to thaw... survivors emerge.',250);
+      triggerVolcano();
+    } else if(level===3){
+      iceAmount=0;
+      setMsg('Stone Age begins. People learn to build!',200);
+    } else {
+      setMsg(`${lvl.name} — civilisation advances!`,200);
+    }
+    buildTimer=0;
+  } else {
+    setMsg('Maximum civilisation reached!',300);
+  }
+}
+
+function restartGame(){
+  level=1;pop=2;buildings=[];particles=[];
+  iceAmount=1.0;volcano.erupting=false;
+  spawnPeople();
+  setMsg('The ice age begins... two survivors remain.',300);
+}
+
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*(W/r.width);
+  const my=(e.clientY-r.top)*(H/r.height);
+  if(islandShape(mx,my)){
+    const types=['hut','windmill','house','farm','castle','factory','skyscraper','tower'];
+    const t=types[Math.min(level-1,types.length-1)];
+    buildings.push({x:mx,y:my,type:t,damaged:false});
+    pop+=Math.floor(Math.random()*5)+1;
+    setMsg(`Built a ${t}!`,100);
+  }
+});
+
+function draw(){
+  ticks++;
+  if(volcano.erupting){
+    volcano.eruptTimer--;
+    if(volcano.eruptTimer<=0)volcano.erupting=false;
+    if(iceAmount>0)iceAmount=Math.max(0,iceAmount-0.003);
+  }
+  ctx.clearRect(0,0,W,H);
+  drawSky();
+  drawStars();
+  drawClouds();
+  drawSea();
+  drawIsland();
+  drawVolcano();
+  drawBuildings();
+  drawPeople();
+  drawParticles();
+  drawIce();
+  drawHUD();
+  autoBuild();
+  requestAnimationFrame(draw);
+}
+
+spawnPeople();
+setMsg('The ice age begins... two survivors remain.',400);
+draw();
+</script>
