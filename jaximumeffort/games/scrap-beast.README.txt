@@ -1,0 +1,36 @@
+SCRAP BEAST — Survive 100 Days
+==============================
+
+HOW TO PLAY
+-----------
+Just double-click "index.html" — it opens in any web browser
+(Chrome, Safari, Firefox, Edge). No install, no internet needed.
+Click the game once so it can play sound, then press ENTER.
+
+CONTROLS
+--------
+  WASD / Arrow keys ... move
+  SPACE .............. slam attack
+  SHIFT .............. EMP blast (needs a Generator Core)
+  B .................. open the shop (forge upgrades)
+  X .................. inside the shop, switch shops
+                       (Black Market, and the Secret Vault on day 75)
+  ENTER .............. advance dialogue / menus / restart
+
+THE GAME
+--------
+You are a beast made of scrap metal, built in a lab to destroy the
+world — but you'd rather defend it.
+
+1. Escape the lab: knock scrap loose and slip out while the
+   scientists aren't watching.
+2. Survive 100 days in a dinosaur-age jungle. Fight off human
+   armies, collect scrap, and forge upgrades (armor, speed,
+   weapons, a generator core, tentacles, a rail cannon, mortars).
+3. Build a pack, raze or shelter in towns and cities, fell trees
+   for wood, and mine diamonds.
+4. On day 75 a Secret Vault opens — buy the OMEGA CORE with
+   diamonds. It's the ONLY thing that can hurt the final boss.
+5. On day 100 the LAB-MECHA attacks. Destroy it to win.
+
+Have fun!
